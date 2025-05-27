@@ -1,0 +1,32 @@
+name: Sync fork from upstream
+
+# 定时触发，这里设置每天凌晨0点执行，也可以按需修改
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout your fork repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0  # 需要全部提交历史，方便合并
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/ORIGINAL_OWNER/ORIGINAL_REPO.git
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Merge upstream/main into main
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit
+
+      - name: Push changes to your fork
+        run: git push origin main
