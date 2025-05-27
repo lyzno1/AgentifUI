@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCurrentApp } from '@lib/hooks/use-current-app';
 import { useAppListStore } from '@lib/stores/app-list-store';
 import { useChatStore } from '@lib/stores/chat-store';
@@ -8,12 +9,15 @@ import { cn } from '@lib/utils';
 import { ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 
 export function AppSelector() {
+  const router = useRouter();
   const { currentAppId, validateConfig, isValidating } = useCurrentApp();
   const { apps, fetchApps, isLoading, error } = useAppListStore();
   const { clearMessages } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
 
-  // 获取可用的app列表
+  // --- BEGIN COMMENT ---
+  // 🎯 获取可用的app列表，现在会自动触发批量参数获取
+  // --- END COMMENT ---
   useEffect(() => {
     fetchApps();
   }, [fetchApps]);
@@ -25,22 +29,28 @@ export function AppSelector() {
     }
 
     try {
-      // 🎯 直接使用 validateConfig 进行切换
-      await validateConfig(newAppId);
+      // --- BEGIN COMMENT ---
+      // 🎯 使用 validateConfig 进行应用切换，现在参数已预缓存
+      // 指定为切换上下文，不触发消息输入框的spinner
+      // --- END COMMENT ---
+      await validateConfig(newAppId, 'switch');
       
+      // --- BEGIN COMMENT ---
       // 切换成功后清理聊天状态
+      // --- END COMMENT ---
       clearMessages();
       
-      // 重定向到新聊天页面
-      if (typeof window !== 'undefined') {
-        window.location.href = '/chat/new';
-      }
+      // --- BEGIN COMMENT ---
+      // 🎯 使用Next.js路由进行页面跳转，避免硬刷新
+      // 这样可以保持应用状态，包括预缓存的参数
+      // --- END COMMENT ---
+      router.push('/chat/new');
       
       console.log(`已切换到app: ${newAppId}`);
       setIsOpen(false);
     } catch (error) {
       console.error('切换app失败:', error);
-      // 显示错误提示
+      // TODO: 显示用户友好的错误提示
     }
   };
 
