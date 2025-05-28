@@ -56,6 +56,9 @@ export function NavBar() {
         </div>
         
         <div className="flex items-center">
+          {/* --- BEGIN COMMENT ---
+          用户头像按钮
+          --- END COMMENT --- */}
           <DesktopUserAvatar />
         </div>
       </header>
