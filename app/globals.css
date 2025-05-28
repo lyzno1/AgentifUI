@@ -139,6 +139,16 @@ html, body {
   /* 🎯 欢迎屏幕使用衬线字体，所有文本都更优雅 */
   .welcome-screen, .welcome-screen * {
     font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+    /* --- BEGIN MODIFIED COMMENT ---
+     * 🎯 添加字体大小调整，解决中英文字体高度不匹配问题
+     * 参考助手消息内容的处理方式，确保中英文字符在同一基线上对齐
+     * --- END MODIFIED COMMENT ---
+     */
+    font-size-adjust: 0.52 !important;
+    letter-spacing: 0.01em !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
   }
 
   /* 🎯 欢迎屏幕标题使用装饰字体 */
@@ -295,6 +305,15 @@ html, body {
   .assistant-message-content code *, .assistant-message-content pre * {
     font-size-adjust: none;
   }
+
+  /* --- BEGIN MODIFIED COMMENT ---
+   * 🎯 欢迎屏幕字体大小调整优化
+   * 确保在支持font-size-adjust的浏览器中获得最佳效果
+   * --- END MODIFIED COMMENT ---
+   */
+  .welcome-screen, .welcome-screen * {
+    font-size-adjust: 0.52;
+  }
 }
 
 /* 🎯 不支持 font-size-adjust 的浏览器回退方案 */
@@ -316,6 +335,20 @@ html, body {
   
   /* 助手消息中的中文字符保持原始大小 */
   .assistant-message-content :lang(zh), .assistant-message-content :lang(zh-CN) {
+    font-size: 0.98em;
+  }
+
+  /* --- BEGIN MODIFIED COMMENT ---
+   * 🎯 欢迎屏幕的回退方案
+   * 对于不支持font-size-adjust的浏览器，使用相对字体大小调整
+   * --- END MODIFIED COMMENT ---
+   */
+  .welcome-screen {
+    font-size: 1.02em; /* 轻微增大英文字体 */
+  }
+  
+  /* 欢迎屏幕中的中文字符保持原始大小 */
+  .welcome-screen :lang(zh), .welcome-screen :lang(zh-CN) {
     font-size: 0.98em;
   }
 }
