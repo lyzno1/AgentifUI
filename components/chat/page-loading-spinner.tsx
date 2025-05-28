@@ -13,7 +13,7 @@ interface PageLoadingSpinnerProps {
 }
 
 export function PageLoadingSpinner({ isLoading }: PageLoadingSpinnerProps) {
-  const { isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const [visible, setVisible] = useState(false);
   
   // 添加延迟显示，避免闪烁
@@ -32,7 +32,8 @@ export function PageLoadingSpinner({ isLoading }: PageLoadingSpinnerProps) {
     <div className={cn(
       "fixed inset-0 z-50 flex items-center justify-center",
       "transition-opacity duration-300",
-      isDark ? "bg-stone-900/50" : "bg-stone-100/50",
+      colors.mainBackground.tailwind,
+      "bg-opacity-80 dark:bg-opacity-80",
       "backdrop-blur-sm"
     )}>
       <SpinnerIcon size={40} />
@@ -47,7 +48,7 @@ interface SpinnerIconProps {
 function SpinnerIcon({ size = 24 }: SpinnerIconProps) {
   return (
     <svg 
-      className="animate-spin text-stone-700 dark:text-stone-200"
+      className="animate-spin text-stone-600 dark:text-stone-300"
       width={size} 
       height={size} 
       xmlns="http://www.w3.org/2000/svg"
