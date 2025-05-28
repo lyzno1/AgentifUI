@@ -9,6 +9,7 @@ import { useTheme } from "@lib/hooks/use-theme"
 // 专门为侧边栏列表项设计的按钮组件，样式更加紧凑和美观
 // 不同于 SidebarButton，此组件不会占满整个侧边栏宽度
 // 支持响应式布局，在移动端和桌面端有不同的表现
+// 🎯 新增：支持more button和item区域的悬停分离效果
 // --- END COMMENT ---
 interface SidebarListButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   icon: React.ReactNode
@@ -17,6 +18,8 @@ interface SidebarListButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   moreActionsTrigger?: React.ReactNode
   isDisabled?: boolean 
   children?: React.ReactNode
+  hasOpenDropdown?: boolean // 是否有打开的下拉菜单
+  disableHover?: boolean // 是否禁用悬停效果（当有其他菜单打开时）
 }
 
 export function SidebarListButton({ 
@@ -27,6 +30,8 @@ export function SidebarListButton({
   onClick, 
   moreActionsTrigger,
   isDisabled = false,
+  hasOpenDropdown = false,
+  disableHover = false,
   children,
   ...props 
 }: SidebarListButtonProps) {
@@ -46,6 +51,14 @@ export function SidebarListButton({
     }
   }
 
+  // --- BEGIN COMMENT ---
+  // 🎯 处理主要内容区域的点击（排除more button区域）
+  // --- END COMMENT ---
+  const handleMainContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 只有点击主要内容区域时才触发选择
+    handleClick(e);
+  }
+
   return (
     <div
       role="button"
@@ -53,9 +66,10 @@ export function SidebarListButton({
       aria-disabled={isDisabled}
       className={cn(
         // --- BEGIN COMMENT ---
-        // 基础样式 - 减小高度和内边距，使按钮更加纤细
+        // 基础样式 - 🎯 进一步减小内边距，使按钮更加紧凑
+        // 从 px-2.5 py-1.5 改为 px-2 py-1，减小整体尺寸
         // --- END COMMENT ---
-        "relative flex items-center rounded-lg px-2.5 py-1.5 text-sm font-medium",
+        "relative flex items-center rounded-lg px-2 py-1 text-sm font-medium group",
         "transition-all duration-200 ease-in-out",
         
         // --- BEGIN COMMENT ---
@@ -75,11 +89,12 @@ export function SidebarListButton({
         isDisabled ? "cursor-not-allowed opacity-60 border-transparent" : "cursor-pointer",
         
         // --- BEGIN COMMENT ---
-        // 亮色主题样式
+        // 🎯 亮色主题样式 - 恢复整体hover效果
         // --- END COMMENT ---
         !isDark && !isDisabled && [
           "text-stone-600",
-          "hover:bg-stone-300 hover:shadow-md",
+          // 只有在没有打开下拉菜单且没有禁用悬停时才显示悬停效果
+          !hasOpenDropdown && !disableHover && "hover:bg-stone-300 hover:shadow-md",
           active 
             ? "bg-stone-300 shadow-sm border-stone-400/80" 
             : "border-transparent"
@@ -87,11 +102,12 @@ export function SidebarListButton({
         !isDark && isDisabled && ["text-stone-400"],
         
         // --- BEGIN COMMENT ---
-        // 暗色主题样式
+        // 🎯 暗色主题样式 - 恢复整体hover效果
         // --- END COMMENT ---
         isDark && !isDisabled && [
           "text-gray-200",
-          "hover:bg-stone-600 hover:shadow-md hover:border-stone-500/50",
+          // 只有在没有打开下拉菜单且没有禁用悬停时才显示悬停效果
+          !hasOpenDropdown && !disableHover && "hover:bg-stone-600 hover:shadow-md hover:border-stone-500/50",
           active 
             ? "bg-stone-700 shadow-sm border-stone-600" 
             : "border-transparent"
@@ -105,30 +121,50 @@ export function SidebarListButton({
         
         className,
       )}
-      onClick={handleClick}
       onKeyDown={handleKeyDown}
       {...props}
     >
-      <div className="flex flex-1 items-center min-w-0">
+      {/* --- BEGIN COMMENT ---
+      🎯 主要内容区域：包含图标和文本，点击处理
+      移除独立的悬停效果，使用整体的悬停效果
+      --- END COMMENT --- */}
+      <div 
+        className={cn(
+          "flex flex-1 items-center min-w-0",
+          !isDisabled && "cursor-pointer"
+        )}
+        onClick={handleMainContentClick}
+      >
         {isLoading ? (
-          <span className={cn("flex h-5 w-5 items-center justify-center")}>
-            <div className={cn("h-4 w-4 animate-pulse rounded-full", isDark ? "bg-stone-600" : "bg-stone-400", "opacity-80")} />
+          <span className={cn("flex h-4 w-4 items-center justify-center")}>
+            <div className={cn("h-3 w-3 animate-pulse rounded-full", isDark ? "bg-stone-600" : "bg-stone-400", "opacity-80")} />
           </span>
         ) : (
-          <span className={cn("flex h-5 w-5 items-center justify-center -ml-0.5", 
+          <span className={cn("flex h-4 w-4 items-center justify-center -ml-0.5", 
             isDark ? "text-gray-400" : "text-gray-500")}>
             {icon}
           </span>
         )}
         {children && (
-          <div className="ml-2 flex-1 min-w-0 truncate"> 
+          <div className="ml-1.5 flex-1 min-w-0 truncate"> 
             {children}
           </div>
         )}
       </div>
+      
+      {/* --- BEGIN COMMENT ---
+      🎯 More Actions区域：独立的悬停和点击处理
+      使用更高的CSS优先级来覆盖整体的悬停效果
+      --- END COMMENT --- */}
       {moreActionsTrigger && (
         <div 
-          className={cn("ml-1 flex-shrink-0")}
+          className={cn(
+            "ml-0.5 flex-shrink-0 relative z-10",
+            // --- BEGIN COMMENT ---
+            // 🎯 More button区域的独立悬停效果，覆盖整体悬停
+            // 使用 hover:bg-transparent 来"取消"父级的悬停效果
+            // --- END COMMENT ---
+          )}
           onClick={(e) => {
             e.stopPropagation(); // 防止点击 MoreButton 区域时选中聊天项
           }}

@@ -56,6 +56,12 @@ export function SidebarChatList({
   const [isOperating, setIsOperating] = React.useState(false);
   const [selectedConversation, setSelectedConversation] = React.useState<CombinedConversation | null>(null);
   
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：下拉菜单状态管理
+  // 记录当前打开的下拉菜单对应的对话ID
+  // --- END COMMENT ---
+  const [openDropdownId, setOpenDropdownId] = React.useState<string | null>(null);
+  
   const [prevLoadedConversations, setPrevLoadedConversations] = React.useState<CombinedConversation[]>([]);
   
   // --- BEGIN COMMENT ---
@@ -296,25 +302,37 @@ export function SidebarChatList({
   // 修改 createMoreActions 函数，确保临时 ID 和真正对话 ID 之间切换时布局保持一致
   // 对于临时 ID 的对话，返回禁用状态的 more button 而不是 null，保持布局一致
   // 优化下拉菜单样式，使其与整体主题更加协调
+  // 🎯 新增：集成下拉菜单状态管理，实现解构效果
   // --- END COMMENT ---
   const createMoreActions = (chat: CombinedConversation, itemIsLoading: boolean) => {
     const canPerformActions = !!chat.supabase_pk;
     const isTempChat = !chat.id || chat.id.startsWith('temp-');
+    const isMenuOpen = openDropdownId === chat.id;
+    const isItemSelected = isChatActive(chat);
     
-    // 无论是临时 ID 还是真正的对话 ID，都返回 more button 组件，保持布局一致
+    // --- BEGIN COMMENT ---
+    // 🎯 处理下拉菜单状态变化
+    // --- END COMMENT ---
+    const handleMenuOpenChange = (isOpen: boolean) => {
+      setOpenDropdownId(isOpen ? chat.id : null);
+    };
+    
     return (
       <DropdownMenuV2
         placement="bottom"
-        alignToTriggerBottom={true}
-        minWidth={140}
-        contentClassName={cn(isDark ? "bg-stone-800 border border-stone-700" : "bg-white border border-stone-200")}
+        minWidth={120}
+        isOpen={isMenuOpen}
+        onOpenChange={handleMenuOpenChange}
         trigger={
           <MoreButtonV2
             aria-label="更多选项"
             disabled={itemIsLoading || !canPerformActions || isTempChat}
+            isMenuOpen={isMenuOpen}
+            isItemSelected={isItemSelected}
+            disableHover={!!openDropdownId && !isMenuOpen}
             className={cn(
               "transition-opacity",
-              itemIsLoading || !canPerformActions || isTempChat ? "opacity-50" : "opacity-100"
+              itemIsLoading || !canPerformActions || isTempChat ? "opacity-50" : ""
             )}
           />
         }
@@ -385,13 +403,22 @@ export function SidebarChatList({
                       active={isActive}
                       onClick={() => onSelectChat(chat.id)}
                       isLoading={itemIsLoading}
+                      hasOpenDropdown={openDropdownId === chat.id}
+                      disableHover={!!openDropdownId}
                       moreActionsTrigger={
                         <div className={cn(
                           "transition-opacity",
-                          // 加载状态下显示占位，但禁用交互
+                          // --- BEGIN COMMENT ---
+                          // 🎯 当有菜单打开时，禁用group-hover效果，避免其他item的more button在悬停时显示
+                          // 但当前打开菜单的item的more button应该保持显示
+                          // --- END COMMENT ---
                           itemIsLoading 
                             ? "pointer-events-none" // 禁用交互但保持占位
-                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100" // 非加载状态下正常显示
+                            : openDropdownId === chat.id
+                              ? "opacity-100" // 当前打开菜单的item，more button保持显示
+                              : openDropdownId 
+                                ? "opacity-0" // 有其他菜单打开时，此item的more button不显示
+                                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100" // 正常状态下的悬停显示
                         )}>
                           {/* 无论是否加载，都显示 more button，确保布局一致 */}
                           {createMoreActions(chat, itemIsLoading)}
@@ -426,8 +453,21 @@ export function SidebarChatList({
                     active={isActive}
                     onClick={() => onSelectChat(chat.id)}
                     isLoading={itemIsLoading}
+                    hasOpenDropdown={openDropdownId === chat.id}
+                    disableHover={!!openDropdownId}
                     moreActionsTrigger={
-                      <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <div className={cn(
+                        "transition-opacity",
+                        // --- BEGIN COMMENT ---
+                        // 🎯 当有菜单打开时，禁用group-hover效果，避免其他item的more button在悬停时显示
+                        // 但当前打开菜单的item的more button应该保持显示
+                        // --- END COMMENT ---
+                        openDropdownId === chat.id
+                          ? "opacity-100" // 当前打开菜单的item，more button保持显示
+                          : openDropdownId 
+                            ? "opacity-0" // 有其他菜单打开时，此item的more button不显示
+                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100" // 正常状态下的悬停显示
+                      )}>
                         {createMoreActions(chat, itemIsLoading)}
                       </div>
                     }
@@ -448,9 +488,12 @@ export function SidebarChatList({
                       "h-5 w-5",
                       isDark
                         ? "text-gray-400"
-                        : "text-gray-500 group-hover:text-primary"
+                        : openDropdownId 
+                          ? "text-gray-500" // 有菜单打开时禁用悬停效果
+                          : "text-gray-500 group-hover:text-primary" // 正常状态下的悬停效果
                     )} />
                   }
+                  disableHover={!!openDropdownId} // 🎯 当有菜单打开时禁用悬停效果
                   onClick={() => {
                     // --- BEGIN COMMENT ---
                     // 不再锁定侧边栏，保持当前状态，导航到历史页面
