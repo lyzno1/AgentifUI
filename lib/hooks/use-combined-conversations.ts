@@ -197,31 +197,58 @@ export function useCombinedConversations() {
     };
   }, [refreshDbConversations, pendingConversations]);
 
-  // Effect to clean up fully synced pending conversations from PendingConversationStore
+  // --- BEGIN COMMENT ---
+  // 🎯 修复：安全的临时对话清理机制
+  // 移除过早的自动清理，改为基于时间的过期清理，确保临时对话不会因消息保存延迟而消失
+  // 只清理满足以下所有条件的临时对话：
+  // 1. 已存在超过10分钟（足够长的时间确保所有操作完成）
+  // 2. 已有对应的数据库记录
+  // 3. 状态为已完成（persisted_optimistic 或 title_resolved）
+  // --- END COMMENT ---
   useEffect(() => {
     const dbRealIds = new Set(dbConversations.map(c => c.external_id || c.id));
     const { removePending } = usePendingConversationStore.getState();
 
-    // --- BEGIN COMMENT ---
-    // 延迟清理临时对话，确保消息已完全保存
-    // 这是为了解决首次创建对话时助手消息被截断的问题
-    // 通过延迟清理，确保流式响应完全结束并且消息已完整保存到数据库
-    // --- END COMMENT ---
-    const cleanupPendingConversations = () => {
+    const cleanupExpiredPendingConversations = () => {
+      const now = Date.now();
+      
       pendingArray.forEach(p => {
-        if (p.realId && dbRealIds.has(p.realId) &&
+        // 检查对话年龄
+        const createdTime = new Date(p.createdAt).getTime();
+        const ageInMinutes = (now - createdTime) / (1000 * 60);
+        
+        // 只清理满足所有条件的临时对话：
+        // 1. 超过10分钟（确保足够时间完成所有操作）
+        // 2. 有真实ID且数据库中存在对应记录
+        // 3. 状态为已完成
+        if (ageInMinutes > 10 && 
+            p.realId && 
+            dbRealIds.has(p.realId) &&
             (p.status === 'persisted_optimistic' || p.status === 'title_resolved')) {
-          console.log(`[useCombinedConversations] Cleaning up fully synced pending item from store: ${p.tempId} (realId: ${p.realId})`);
-          removePending(p.tempId); // remove by tempId, as it's the key in pendingConversations Map
+          
+          console.log(`[useCombinedConversations] 清理过期临时对话: ${p.tempId} (realId: ${p.realId}, 年龄: ${ageInMinutes.toFixed(1)}分钟)`);
+          removePending(p.tempId);
+        } else if (p.realId && dbRealIds.has(p.realId)) {
+          // 记录未清理的原因，便于调试
+          const reasons = [];
+          if (ageInMinutes <= 10) reasons.push(`年龄不足(${ageInMinutes.toFixed(1)}分钟)`);
+          if (p.status !== 'persisted_optimistic' && p.status !== 'title_resolved') reasons.push(`状态未完成(${p.status})`);
+          
+          if (reasons.length > 0) {
+            console.log(`[useCombinedConversations] 保留临时对话 ${p.tempId}: ${reasons.join(', ')}`);
+          }
         }
       });
     };
     
-    // 延迟2秒执行清理，确保消息已完全保存
-    const timeoutId = setTimeout(cleanupPendingConversations, 2000);
+    // 立即执行一次清理
+    cleanupExpiredPendingConversations();
+    
+    // 每2分钟检查一次过期项（频率适中，不会影响性能）
+    const intervalId = setInterval(cleanupExpiredPendingConversations, 2 * 60 * 1000);
     
     // 清理定时器
-    return () => clearTimeout(timeoutId);
+    return () => clearInterval(intervalId);
   }, [dbConversations, pendingArray]);
 
   // --- BEGIN COMMENT ---

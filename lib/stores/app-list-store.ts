@@ -30,6 +30,9 @@ interface AppListState {
   isLoadingParameters: boolean;
   parametersError: string | null;
   lastParametersFetchTime: number;
+  
+  // 🎯 添加请求锁，防止同一应用的并发请求
+  fetchingApps: Set<string>; // 正在请求中的应用ID集合
 
   fetchApps: () => Promise<void>;
   clearCache: () => void;
@@ -55,6 +58,9 @@ export const useAppListStore = create<AppListState>((set, get) => ({
   parametersError: null,
   lastParametersFetchTime: 0,
 
+  // 🎯 添加请求锁，防止同一应用的并发请求
+  fetchingApps: new Set(),
+
   fetchApps: async () => {
     const now = Date.now();
     const state = get();
@@ -75,14 +81,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
         lastFetchTime: now 
       });
       
-      // 🎯 获取应用列表成功后，自动获取所有应用的参数
-      const updatedState = get();
-      if (apps.length > 0) {
-        // 异步获取参数，不阻塞应用列表的返回
-        updatedState.fetchAllAppParameters().catch(error => {
-          console.warn('[AppListStore] 批量获取应用参数失败:', error);
-        });
-      }
+      console.log(`[AppListStore] 成功获取 ${apps.length} 个应用列表`);
     } catch (error: any) {
       set({ 
         error: error.message, 
@@ -181,7 +180,8 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     set({
       parametersCache: {},
       lastParametersFetchTime: 0,
-      parametersError: null
+      parametersError: null,
+      fetchingApps: new Set()
     });
   },
 
@@ -190,10 +190,10 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       apps: [], 
       lastFetchTime: 0,
       error: null,
-      // 🎯 同时清理参数缓存
       parametersCache: {},
       lastParametersFetchTime: 0,
-      parametersError: null
+      parametersError: null,
+      fetchingApps: new Set()
     });
   },
 
@@ -203,11 +203,22 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     const state = get();
     const cached = state.parametersCache[appId];
     
+    // 🎯 检查是否正在请求中，防止并发请求
+    if (state.fetchingApps.has(appId)) {
+      console.log(`[AppListStore] 应用 ${appId} 正在请求中，跳过重复请求`);
+      return;
+    }
+    
     // 检查缓存是否仍然有效
     if (cached && (now - cached.timestamp < CACHE_DURATION)) {
       console.log(`[AppListStore] 应用 ${appId} 参数缓存仍然有效，跳过获取`);
       return;
     }
+    
+    // 🎯 添加到请求锁中
+    const newFetchingApps = new Set(state.fetchingApps);
+    newFetchingApps.add(appId);
+    set({ fetchingApps: newFetchingApps });
     
     try {
       console.log(`[AppListStore] 开始获取应用 ${appId} 的参数`);
@@ -216,9 +227,10 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       const parameters = await getDifyAppParameters(appId);
       
       // 更新缓存
+      const currentState = get();
       set({
         parametersCache: {
-          ...state.parametersCache,
+          ...currentState.parametersCache,
           [appId]: {
             data: parameters,
             timestamp: now
@@ -232,6 +244,12 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       console.error(`[AppListStore] 获取应用 ${appId} 参数失败:`, error);
       // 单个应用失败不影响其他操作，不设置全局错误状态
       throw error;
+    } finally {
+      // 🎯 从请求锁中移除，无论成功还是失败
+      const currentState = get();
+      const updatedFetchingApps = new Set(currentState.fetchingApps);
+      updatedFetchingApps.delete(appId);
+      set({ fetchingApps: updatedFetchingApps });
     }
   }
 })); 
