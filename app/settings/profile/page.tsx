@@ -12,6 +12,40 @@ import { useRouter } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 
 // --- BEGIN COMMENT ---
+// 生成用户头像的首字母（与desktop-user-avatar保持一致）
+// --- END COMMENT ---
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+// --- BEGIN COMMENT ---
+// 根据用户名生成一致的石色系背景颜色（与desktop-user-avatar保持一致）
+// --- END COMMENT ---
+const getAvatarBgColor = (name: string) => {
+  const colors = [
+    "#78716c", // stone-500
+    "#57534e", // stone-600
+    "#44403c", // stone-700
+    "#64748b", // slate-500
+    "#475569", // slate-600
+    "#6b7280", // gray-500
+    "#4b5563", // gray-600
+    "#737373", // neutral-500
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+// --- BEGIN COMMENT ---
 // 个人资料设置页面
 // 显示用户个人资料信息并提供编辑功能
 // --- END COMMENT ---
@@ -83,7 +117,7 @@ export default function ProfileSettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-2xl font-bold mb-6">个人资料</h1>
+        <h1 className="text-2xl font-bold mb-6 font-serif">个人资料</h1>
         
         <div className={cn(
           "rounded-lg p-6",
@@ -91,8 +125,8 @@ export default function ProfileSettingsPage() {
           "bg-red-50 dark:bg-red-900/20",
           "text-red-700 dark:text-red-300"
         )}>
-          <h2 className="text-lg font-medium mb-4 text-red-800 dark:text-red-200">加载资料时出错</h2>
-          <p className="mb-4">{error.message}</p>
+          <h2 className="text-lg font-medium mb-4 text-red-800 dark:text-red-200 font-serif">加载资料时出错</h2>
+          <p className="mb-4 font-serif">{error.message}</p>
           <button 
             onClick={() => window.location.reload()}
             className={cn(
@@ -100,7 +134,8 @@ export default function ProfileSettingsPage() {
               "bg-red-100 dark:bg-red-800/50",
               "hover:bg-red-200 dark:hover:bg-red-700/50",
               "text-red-800 dark:text-red-200",
-              "transition-colors duration-200"
+              "transition-colors duration-200",
+              "font-serif"
             )}
           >
             重试
@@ -118,7 +153,7 @@ export default function ProfileSettingsPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-2xl font-bold mb-6">个人资料</h1>
+        <h1 className="text-2xl font-bold mb-6 font-serif">个人资料</h1>
         
         <div className={cn(
           "w-full rounded-lg",
@@ -203,7 +238,7 @@ export default function ProfileSettingsPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="text-2xl font-bold mb-6">个人资料</h1>
+      <h1 className="text-2xl font-bold mb-6 font-serif">个人资料</h1>
       
       {profile && (
         <div className={cn(
@@ -215,16 +250,36 @@ export default function ProfileSettingsPage() {
         )}>
           {/* 用户资料头部 */}
           <div className="flex items-center mb-8">
-            <div className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center",
-              "bg-stone-200 dark:bg-stone-700"
-            )}>
-              <UserCircle className="w-12 h-12 text-stone-500 dark:text-stone-400" />
+            <div className="relative">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={`${profile.full_name || profile.username || '用户'}的头像`}
+                  className="w-16 h-16 rounded-full object-cover"
+                  style={{
+                    border: "none",
+                  }}
+                  onError={(e) => {
+                    // 头像加载失败时隐藏图片
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-white font-medium text-lg"
+                  style={{
+                    backgroundColor: getAvatarBgColor(profile.full_name || profile.username || '用户'),
+                    border: "none",
+                  }}
+                >
+                  {getInitials(profile.full_name || profile.username || '用户')}
+                </div>
+              )}
             </div>
             <div className="ml-4">
-              <h2 className="text-lg font-medium">{profile.full_name || profile.username || '用户'}</h2>
+              <h2 className="text-lg font-medium font-serif">{profile.full_name || profile.username || '用户'}</h2>
               <p className={cn(
-                "text-sm",
+                "text-sm font-serif",
                 colors.secondaryTextColor.tailwind
               )}>
                 {profile.role === 'admin' ? '管理员' : '用户'}

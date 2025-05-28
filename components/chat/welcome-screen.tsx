@@ -55,7 +55,7 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
   // --- BEGIN COMMENT ---
   // 智能处理欢迎文字的显示逻辑
   // 优先级：动态开场白 > 用户名问候 > 默认文字
-  // 🎯 优化：应用切换时立即重置状态，使用批量缓存快速显示
+  // 🎯 优化：确保只有当前app的参数加载完成后才显示，避免显示错误的欢迎文字
   // --- END COMMENT ---
   useEffect(() => {
     // --- BEGIN COMMENT ---
@@ -64,8 +64,27 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
     setShouldStartTyping(false);
     setFinalText("");
 
-    // 如果还在加载profile或应用参数，等待
-    if (username === undefined || (currentAppId && isParametersLoading)) {
+    // --- BEGIN COMMENT ---
+    // 🎯 关键检查：确保必须等当前app的参数加载完成
+    // 如果有currentAppId但参数还在加载中，必须等待
+    // 这样可以避免显示错误的欢迎文字（比如上一个app的开场白）
+    // --- END COMMENT ---
+    if (username === undefined) {
+      console.log('[WelcomeScreen] 等待用户信息加载...');
+      return;
+    }
+    
+    if (currentAppId && isParametersLoading) {
+      console.log('[WelcomeScreen] 等待当前应用参数加载完成...', currentAppId);
+      return;
+    }
+
+    // --- BEGIN COMMENT ---
+    // 🎯 新增：如果有currentAppId但没有参数且没有错误，说明参数还未开始加载
+    // 这种情况下也需要等待，避免显示fallback文字
+    // --- END COMMENT ---
+    if (currentAppId && !parameters && !parametersError) {
+      console.log('[WelcomeScreen] 当前应用参数尚未加载，等待...', currentAppId);
       return;
     }
 
@@ -73,7 +92,7 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
     let welcomeText = "";
     
     // 优先使用动态开场白（如果获取成功且不为空）
-    if (parameters?.opening_statement && !parametersError) {
+    if (currentAppId && parameters?.opening_statement && !parametersError) {
       welcomeText = parameters.opening_statement;
       console.log('[WelcomeScreen] 使用应用开场白:', welcomeText.substring(0, 50) + '...');
     } else if (username) {
@@ -111,7 +130,7 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
   return (
       <div 
         className={cn(
-          "flex flex-col items-center justify-center text-center",
+          "welcome-screen flex flex-col items-center justify-center text-center",
           className
         )}
         style={welcomePosition}
@@ -152,7 +171,11 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
                   needsCompactLayout ? "h-6" : "h-7"
                 )}
                 style={{
-                  width: `calc(${welcomeTextTitle.maxWidth} - 20rem)`, // 减去padding
+                  width: welcomeTextTitle.width 
+                    ? `calc(${welcomeTextTitle.width} - 2rem)` // 移动端：基于强制宽度减去padding
+                    : welcomeTextTitle.maxWidth 
+                      ? `calc(${welcomeTextTitle.maxWidth} - 8rem)` // 桌面端：基于最大宽度减去padding
+                      : '80vw', // 回退方案
                   maxWidth: '90vw' // 确保不超出视口
                 }}
               ></div>

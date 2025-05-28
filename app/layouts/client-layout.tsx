@@ -21,10 +21,10 @@ export function ClientLayout({ children, fontClasses }: ClientLayoutProps) {
   const isChatPage = pathname?.startsWith('/chat');
   
   // --- BEGIN COMMENT ---
-  // 🎯 在根布局中启动应用参数预加载
-  // 这确保用户在使用应用时，所有应用的参数都已预先缓存
+  // 🎯 启动应用参数预加载（非阻塞）
+  // 现在会自动检测登录状态和页面类型，只在需要时预加载
   // --- END COMMENT ---
-  const { isPreloading, progress } = useAppParametersPreloader();
+  useAppParametersPreloader();
   
   useEffect(() => {
     setMounted(true);
@@ -63,14 +63,6 @@ export function ClientLayout({ children, fontClasses }: ClientLayoutProps) {
   
   return (
     <div className={layoutClass}>
-      {/* --- BEGIN COMMENT ---
-      🎯 开发环境下显示预加载进度（可选）
-      --- END COMMENT --- */}
-      {process.env.NODE_ENV === 'development' && isPreloading && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-blue-500 text-white text-xs px-4 py-1 text-center">
-          预加载应用参数中... {progress.loaded}/{progress.total} ({progress.percentage}%)
-        </div>
-      )}
       {children}
     </div>
   );

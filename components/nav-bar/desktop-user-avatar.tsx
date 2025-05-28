@@ -4,29 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { cn } from "@lib/utils";
 import { useThemeColors } from "@lib/hooks/use-theme-colors";
 import { useLogout } from "@lib/hooks/use-logout";
+import { useProfile } from "@lib/hooks/use-profile";
 import { useRouter } from "next/navigation";
 import { Settings, LogOut, Clock, UserCircle, Info } from "lucide-react";
-
-// 直接从localStorage获取缓存的用户信息
-const getUserFromCache = () => {
-    if (typeof window === "undefined") return null;
-
-    try {
-        const cached = localStorage.getItem("user_profile_cache");
-        if (!cached) return null;
-
-        const cacheData = JSON.parse(cached);
-
-        // 检查是否过期（5分钟）
-        if (Date.now() - cacheData.timestamp > 5 * 60 * 1000) {
-            return null;
-        }
-
-        return cacheData.profile;
-    } catch {
-        return null;
-    }
-};
 
 // 直接从localStorage获取主题设置
 const getThemeFromCache = () => {
@@ -44,7 +24,7 @@ const getThemeFromCache = () => {
  * 桌面端用户头像菜单组件
  * 特点：
  * - 纯圆形头像设计，无外框
- * - 直接从localStorage读取缓存，避免闪烁
+ * - 使用useProfile hook获取用户信息，确保与认证状态同步
  * - 使用内联样式确保主题一致性
  * - 优化的渲染性能，减少重新渲染
  */
@@ -52,9 +32,10 @@ export function DesktopUserAvatar() {
     const { colors, isDark } = useThemeColors();
     const { logout } = useLogout();
     const router = useRouter();
-
-    // 直接使用缓存数据，避免useProfile的loading状态
-    const [profile, setProfile] = useState(() => getUserFromCache());
+    
+    // 使用useProfile hook获取用户信息，自动处理缓存和认证状态同步
+    const { profile } = useProfile();
+    
     const [currentTheme, setCurrentTheme] = useState(() => getThemeFromCache());
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -62,21 +43,20 @@ export function DesktopUserAvatar() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
 
-    // 监听localStorage变化更新数据
+    // 只监听主题变化，用户信息由useProfile hook管理
     useEffect(() => {
-        const handleStorageChange = () => {
-            setProfile(getUserFromCache());
+        const handleThemeChange = () => {
             setCurrentTheme(getThemeFromCache());
         };
 
         // 监听storage事件
-        window.addEventListener("storage", handleStorageChange);
+        window.addEventListener("storage", handleThemeChange);
 
-        // 定期检查缓存更新
-        const interval = setInterval(handleStorageChange, 1000);
+        // 定期检查主题更新
+        const interval = setInterval(handleThemeChange, 5000);
 
         return () => {
-            window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("storage", handleThemeChange);
             clearInterval(interval);
         };
     }, []);
@@ -156,7 +136,6 @@ export function DesktopUserAvatar() {
     // 处理退出登录
     const handleLogout = async () => {
         await logout();
-        setProfile(null);
         setIsDropdownOpen(false);
         setHoveredItem(null);
     };
@@ -309,7 +288,7 @@ export function DesktopUserAvatar() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p
-                                            className="text-sm font-semibold truncate"
+                                            className="text-sm font-semibold truncate font-serif"
                                             style={{
                                                 color: effectiveTheme ? "#f5f5f4" : "#1c1917",
                                             }}
@@ -317,7 +296,7 @@ export function DesktopUserAvatar() {
                                             {userName}
                                         </p>
                                         <p
-                                            className="text-xs truncate"
+                                            className="text-xs truncate font-serif"
                                             style={{
                                                 color: effectiveTheme ? "#a8a29e" : "#78716c",
                                             }}
@@ -363,7 +342,7 @@ export function DesktopUserAvatar() {
                                                 }}
                                             />
                                             <span
-                                                className="flex-1 text-sm"
+                                                className="flex-1 text-sm font-serif"
                                                 style={{
                                                     color: effectiveTheme ? "#d6d3d1" : "#44403c",
                                                 }}
@@ -397,7 +376,7 @@ export function DesktopUserAvatar() {
                                 onMouseLeave={() => setHoveredItem(null)}
                             >
                                 <LogOut className="h-4 w-4" />
-                                <span className="text-sm">退出登录</span>
+                                <span className="text-sm font-serif">退出登录</span>
                             </button>
                         </>
                     ) : (
@@ -418,8 +397,8 @@ export function DesktopUserAvatar() {
                                         color: effectiveTheme ? "#a8a29e" : "#78716c",
                                     }}
                                 />
-                                <p className="font-medium">登录以使用更多功能</p>
-                                <p className="text-sm mt-1 opacity-75">
+                                <p className="font-medium font-serif">登录以使用更多功能</p>
+                                <p className="text-sm mt-1 opacity-75 font-serif">
                                     访问您的对话历史和个人设置
                                 </p>
                             </div>
@@ -429,7 +408,7 @@ export function DesktopUserAvatar() {
                                     onClick={() =>
                                         handleMenuItemClick(() => router.push("/login"))
                                     }
-                                    className="w-full py-3 px-4 rounded-xl font-semibold text-center text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                                    className="w-full py-3 px-4 rounded-xl font-semibold text-center text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] font-serif"
                                     style={{
                                         backgroundColor: hoveredItem === "login" ? "#44403c" : "#57534e",
                                     }}
@@ -443,7 +422,7 @@ export function DesktopUserAvatar() {
                                     onClick={() =>
                                         handleMenuItemClick(() => router.push("/register"))
                                     }
-                                    className="w-full py-3 px-4 rounded-xl font-medium text-center shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]"
+                                    className="w-full py-3 px-4 rounded-xl font-medium text-center shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-[1.02] font-serif"
                                     style={{
                                         backgroundColor: hoveredItem === "register" 
                                             ? (effectiveTheme ? "#57534e" : "#d6d3d1")

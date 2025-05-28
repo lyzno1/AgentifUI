@@ -16,6 +16,7 @@ body.render-ready {
   opacity: 1;
   transition: opacity 0.2s;
 }
+
 :root {
   --background: #f5f5f4; /* stone-100 */
   --foreground: #1c1917; /* stone-900 */
@@ -43,7 +44,6 @@ body.render-ready {
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
 
-  --font-sans: var(--font-geist-sans);
   --page-height: auto; /* 默认高度为自动 */
   --page-overflow: visible; /* 默认溢出为可见 */
 }
@@ -72,8 +72,244 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-y: auto; /* 默认允许垂直滚动 */
-  background-color: var(--background);
-  color: var(--foreground);
+}
+
+/* --- BEGIN COMMENT ---
+🎯 全局字体规则 - 确保所有路由都使用统一的字体
+--- END COMMENT --- */
+@layer base {
+  /* 🔥 最强的全局字体设置 - 使用 Inter 作为默认，确保一致性 */
+  html, body, * {
+    font-family: var(--font-inter), var(--font-noto-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    opacity: 0;
+  }
+
+  body.render-ready {
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  /* 🔥 代码字体最高优先级 - 覆盖全局字体 */
+  .font-mono, code, pre, kbd, samp, tt,
+  .hljs, .hljs *,
+  .token, .token *,
+  [class*="language-"], [class*="language-"] *,
+  [data-language], [data-language] *,
+  .code, .code *,
+  .codehilite, .codehilite *,
+  .highlight, .highlight *,
+  .sourceCode, .sourceCode *,
+  pre *, code *,
+  .prism-code, .prism-code *,
+  .token.comment, .token.prolog, .token.doctype, .token.cdata,
+  .token.punctuation, .token.property, .token.tag, .token.constant,
+  .token.symbol, .token.deleted, .token.boolean, .token.number,
+  .token.selector, .token.attr-name, .token.string, .token.char,
+  .token.builtin, .token.inserted, .token.operator, .token.entity,
+  .token.url, .token.variable, .token.atrule, .token.attr-value,
+  .token.function, .token.class-name, .token.keyword,
+  .vscode-highlight, .vscode-highlight *,
+  .cm-editor, .cm-editor *,
+  .CodeMirror, .CodeMirror *,
+  /* 行内代码也要保护 */
+  p code, li code, td code, th code, span code,
+  div code:not(.hljs), span code:not(.token),
+  /* markdown 中的代码 */
+  .markdown-body code, .markdown-body pre,
+  .markdown-body code *, .markdown-body pre *,
+  .prose code, .prose pre,
+  .prose code *, .prose pre *,
+  article code, article pre,
+  article code *, article pre * {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+    font-feature-settings: 'liga' 0, 'calt' 0 !important;
+  }
+
+  /* 🎯 标题使用装饰字体，但排除欢迎屏幕 */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), var(--font-noto-sans), serif !important;
+    font-weight: 600;
+  }
+
+  /* 🎯 欢迎屏幕使用衬线字体，所有文本都更优雅 */
+  .welcome-screen, .welcome-screen * {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+  }
+
+  /* 🎯 欢迎屏幕标题使用装饰字体 */
+  .welcome-screen h1, .welcome-screen h2, .welcome-screen h3,
+  .welcome-screen h4, .welcome-screen h5, .welcome-screen h6 {
+    font-family: var(--font-playfair), var(--font-noto-serif), serif !important;
+    font-weight: 700;
+  }
+
+  /* 🎯 特殊字体类 */
+  .font-sans {
+    font-family: var(--font-inter), var(--font-noto-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+  }
+
+  .font-serif {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+    /* --- 字体大小和行高调整 --- */
+    /* 解决 Crimson Pro 和思源宋体字符高度不匹配的问题 */
+    font-size-adjust: 0.52; /* 调整字体大小以匹配 x-height */
+    line-height: 1.6; /* 增加行高以改善可读性 */
+    letter-spacing: 0.01em; /* 轻微增加字符间距 */
+  }
+
+  .font-display {
+    font-family: var(--font-playfair), var(--font-noto-sans), serif !important;
+  }
+
+  /* 🎯 输入框和表单元素的字体优化 */
+  input, textarea, select, button {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+    font-size-adjust: 0.52;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+
+  /* 🎯 特别优化输入框中的字体显示 */
+  input[type="text"], input[type="email"], input[type="password"], 
+  input[type="search"], input[type="url"], input[type="tel"], 
+  input[type="number"], textarea {
+    /* 确保输入框内的文字大小一致 */
+    font-size: inherit;
+    font-size-adjust: 0.52;
+    line-height: 1.5;
+    /* 改善中英文混排的视觉效果 */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 🎯 占位符文本的字体调整 */
+  ::placeholder {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+    font-size-adjust: 0.52;
+    opacity: 0.6;
+  }
+
+  /* 🎯 阅读内容使用衬线字体 */
+  .prose, article, .markdown-content {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+  }
+
+  /* 🎯 覆盖 markdown.css 中的硬编码字体 */
+  .markdown-body, .markdown-body * {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+  }
+
+  .markdown-body h1, .markdown-body h2, .markdown-body h3, 
+  .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    font-family: var(--font-playfair), var(--font-noto-sans), serif !important;
+  }
+
+  /* 🎯 助手消息内容的字体大小调整 - 解决中英文字体大小不一致问题 */
+  .assistant-message-content, .assistant-message-content * {
+    font-size-adjust: 0.52 !important;
+    letter-spacing: 0.01em !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+
+  /* 🎯 助手消息中的代码块保持等宽字体，不应用字体大小调整 */
+  .assistant-message-content code, .assistant-message-content pre,
+  .assistant-message-content code *, .assistant-message-content pre * {
+    font-size-adjust: none !important;
+    letter-spacing: normal !important;
+  }
+
+  /* 🎯 侧边栏中使用衬线字体的元素的字体大小调整 */
+  .font-serif {
+    font-size-adjust: 0.52 !important;
+    letter-spacing: 0.01em !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+}
+
+/* 🔥 最后的保险 - 仅在必要时使用 */
+@layer utilities {
+  .force-font-sans {
+    font-family: var(--font-inter), var(--font-noto-sans), system-ui, sans-serif !important;
+  }
+  
+  .force-font-mono {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+    font-feature-settings: 'liga' 0, 'calt' 0 !important;
+  }
+
+  /* 🎯 字体大小调整工具类 */
+  .font-size-adjust-serif {
+    font-size-adjust: 0.52 !important;
+    line-height: 1.6 !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  .font-size-adjust-input {
+    font-size-adjust: 0.52 !important;
+    line-height: 1.5 !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+}
+
+/* 🎯 中英文字体混排优化 */
+@supports (font-size-adjust: 1) {
+  /* 对支持 font-size-adjust 的浏览器进行优化 */
+  .font-serif, .font-serif * {
+    font-size-adjust: 0.52;
+  }
+  
+  /* 输入框特别优化 */
+  input.font-serif, textarea.font-serif,
+  .font-serif input, .font-serif textarea {
+    font-size-adjust: 0.52;
+    line-height: 1.5;
+  }
+
+  /* 助手消息内容优化 */
+  .assistant-message-content, .assistant-message-content * {
+    font-size-adjust: 0.52;
+  }
+
+  /* 助手消息中的代码块不应用字体大小调整 */
+  .assistant-message-content code, .assistant-message-content pre,
+  .assistant-message-content code *, .assistant-message-content pre * {
+    font-size-adjust: none;
+  }
+}
+
+/* 🎯 不支持 font-size-adjust 的浏览器回退方案 */
+@supports not (font-size-adjust: 1) {
+  /* 使用相对字体大小调整 */
+  .font-serif {
+    font-size: 1.02em; /* 轻微增大英文字体 */
+  }
+  
+  /* 中文字符保持原始大小 */
+  .font-serif :lang(zh), .font-serif :lang(zh-CN) {
+    font-size: 0.98em;
+  }
+
+  /* 助手消息内容的回退方案 */
+  .assistant-message-content {
+    font-size: 1.02em; /* 轻微增大英文字体 */
+  }
+  
+  /* 助手消息中的中文字符保持原始大小 */
+  .assistant-message-content :lang(zh), .assistant-message-content :lang(zh-CN) {
+    font-size: 0.98em;
+  }
 }
 
 /* 聊天页面特定样式 - 控制滚动行为 */
@@ -170,4 +406,3 @@ body.default-page {
 .animate-slide-in-down {
   animation: slideInDown 200ms ease-out forwards;
 }
-
