@@ -20,7 +20,7 @@ interface AppSelectorButtonProps {
 
 export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   const router = useRouter();
-  const { currentAppId, validateConfig, isValidating } = useCurrentApp();
+  const { currentAppId, switchToSpecificApp } = useCurrentApp();
   const { apps, fetchApps, isLoading } = useAppListStore();
   const { clearMessages } = useChatStore();
   const { isDark } = useTheme();
@@ -33,7 +33,7 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   const { focusInput } = useFocusManager();
 
   // --- BEGIN COMMENT ---
-  // 🎯 获取可用的app列表，现在会自动触发批量参数获取
+  // 获取可用的app列表
   // --- END COMMENT ---
   useEffect(() => {
     fetchApps();
@@ -64,9 +64,8 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   });
 
   // --- BEGIN COMMENT ---
-  // 🎯 乐观UI：应用切换处理
-  // 立即关闭下拉菜单，显示切换后的应用名称，右侧显示小spinner
-  // 修改：确保在操作完成后恢复输入框焦点
+  // 🎯 纯乐观UI应用切换：立即更新UI，无任何API调用
+  // 发送消息时的验证会在handleSubmit中自动触发
   // --- END COMMENT ---
   const handleAppChange = async (newAppId: string) => {
     if (newAppId === currentAppId) {
@@ -82,14 +81,14 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       // 立即关闭下拉菜单
       setIsOpen(false);
       
-      // 开始乐观切换状态
+      // 开始乐观切换状态（显示spinner）
       setIsOptimisticSwitching(true);
       
       // --- BEGIN COMMENT ---
-      // 🎯 使用 validateConfig 进行应用切换，现在参数已预缓存
-      // 指定为切换上下文，不触发消息输入框的spinner
+      // 🎯 纯乐观UI：使用switchToSpecificApp方法进行切换
+      // 这个方法会处理从AppInfo到ServiceInstance的转换
       // --- END COMMENT ---
-      await validateConfig(newAppId, 'switch');
+      await switchToSpecificApp(newAppId);
       
       // --- BEGIN COMMENT ---
       // 切换成功后清理聊天状态
@@ -98,7 +97,6 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       
       // --- BEGIN COMMENT ---
       // 🎯 使用Next.js路由进行页面跳转，避免硬刷新
-      // 这样可以保持应用状态，包括预缓存的参数
       // --- END COMMENT ---
       router.push('/chat/new');
       
@@ -184,7 +182,6 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       --- END MODIFIED COMMENT --- */}
       <button
         onClick={handleToggleDropdown}
-        disabled={isValidating}
         // --- BEGIN COMMENT ---
         // 添加onMouseDown防止按钮点击时输入框失去焦点
         // --- END COMMENT ---
@@ -192,13 +189,12 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
         className={cn(
           "flex items-center space-x-1 px-2 py-1 rounded-md text-sm font-serif",
           "transition-colors duration-200",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
           // --- BEGIN MODIFIED COMMENT ---
           // 添加固定高度和垂直居中对齐，确保serif字体垂直居中
-          // cursor控制：只有在下拉框关闭且未验证时显示pointer
+          // cursor控制：只有在下拉框关闭时显示pointer
           // --- END MODIFIED COMMENT ---
           "h-8 min-h-[2rem]",
-          !isOpen && !isValidating ? "cursor-pointer" : "",
+          !isOpen ? "cursor-pointer" : "",
           isDark 
             ? "hover:bg-stone-800/50 text-stone-300" 
             : "hover:bg-stone-100 text-stone-600"

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, Trash2 } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useTheme } from "@lib/hooks/use-theme"
 import { useRouter } from "next/navigation"
@@ -11,18 +11,28 @@ import { useChatTransitionStore } from "@lib/stores/chat-transition-store"
 import { useSidebarStore } from "@lib/stores/sidebar-store"
 import { useAllConversations } from "@lib/hooks/use-all-conversations"
 import { RecentsList } from "./recents-list"
+import { RecentsSelectionBar } from "./recents-selection-bar"
 import { useChatWidth } from "@lib/hooks/use-chat-width"
 import { conversationEvents } from "@lib/hooks/use-combined-conversations"
+import { ConfirmDialog } from "@components/ui"
 
 // --- BEGIN COMMENT ---
 // 历史对话页面组件
-// 显示所有历史对话，支持搜索功能
+// 显示所有历史对话，支持搜索功能和多选删除功能
 // --- END COMMENT ---
 export function Recents() {
   const { isDark } = useTheme()
   const [searchQuery, setSearchQuery] = React.useState("")
   const router = useRouter()
   const { widthClass, paddingClass } = useChatWidth()
+  
+  // --- BEGIN COMMENT ---
+  // 多选功能状态管理
+  // --- END COMMENT ---
+  const [isSelectionMode, setIsSelectionMode] = React.useState(false)
+  const [selectedConversations, setSelectedConversations] = React.useState<Set<string>>(new Set())
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = React.useState(false)
+  const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
   
   // --- BEGIN COMMENT ---
   // 获取所有历史对话列表，不限制数量
@@ -51,6 +61,27 @@ export function Recents() {
   }, [refresh]);
   
   // --- BEGIN COMMENT ---
+  // 当对话列表发生变化时，清理无效的选中项
+  // --- END COMMENT ---
+  React.useEffect(() => {
+    if (selectedConversations.size > 0) {
+      const validIds = new Set(conversations.map(c => c.id).filter(Boolean) as string[])
+      const validSelectedIds = new Set(
+        Array.from(selectedConversations).filter(id => validIds.has(id))
+      )
+      
+      if (validSelectedIds.size !== selectedConversations.size) {
+        setSelectedConversations(validSelectedIds)
+      }
+      
+      // 如果没有有效选中项，退出选择模式
+      if (validSelectedIds.size === 0) {
+        setIsSelectionMode(false)
+      }
+    }
+  }, [conversations, selectedConversations])
+  
+  // --- BEGIN COMMENT ---
   // 处理搜索输入变化
   // --- END COMMENT ---
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,6 +100,86 @@ export function Recents() {
       conversation.last_message_preview?.toLowerCase().includes(query)
     )
   }, [conversations, searchQuery])
+  
+  // --- BEGIN COMMENT ---
+  // 多选功能处理函数
+  // --- END COMMENT ---
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode)
+    if (isSelectionMode) {
+      setSelectedConversations(new Set())
+    }
+  }
+  
+  const handleSelectConversation = (id: string, selected: boolean) => {
+    const newSelected = new Set(selectedConversations)
+    if (selected) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedConversations(newSelected)
+    
+    // 如果选中了项目但不在选择模式，自动进入选择模式
+    if (newSelected.size > 0 && !isSelectionMode) {
+      setIsSelectionMode(true)
+    }
+  }
+  
+  const handleSelectAll = () => {
+    const allIds = filteredConversations.map(c => c.id).filter(Boolean) as string[]
+    setSelectedConversations(new Set(allIds))
+    setIsSelectionMode(true)
+  }
+  
+  const handleDeselectAll = () => {
+    setSelectedConversations(new Set())
+  }
+  
+  const handleCancelSelection = () => {
+    setSelectedConversations(new Set())
+    setIsSelectionMode(false)
+  }
+  
+  const handleBatchDelete = () => {
+    if (selectedConversations.size === 0) return
+    setShowBatchDeleteDialog(true)
+  }
+  
+  const handleBatchDeleteConfirm = async () => {
+    setIsBatchDeleting(true)
+    try {
+      const deletePromises = Array.from(selectedConversations).map(id => 
+        deleteConversation(id)
+      )
+      
+      const results = await Promise.all(deletePromises)
+      const successCount = results.filter(Boolean).length
+      
+      if (successCount > 0) {
+        // 刷新列表
+        refresh()
+        // 触发全局同步事件
+        conversationEvents.emit()
+        
+        // 清理选择状态
+        setSelectedConversations(new Set())
+        setIsSelectionMode(false)
+        
+        if (successCount < selectedConversations.size) {
+          alert(`成功删除 ${successCount} 个对话，${selectedConversations.size - successCount} 个删除失败。`)
+        }
+      } else {
+        alert('删除失败，请稍后再试。')
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      alert('删除操作出错，请稍后再试。')
+    } finally {
+      setIsBatchDeleting(false)
+      setShowBatchDeleteDialog(false)
+    }
+  }
   
   // --- BEGIN COMMENT ---
   // 处理新对话按钮点击
@@ -98,6 +209,13 @@ export function Recents() {
   // 处理对话项点击
   // --- END COMMENT ---
   const handleConversationClick = (id: string) => {
+    // 如果在选择模式下，不跳转，而是切换选择状态
+    if (isSelectionMode) {
+      const isSelected = selectedConversations.has(id)
+      handleSelectConversation(id, !isSelected)
+      return
+    }
+    
     router.push(`/chat/${id}`)
   }
   
@@ -147,27 +265,51 @@ export function Recents() {
               </div>
             </div>
             
-            <button
-              onClick={handleNewChat}
-              className={cn(
-                "px-4 py-2 rounded-lg flex items-center text-sm font-medium",
-                "transition-all duration-200 ease-in-out",
-                "cursor-pointer", // 添加鼠标指针样式
-                "hover:shadow-md hover:-translate-y-0.5", // 悬停时添加阴影和轻微上移效果
-                isDark 
-                  ? "bg-stone-700 hover:bg-stone-600 text-white border border-stone-600" 
-                  : "bg-primary/10 hover:bg-primary/15 text-primary border border-stone-300/50"
+            <div className="flex items-center space-x-3">
+              {/* 批量选择按钮 */}
+              {total > 0 && (
+                <button
+                  onClick={handleToggleSelectionMode}
+                  className={cn(
+                    "px-3 py-2 rounded-lg flex items-center text-sm font-medium font-serif",
+                    "transition-all duration-200 ease-in-out",
+                    "cursor-pointer hover:shadow-md hover:-translate-y-0.5",
+                    isSelectionMode
+                      ? isDark
+                        ? "bg-stone-600 hover:bg-stone-500 text-white border border-stone-500 shadow-md"
+                        : "bg-stone-200 hover:bg-stone-300 text-stone-800 border border-stone-400 shadow-md"
+                      : isDark 
+                        ? "bg-stone-700 hover:bg-stone-600 text-white border border-stone-600" 
+                        : "bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300"
+                  )}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isSelectionMode ? "退出选择" : "批量删除"}
+                </button>
               )}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              新对话
-            </button>
+              
+              {/* 新对话按钮 */}
+              <button
+                onClick={handleNewChat}
+                className={cn(
+                  "px-4 py-2 rounded-lg flex items-center text-sm font-medium font-serif",
+                  "transition-all duration-200 ease-in-out",
+                  "cursor-pointer hover:shadow-md hover:-translate-y-0.5",
+                  isDark 
+                    ? "bg-stone-700 hover:bg-stone-600 text-white border border-stone-600" 
+                    : "bg-primary/10 hover:bg-primary/15 text-primary border border-stone-300/50"
+                )}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                新对话
+              </button>
+            </div>
           </div>
         </div>
         
         {/* 搜索框 - 居中显示 */}
         <div className={cn(
-          "w-full mx-auto mb-10", // 增加底部间距，为后续添加内容预留空间
+          "w-full mx-auto mb-4",
           widthClass, paddingClass
         )}>
           <div className="relative w-full">
@@ -183,7 +325,7 @@ export function Recents() {
               value={searchQuery}
               onChange={handleSearchChange}
               className={cn(
-                "w-full py-2 pl-10 pr-4 rounded-lg text-sm",
+                "w-full py-2 pl-10 pr-4 rounded-lg text-sm font-serif",
                 "focus:outline-none focus:ring-2 focus:ring-offset-2",
                 isDark 
                   ? "bg-stone-800 text-stone-200 border border-stone-700 focus:ring-stone-600 focus:ring-offset-stone-900" 
@@ -191,6 +333,24 @@ export function Recents() {
               )}
             />
           </div>
+        </div>
+        
+        {/* 选择操作栏 - 居中显示 */}
+        <div className={cn(
+          "w-full mx-auto",
+          widthClass, paddingClass
+        )}>
+          <RecentsSelectionBar
+            isSelectionMode={isSelectionMode}
+            selectedCount={selectedConversations.size}
+            totalCount={filteredConversations.length}
+            onToggleSelectionMode={handleToggleSelectionMode}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
+            onBatchDelete={handleBatchDelete}
+            onCancelSelection={handleCancelSelection}
+            isDeleting={isBatchDeleting}
+          />
         </div>
         
         {/* 对话列表 - 居中显示 */}
@@ -207,9 +367,25 @@ export function Recents() {
             onDelete={deleteConversation}
             onRename={renameConversation}
             onRefresh={refresh}
+            isSelectionMode={isSelectionMode}
+            selectedConversations={selectedConversations}
+            onSelectConversation={handleSelectConversation}
           />
         </div>
       </div>
+      
+      {/* 批量删除确认对话框 */}
+      <ConfirmDialog
+        isOpen={showBatchDeleteDialog}
+        onClose={() => setShowBatchDeleteDialog(false)}
+        onConfirm={handleBatchDeleteConfirm}
+        title="批量删除对话"
+        message={`确定要删除选中的 ${selectedConversations.size} 个对话吗？此操作无法撤销。`}
+        confirmText="删除"
+        cancelText="取消"
+        variant="danger"
+        isLoading={isBatchDeleting}
+      />
     </div>
   )
 }

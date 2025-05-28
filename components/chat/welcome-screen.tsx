@@ -5,7 +5,6 @@ import { cn } from "@lib/utils"
 import { useTheme } from "@lib/hooks"
 import { TypeWriter } from "@components/ui/typewriter"
 import { useCurrentApp } from "@lib/hooks/use-current-app"
-import { useAppParameters } from "@lib/hooks/use-app-parameters"
 import { useWelcomeLayout } from "@lib/hooks/use-welcome-layout"
 
 interface WelcomeScreenProps {
@@ -46,86 +45,75 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
   const { welcomeText: welcomePosition, welcomeTextTitle, needsCompactLayout } = useWelcomeLayout()
 
   // --- BEGIN COMMENT ---
-  // 获取当前应用ID和应用参数
-  // 🎯 现在使用优化后的批量缓存机制
+  // 🎯 直接从当前应用实例获取开场白配置
+  // 完全基于数据库，无任何API调用
   // --- END COMMENT ---
-  const { currentAppId } = useCurrentApp()
-  const { parameters, isLoading: isParametersLoading, error: parametersError } = useAppParameters(currentAppId)
+  const { currentAppInstance } = useCurrentApp()
 
   // --- BEGIN COMMENT ---
-  // 智能处理欢迎文字的显示逻辑
-  // 优先级：动态开场白 > 用户名问候 > 默认文字
-  // 🎯 优化：确保只有当前app的参数加载完成后才显示，避免显示错误的欢迎文字
+  // 🎯 纯数据库策略的欢迎文字显示逻辑
+  // 数据库有配置 → 使用开场白
+  // 数据库无配置 → 用户名问候 → 默认问候
   // --- END COMMENT ---
   useEffect(() => {
     // --- BEGIN COMMENT ---
-    // 🎯 应用切换时立即重置状态，准备显示新内容
+    // 应用切换时立即重置状态，准备显示新内容
     // --- END COMMENT ---
     setShouldStartTyping(false);
     setFinalText("");
 
     // --- BEGIN COMMENT ---
-    // 🎯 关键检查：确保必须等当前app的参数加载完成
-    // 如果有currentAppId但参数还在加载中，必须等待
-    // 这样可以避免显示错误的欢迎文字（比如上一个app的开场白）
+    // 等待用户信息加载完成
     // --- END COMMENT ---
     if (username === undefined) {
       console.log('[WelcomeScreen] 等待用户信息加载...');
       return;
     }
     
-    if (currentAppId && isParametersLoading) {
-      console.log('[WelcomeScreen] 等待当前应用参数加载完成...', currentAppId);
-      return;
-    }
-
     // --- BEGIN COMMENT ---
-    // 🎯 新增：如果有currentAppId但没有参数且没有错误，说明参数还未开始加载
-    // 这种情况下也需要等待，避免显示fallback文字
+    // 🎯 确定最终显示的文字 - 纯数据库策略
     // --- END COMMENT ---
-    if (currentAppId && !parameters && !parametersError) {
-      console.log('[WelcomeScreen] 当前应用参数尚未加载，等待...', currentAppId);
-      return;
-    }
-
-    // 确定最终显示的文字
     let welcomeText = "";
     
-    // 优先使用动态开场白（如果获取成功且不为空）
-    if (currentAppId && parameters?.opening_statement && !parametersError) {
-      welcomeText = parameters.opening_statement;
-      console.log('[WelcomeScreen] 使用应用开场白:', welcomeText.substring(0, 50) + '...');
+    // --- BEGIN COMMENT ---
+    // 🎯 从数据库config字段直接获取开场白
+    // --- END COMMENT ---
+    const openingStatement = currentAppInstance?.config?.dify_parameters?.opening_statement;
+    
+    if (openingStatement && openingStatement.trim()) {
+      // --- BEGIN COMMENT ---
+      // 情况1：数据库中有应用的开场白配置
+      // --- END COMMENT ---
+      welcomeText = openingStatement.trim();
+      console.log('[WelcomeScreen] 使用数据库开场白:', {
+        appId: currentAppInstance?.instance_id,
+        source: 'database_config',
+        text: welcomeText.substring(0, 50) + '...'
+      });
     } else if (username) {
-      // 如果没有开场白但有用户名，使用用户名问候
+      // --- BEGIN COMMENT ---
+      // 情况2：数据库无开场白配置，但有用户名 → 时间问候
+      // --- END COMMENT ---
       welcomeText = `${getTimeBasedGreeting()}，${username}`;
-      console.log('[WelcomeScreen] 使用用户名问候:', welcomeText);
+      console.log('[WelcomeScreen] 数据库无开场白，使用用户名问候:', welcomeText);
     } else {
-      // 都没有的话使用默认问候
+      // --- BEGIN COMMENT ---
+      // 情况3：都没有 → 默认时间问候
+      // --- END COMMENT ---
       welcomeText = getTimeBasedGreeting();
       console.log('[WelcomeScreen] 使用默认问候:', welcomeText);
     }
     
     // --- BEGIN COMMENT ---
-    // 如果获取应用参数失败，记录错误但不影响用户体验
-    // 自动fallback到用户名问候或默认问候
+    // 🎯 数据库查询很快，极短延迟后立即显示
     // --- END COMMENT ---
-    if (parametersError && currentAppId) {
-      console.warn('[WelcomeScreen] 获取应用参数失败，使用fallback文字:', parametersError);
-    }
-    
-    // --- BEGIN COMMENT ---
-    // 🎯 优化延迟：如果是从缓存获取的参数，减少延迟时间
-    // 应用切换时应该能立即显示，因为参数已预缓存
-    // --- END COMMENT ---
-    const delay = isParametersLoading ? 300 : 100; // 缓存命中时更快显示
-    
     const timer = setTimeout(() => {
       setFinalText(welcomeText);
       setShouldStartTyping(true);
-    }, delay);
+    }, 50); // 极短延迟，确保状态更新完成
     
     return () => clearTimeout(timer);
-  }, [username, parameters?.opening_statement, currentAppId, isParametersLoading, parametersError]);
+  }, [username, currentAppInstance?.config?.dify_parameters?.opening_statement, currentAppInstance?.instance_id]);
 
   return (
       <div 
@@ -182,35 +170,6 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
             </div>
           )}
         </h2>
-        {/* <p className={cn(
-          isDark ? "text-gray-400" : "text-gray-500",
-          // --- BEGIN COMMENT ---
-          // 副标题尺寸：紧凑模式使用xs，正常模式使用sm，避免过大
-          // --- END COMMENT ---
-          needsCompactLayout ? "mt-1 text-xs" : "mt-4 text-sm"
-        )}>
-          {shouldStartTyping && (
-            <TypeWriter 
-              text="在下方输入框中输入消息开始聊天"
-              speed={20} // 副标题更快
-              delay={
-                // --- BEGIN COMMENT ---
-                // 根据主标题内容调整副标题的延迟时间
-                // 动态开场白通常更长，需要更多时间
-                // --- END COMMENT ---
-                parameters?.opening_statement 
-                  ? Math.max(2500, finalText.length * 60) // 动态开场白：基于长度计算延迟
-                  : finalText.endsWith("...") 
-                    ? 1500 // 等待状态
-                    : 2200 // 用户名问候
-              }
-              className={cn(
-                isDark ? "text-gray-400" : "text-gray-500",
-                needsCompactLayout ? "text-xs" : "text-sm"
-              )}
-            />
-          )}
-        </p> */}
       </div>
     </div>
   )

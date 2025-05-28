@@ -14,7 +14,7 @@ import { conversationEvents } from '@lib/hooks/use-combined-conversations'
 
 // --- BEGIN COMMENT ---
 // 历史对话列表组件
-// 显示对话列表，支持搜索、删除、重命名等功能
+// 显示对话列表，支持搜索、删除、重命名等功能和多选功能
 // --- END COMMENT ---
 interface RecentsListProps {
   conversations: Conversation[]
@@ -25,6 +25,9 @@ interface RecentsListProps {
   onDelete: (conversationId: string) => Promise<boolean>
   onRename: (conversationId: string, newTitle: string) => Promise<boolean>
   onRefresh: () => void
+  isSelectionMode?: boolean
+  selectedConversations?: Set<string>
+  onSelectConversation?: (id: string, selected: boolean) => void
 }
 
 // --- BEGIN COMMENT ---
@@ -39,7 +42,10 @@ export function RecentsList({
   total,
   onDelete,
   onRename,
-  onRefresh
+  onRefresh,
+  isSelectionMode = false,
+  selectedConversations = new Set(),
+  onSelectConversation
 }: RecentsListProps): React.ReactElement {
   const { isDark } = useTheme()
   const listRef = React.useRef<HTMLDivElement>(null)
@@ -200,109 +206,184 @@ export function RecentsList({
     const title = conversation.title || '新对话'
     const preview = conversation.last_message_preview || '无消息预览'
     const date = conversation.updated_at ? formatDate(conversation.updated_at) : ''
+    const conversationId = conversation.id
+    const isSelected = conversationId ? selectedConversations.has(conversationId) : false
+    
+    // --- BEGIN COMMENT ---
+    // 处理选择复选框点击事件
+    // --- END COMMENT ---
+    const handleCheckboxClick = (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (conversationId && onSelectConversation) {
+        onSelectConversation(conversationId, !isSelected)
+      }
+    }
+    
+    // --- BEGIN COMMENT ---
+    // 处理项目点击事件，在选择模式下切换选择状态，否则正常跳转
+    // --- END COMMENT ---
+    const handleItemClick = () => {
+      if (isSelectionMode && conversationId && onSelectConversation) {
+        onSelectConversation(conversationId, !isSelected)
+      } else {
+        handleConversationItemClick(conversation)
+      }
+    }
     
     return (
       <div 
         key={conversation.id} 
         className={cn(
-          "flex flex-col p-4 rounded-lg cursor-pointer group relative",
+          "flex items-start p-4 rounded-lg cursor-pointer group relative",
           "transition-all duration-200 ease-in-out",
-          isDark 
-            ? "hover:bg-stone-800 border border-stone-800 hover:border-stone-700" 
-            : "hover:bg-stone-200/70 border border-stone-200 hover:border-stone-400", // 增强浅色模式下的悬停效果，使用更深的stone颜色
+          // 在选择模式下，选中的项目有不同的样式
+          isSelectionMode && isSelected && (
+            isDark 
+              ? "bg-stone-700/40 border-stone-500" 
+              : "bg-stone-100 border-stone-400"
+          ),
+          // 普通悬停样式
+          !isSelected && (
+            isDark 
+              ? "hover:bg-stone-800 border border-stone-800 hover:border-stone-700" 
+              : "hover:bg-stone-200/70 border border-stone-200 hover:border-stone-400"
+          ),
+          // 选中状态的边框
+          isSelected && (
+            isDark
+              ? "border border-stone-500"
+              : "border border-stone-400"
+          ),
+          !isSelected && (
+            isDark 
+              ? "border border-stone-800" 
+              : "border border-stone-200"
+          ),
           "mb-3"
         )}
-        onClick={() => handleConversationItemClick(conversation)}
+        onClick={handleItemClick}
       >
-        {/* 标题和日期 */}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className={cn(
-            "text-base font-medium truncate",
-            isDark ? "text-stone-100" : "text-stone-800"
-          )}>
-            {title}
-          </h3>
-          
-          <div className="flex items-center">
-            <span className={cn(
-              "text-xs",
-              isDark ? "text-stone-500" : "text-stone-500"
-            )}>
-              {date}
-            </span>
-            
-            {/* 更多操作按钮 - 始终可见，不依赖悬停 */}
-            <div 
+        {/* --- 左侧选择区域 --- */}
+        {(isSelectionMode || isSelected) && (
+          <div className="flex items-center mr-3 mt-1">
+            <button
+              onClick={handleCheckboxClick}
               className={cn(
-                "ml-2", // 移除opacity-0和group-hover类，使按钮始终可见
-                "transition-opacity duration-200"
+                "w-5 h-5 rounded border-2 flex items-center justify-center",
+                "transition-all duration-200 ease-in-out",
+                "hover:scale-110",
+                isSelected
+                  ? isDark
+                    ? "bg-stone-600 border-stone-600 text-white"
+                    : "bg-stone-500 border-stone-500 text-white"
+                  : isDark
+                    ? "border-stone-600 hover:border-stone-500"
+                    : "border-stone-400 hover:border-stone-500"
               )}
-              onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={(e) => {
-                  const dropdownId = `recents-dropdown-${conversation.id}`
-                  const buttonRect = e.currentTarget.getBoundingClientRect()
-                  // --- BEGIN COMMENT ---
-                  // 调整下拉菜单的位置，向左偏移一点，确保完全可见
-                  // --- END COMMENT ---
-                  const position = {
-                    top: buttonRect.bottom + 5, // 向下偏移5px，增加间距
-                    left: buttonRect.left - 120 // 向左偏移，使菜单在按钮下方居中显示
-                  }
-                  useDropdownStore.getState().toggleDropdown(dropdownId, position)
-                }}
-                className={cn(
-                  "p-1 rounded-md transition-all duration-200 ease-in-out",
-                  "cursor-pointer",
-                  "hover:bg-black/5 dark:hover:bg-white/10",
-                  "hover:scale-110",
-                  "active:bg-black/10 dark:active:bg-white/20",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                )}
-                data-more-button-id={`recents-dropdown-${conversation.id}`}
-                aria-label="更多选项"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
+              {isSelected && (
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+        
+        {/* --- 右侧内容区域 --- */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 标题和日期 */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={cn(
+              "text-base font-medium truncate font-serif",
+              isDark ? "text-stone-100" : "text-stone-800"
+            )}>
+              {title}
+            </h3>
+            
+            <div className="flex items-center">
+              <span className={cn(
+                "text-xs font-serif",
+                isDark ? "text-stone-500" : "text-stone-500"
+              )}>
+                {date}
+              </span>
               
-              {/* 下拉菜单内容 */}
-              <DropdownMenu
-                id={`recents-dropdown-${conversation.id}`}
-                minWidth={150}
-                className={cn(
-                  isDark ? "bg-stone-800 border border-stone-700" : "bg-white border border-stone-200",
-                  "shadow-lg rounded-md overflow-hidden" // 增加阴影和圆角
-                )}
-              >
-                <DropdownMenu.Item
-                  icon={<Edit className="w-3.5 h-3.5" />}
-                  onClick={() => handleRename(conversation)}
-                  className="cursor-pointer"
+              {/* 更多操作按钮 - 在选择模式下隐藏 */}
+              {!isSelectionMode && (
+                <div 
+                  className={cn(
+                    "ml-2",
+                    "transition-opacity duration-200"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  重命名
-                </DropdownMenu.Item>
-                <DropdownMenu.Divider />
-                <DropdownMenu.Item
-                  icon={<Trash className="w-3.5 h-3.5" />}
-                  danger
-                  onClick={() => handleDelete(conversation)}
-                  className="cursor-pointer"
-                >
-                  删除聊天
-                </DropdownMenu.Item>
-              </DropdownMenu>
+                  <button
+                    onClick={(e) => {
+                      const dropdownId = `recents-dropdown-${conversation.id}`
+                      const buttonRect = e.currentTarget.getBoundingClientRect()
+                      // --- BEGIN COMMENT ---
+                      // 调整下拉菜单的位置，向左偏移一点，确保完全可见
+                      // --- END COMMENT ---
+                      const position = {
+                        top: buttonRect.bottom + 5, // 向下偏移5px，增加间距
+                        left: buttonRect.left - 120 // 向左偏移，使菜单在按钮下方居中显示
+                      }
+                      useDropdownStore.getState().toggleDropdown(dropdownId, position)
+                    }}
+                    className={cn(
+                      "p-1 rounded-md transition-all duration-200 ease-in-out",
+                      "cursor-pointer",
+                      "hover:bg-black/5 dark:hover:bg-white/10",
+                      "hover:scale-110",
+                      "active:bg-black/10 dark:active:bg-white/20",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    )}
+                    data-more-button-id={`recents-dropdown-${conversation.id}`}
+                    aria-label="更多选项"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                  
+                  {/* 下拉菜单内容 */}
+                  <DropdownMenu
+                    id={`recents-dropdown-${conversation.id}`}
+                    minWidth={150}
+                    className={cn(
+                      isDark ? "bg-stone-800 border border-stone-700" : "bg-white border border-stone-200",
+                      "shadow-lg rounded-md overflow-hidden" // 增加阴影和圆角
+                    )}
+                  >
+                    <DropdownMenu.Item
+                      icon={<Edit className="w-3.5 h-3.5" />}
+                      onClick={() => handleRename(conversation)}
+                      className="cursor-pointer"
+                    >
+                      重命名
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Divider />
+                    <DropdownMenu.Item
+                      icon={<Trash className="w-3.5 h-3.5" />}
+                      danger
+                      onClick={() => handleDelete(conversation)}
+                      className="cursor-pointer"
+                    >
+                      删除聊天
+                    </DropdownMenu.Item>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </div>
+          
+          {/* 预览内容 */}
+          <p className={cn(
+            "text-sm line-clamp-2 font-serif",
+            isDark ? "text-stone-400" : "text-stone-600"
+          )}>
+            {preview}
+          </p>
         </div>
-        
-        {/* 预览内容 */}
-        <p className={cn(
-          "text-sm line-clamp-2",
-          isDark ? "text-stone-400" : "text-stone-600"
-        )}>
-          {preview}
-        </p>
       </div>
     )
   }

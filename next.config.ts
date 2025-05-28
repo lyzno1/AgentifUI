@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 // --- BEGIN COMMENT ---
-// 配置 Next.js，确保 stagewise 工具栏只在开发环境中可用
-// Next.js 已经内置了 NODE_ENV 环境变量，不需要在配置中重新定义
+// 配置 Next.js，移除自定义 webpack 配置，使用环境变量控制组件
 // --- END COMMENT ---
 
 const nextConfig: NextConfig = {
@@ -25,17 +24,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false, // 设为 true 可同时忽略 TS 错误
   },
   
-  // 确保在生产环境构建时不包含开发工具
-  webpack: (config, { isServer, dev }) => {
-    // 在生产环境中排除 stagewise 工具栏
-    if (!dev) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@stagewise/toolbar-next': false,
-      };
-    }
-    return config;
-  },
+  // 移除了 webpack 配置，现在用环境变量控制组件
 };
 
 export default nextConfig;
