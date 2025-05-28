@@ -132,7 +132,7 @@ html, body {
 
   /* 🎯 标题使用装饰字体，但排除欢迎屏幕 */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-playfair), var(--font-noto-sans), serif !important;
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
     font-weight: 600;
   }
 
@@ -205,9 +205,17 @@ html, body {
     font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
   }
 
-  .markdown-body h1, .markdown-body h2, .markdown-body h3, 
-  .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-    font-family: var(--font-playfair), var(--font-noto-sans), serif !important;
+  /* --- BEGIN MODIFIED COMMENT ---
+   * 🎯 全局标题统一使用衬线字体，包括Markdown内容标题
+   * 修改前：使用 Playfair Display (装饰性字体)
+   * 修改后：使用 Crimson Pro + 思源宋体 (衬线字体)
+   * 这确保了所有###、##等Markdown标题都是serif字体
+   * 注意：欢迎屏幕标题保持装饰性设计
+   * --- END MODIFIED COMMENT ---
+   */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
+    font-weight: 600;
   }
 
   /* 🎯 助手消息内容的字体大小调整 - 解决中英文字体大小不一致问题 */
@@ -405,4 +413,15 @@ body.default-page {
 
 .animate-slide-in-down {
   animation: slideInDown 200ms ease-out forwards;
+}
+
+/* --- BEGIN MODIFIED COMMENT ---
+ * 🎯 Markdown标题也使用衬线字体，保持与正文一致
+ * 修改前：使用 Playfair Display + 思源黑体 (装饰性字体)
+ * 修改后：使用 Crimson Pro + 思源宋体 (衬线字体)
+ * --- END MODIFIED COMMENT ---
+ */
+.markdown-body h1, .markdown-body h2, .markdown-body h3, 
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
 }
