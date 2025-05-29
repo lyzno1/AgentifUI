@@ -85,15 +85,6 @@ export default function ChatPage() {
   const chatInputHeightVar = `${inputHeight || 80}px`;
   
   // --- BEGIN COMMENT ---
-  // 计算backdrop的左边距，响应sidebar状态变化
-  // --- END COMMENT ---
-  const getBackdropMarginLeft = () => {
-    if (isMobile) return "ml-0";
-    if (!isLocked) return "ml-16"; // 未锁定时为slim状态留出空间
-    return isExpanded ? "ml-64" : "ml-16";
-  };
-  
-  // --- BEGIN COMMENT ---
   // 合并scrollRef和setMessagesContainer
   // --- END COMMENT ---
   const setScrollRef = (element: HTMLDivElement | null) => {
@@ -130,25 +121,11 @@ export default function ChatPage() {
         style={{ '--chat-input-height': chatInputHeightVar } as React.CSSProperties}
       >
         {/* --- BEGIN COMMENT ---
-        页面级 loading，仅遮挡主内容区，不遮挡 sidebar。
+        页面级 loading，使用 PageLoadingSpinner 组件确保全屏覆盖
         只在 /chat/new 路由下显示 loading 状态
-        根据sidebar状态调整遮罩的左边距
         只有在profile还在初始加载时才显示页面级loading
         --- END COMMENT --- */}
-        {isNewChat && isProfileLoading && (
-          <div className={cn(
-            "absolute inset-0 z-35 flex items-center justify-center",
-            // 调整左边距，避免覆盖sidebar
-            getBackdropMarginLeft(),
-            // --- BEGIN COMMENT ---
-            // 使用主题颜色配置，确保与page-loading-spinner一致
-            // --- END COMMENT ---
-            colors.mainBackground.tailwind,
-            "backdrop-blur-sm"
-          )}>
-            <div className="w-8 h-8 animate-spin rounded-full border-4 border-t-transparent border-gray-500" />
-          </div>
-        )}
+        <PageLoadingSpinner isLoading={isNewChat && isProfileLoading} />
 
         {/* 主要内容 */}
         <div className="flex-1 min-h-0">

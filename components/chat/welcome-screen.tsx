@@ -37,7 +37,6 @@ const getTimeBasedGreeting = () => {
 export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
   const { isDark } = useTheme()
   const [finalText, setFinalText] = useState("")
-  const [shouldStartTyping, setShouldStartTyping] = useState(false)
   
   // --- BEGIN COMMENT ---
   // 使用智能布局系统获取欢迎文字的位置和标题样式
@@ -47,26 +46,40 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
   // --- BEGIN COMMENT ---
   // 🎯 直接从当前应用实例获取开场白配置
   // 完全基于数据库，无任何API调用
+  // 添加验证状态保护，避免应用切换时显示错误内容
   // --- END COMMENT ---
-  const { currentAppInstance } = useCurrentApp()
+  const { currentAppInstance, isValidating, isLoading } = useCurrentApp()
 
   // --- BEGIN COMMENT ---
   // 🎯 纯数据库策略的欢迎文字显示逻辑
   // 数据库有配置 → 使用开场白
   // 数据库无配置 → 用户名问候 → 默认问候
+  // 移除骨架屏，依赖 PageLoadingSpinner 处理长时间加载
+  // 添加验证状态保护，确保应用切换时序正确
   // --- END COMMENT ---
   useEffect(() => {
     // --- BEGIN COMMENT ---
-    // 应用切换时立即重置状态，准备显示新内容
+    // 🎯 应用切换保护：验证期间不更新欢迎文字
+    // 避免显示错误应用的开场白
     // --- END COMMENT ---
-    setShouldStartTyping(false);
-    setFinalText("");
+    if (isValidating || isLoading) {
+      console.log('[WelcomeScreen] 应用正在验证或加载中，暂停更新欢迎文字');
+      return;
+    }
 
     // --- BEGIN COMMENT ---
     // 等待用户信息加载完成
     // --- END COMMENT ---
     if (username === undefined) {
       console.log('[WelcomeScreen] 等待用户信息加载...');
+      return;
+    }
+    
+    // --- BEGIN COMMENT ---
+    // 🎯 应用实例完整性检查：确保有完整的应用信息
+    // --- END COMMENT ---
+    if (!currentAppInstance?.instance_id) {
+      console.log('[WelcomeScreen] 等待应用实例加载完成...');
       return;
     }
     
@@ -105,15 +118,17 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
     }
     
     // --- BEGIN COMMENT ---
-    // 🎯 数据库查询很快，极短延迟后立即显示
+    // 🎯 直接设置文字，无需骨架屏
     // --- END COMMENT ---
-    const timer = setTimeout(() => {
-      setFinalText(welcomeText);
-      setShouldStartTyping(true);
-    }, 50); // 极短延迟，确保状态更新完成
+    setFinalText(welcomeText);
     
-    return () => clearTimeout(timer);
-  }, [username, currentAppInstance?.config?.dify_parameters?.opening_statement, currentAppInstance?.instance_id]);
+  }, [
+    username, 
+    currentAppInstance?.config?.dify_parameters?.opening_statement, 
+    currentAppInstance?.instance_id,
+    isValidating, // 🎯 新增：监听验证状态
+    isLoading     // �� 新增：监听加载状态
+  ]);
 
   return (
       <div 
@@ -136,42 +151,20 @@ export const WelcomeScreen = ({ className, username }: WelcomeScreenProps) => {
           )}
           style={welcomeTextTitle}
         >
-
-          {shouldStartTyping ? (
-            <TypeWriter 
-              text={finalText}
-              speed={30} // 主标题稍慢
-              delay={300} // 延迟开始，给页面加载一点时间
-              waitingEffect={finalText.endsWith("...")} // 只有等待状态才显示效果
-              className={cn(
-                "font-bold leading-tight",
-                needsCompactLayout ? "text-xl" : "text-3xl"
-              )}
-            />
-          ) : (
-            <div className="flex items-center justify-center">
-              {/* --- BEGIN COMMENT ---
-              skeleton宽度：使用Hook提供的动态宽度，确保与标题宽度一致
-              --- END COMMENT --- */}
-              <div 
-                className={cn(
-                  isDark
-                    ? "bg-stone-700/80"
-                    : "bg-stone-200/60",
-                  "rounded animate-pulse",
-                  needsCompactLayout ? "h-6" : "h-7"
-                )}
-                style={{
-                  width: welcomeTextTitle.width 
-                    ? `calc(${welcomeTextTitle.width} - 2rem)` // 移动端：基于强制宽度减去padding
-                    : welcomeTextTitle.maxWidth 
-                      ? `calc(${welcomeTextTitle.maxWidth} - 8rem)` // 桌面端：基于最大宽度减去padding
-                      : '80vw', // 回退方案
-                  maxWidth: '90vw' // 确保不超出视口
-                }}
-              ></div>
-            </div>
-          )}
+          {/* --- BEGIN COMMENT ---
+          直接显示打字机效果，无骨架屏
+          长时间加载由 PageLoadingSpinner 处理
+          --- END COMMENT --- */}
+          <TypeWriter 
+            text={finalText}
+            speed={30}
+            delay={200} // 减少延迟，更快响应
+            waitingEffect={finalText.endsWith("...")}
+            className={cn(
+              "font-bold leading-tight",
+              needsCompactLayout ? "text-xl" : "text-3xl"
+            )}
+          />
         </h2>
       </div>
     </div>
