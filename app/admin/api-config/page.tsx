@@ -96,11 +96,14 @@ const InstanceForm = ({
   showFeedback: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void
 }) => {
   const { isDark } = useTheme();
-  const { serviceInstances } = useApiConfigStore();
+  const { serviceInstances, apiKeys } = useApiConfigStore();
   
   // --- 获取当前实例的最新状态 ---
   const currentInstance = instance ? serviceInstances.find(inst => inst.id === instance.id) : null;
   const isCurrentDefault = currentInstance?.is_default || false;
+  
+  // --- 检查当前实例是否已配置API密钥 ---
+  const hasApiKey = instance ? apiKeys.some(key => key.service_instance_id === instance.id) : false;
   
   const [formData, setFormData] = useState({
     instance_id: instance?.instance_id || '',
@@ -530,12 +533,32 @@ const InstanceForm = ({
             </div>
 
             <div>
-              <label className={cn(
-                "block text-sm font-medium mb-2 font-serif",
-                isDark ? "text-stone-300" : "text-stone-700"
-              )}>
-                API 密钥 (key_value) {!isEditing && '*'}
-              </label>
+              <div className="flex items-start justify-between mb-2">
+                <label className={cn(
+                  "text-sm font-medium font-serif",
+                  isDark ? "text-stone-300" : "text-stone-700"
+                )}>
+                  API 密钥 (key_value) {!isEditing && '*'}
+                </label>
+                
+                {/* --- API密钥配置状态标签 - 靠上对齐，避免挤压输入框 --- */}
+                {isEditing && (
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium font-serif -mt-0.5",
+                    hasApiKey
+                      ? isDark
+                        ? "bg-green-900/20 border-green-700/30 text-green-300 border"
+                        : "bg-green-50 border-green-200 text-green-700 border"
+                      : isDark
+                        ? "bg-orange-900/20 border-orange-700/30 text-orange-300 border"
+                        : "bg-orange-50 border-orange-200 text-orange-700 border"
+                  )}>
+                    <Key className="h-3 w-3" />
+                    {hasApiKey ? '已配置' : '未配置'}
+                  </span>
+                )}
+              </div>
+              
               <div className="relative">
                 <input
                   type={showApiKey ? "text" : "password"}
@@ -562,6 +585,16 @@ const InstanceForm = ({
                   )}
                 </button>
               </div>
+              
+              {/* --- 提示信息（仅在编辑模式且已配置时显示） --- */}
+              {isEditing && hasApiKey && (
+                <p className={cn(
+                  "text-xs mt-1 font-serif",
+                  isDark ? "text-stone-400" : "text-stone-500"
+                )}>
+                  留空输入框将保持现有密钥不变
+                </p>
+              )}
             </div>
           </div>
           

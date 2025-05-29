@@ -11,7 +11,8 @@ import {
   Trash2,
   Loader2,
   Star,
-  StarOff
+  StarOff,
+  Key
 } from 'lucide-react'
 
 interface ApiConfigLayoutProps {
@@ -23,6 +24,7 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
   
   const {
     serviceInstances: instances,
+    apiKeys,
     isLoading: instancesLoading,
     loadConfigData: loadInstances,
     deleteAppInstance: deleteInstance,

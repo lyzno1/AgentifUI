@@ -9,7 +9,8 @@ import {
   Users,
   BarChart3,
   Shield,
-  ArrowRight
+  ArrowRight,
+  Key
 } from 'lucide-react'
 
 interface AdminCardProps {
@@ -89,7 +90,7 @@ export default function AdminPage() {
     {
       title: 'API 配置',
       description: '管理应用实例、配置参数和API密钥',
-      icon: Settings,
+      icon: Key,
       href: '/admin/api-config',
       stats: '当前配置: 活跃'
     },
