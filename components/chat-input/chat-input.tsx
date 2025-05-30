@@ -71,7 +71,7 @@ interface ChatInputProps {
   isTransitioningToWelcome?: boolean
   // --- BEGIN COMMENT ---
   // 🎯 新增：是否需要模型验证
-  // 默认为true，在应用广场等不需要模型的场景可以设为false
+  // 默认为true，在应用市场等不需要模型的场景可以设为false
   // --- END COMMENT ---
   requireModelValidation?: boolean
   // --- BEGIN COMMENT ---

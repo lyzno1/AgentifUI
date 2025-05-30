@@ -136,7 +136,7 @@ export function SidebarHeader() {
         <span className="font-serif">发起新对话</span>
       </SidebarButton>
 
-      {/* 🎯 应用广场/应用市场入口按钮 - 使用更好的图标 */}
+      {/* 🎯 应用市场/应用市场入口按钮 - 使用更好的图标 */}
       <SidebarButton
         icon={
           // // 方案1: 使用 Grid3x3 (九宫格，很像应用市场)
@@ -161,7 +161,7 @@ export function SidebarHeader() {
         onClick={() => {
           router.push('/apps');
         }}
-        aria-label="应用广场"
+        aria-label="应用市场"
         className={cn(
           "group font-medium transition-all duration-200",
           isDark
@@ -179,7 +179,7 @@ export function SidebarHeader() {
             ]
         )}
       >
-        <span className="font-serif">应用广场</span>
+        <span className="font-serif">应用市场</span>
       </SidebarButton>
 
     </div>

@@ -272,7 +272,7 @@ export default function AppDetailPage() {
                 : "bg-stone-200 hover:bg-stone-300 text-stone-800"
             )}
           >
-            返回应用广场
+            返回应用市场
           </button>
         </div>
       </div>

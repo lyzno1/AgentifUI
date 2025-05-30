@@ -43,7 +43,7 @@ export default function AppsLayout({ children }: AppsLayoutProps) {
         {isMounted && <MobileNavButton />}
       </div>
       
-      {/* 主内容区域 - 应用广场页面 */}
+      {/* 主内容区域 - 应用市场页面 */}
       <main
         className={cn(
           "w-full h-screen overflow-auto", // 使用 w-full 而不是 flex-1

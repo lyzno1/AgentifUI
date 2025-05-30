@@ -364,7 +364,7 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
           )} />
         </button>
         
-        {/* 应用广场按钮 */}
+        {/* 应用市场按钮 */}
         <button
           onClick={() => router.push('/apps')}
           className={cn(
@@ -374,7 +374,7 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
               : "hover:bg-stone-200 text-stone-600 hover:text-stone-900"
           )}
         >
-          应用广场
+          应用市场
         </button>
       </div>
     );

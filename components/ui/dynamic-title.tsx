@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useChatStore } from '@lib/stores/chat-store'
 import { useCombinedConversations } from '@lib/hooks/use-combined-conversations'
+import { useAppListStore } from '@lib/stores/app-list-store'
 
 /**
  * 动态标题组件
@@ -20,6 +21,9 @@ export function DynamicTitle() {
   
   // 使用 useCombinedConversations 获取对话列表
   const { conversations, isLoading } = useCombinedConversations()
+  
+  // 获取应用列表
+  const { apps, isLoading: isAppsLoading } = useAppListStore()
   
   // 本地状态，用于跟踪标题更新状态
   const [isUpdating, setIsUpdating] = useState(false)
@@ -89,6 +93,37 @@ export function DynamicTitle() {
           newTitle = `管理后台 - ${formattedName} | ${baseTitle}`
         }
       }
+      // 如果是应用相关页面
+      else if (pathname?.startsWith('/apps')) {
+        if (pathname === '/apps') {
+          // 应用市场页面
+          newTitle = '应用市场 | ' + baseTitle
+        } else {
+          // 应用详情页面 /apps/[instanceId]
+          const pathSegments = pathname.split('/')
+          if (pathSegments.length >= 3) {
+            const instanceId = pathSegments[2]
+            
+            // 查找对应的应用
+            const targetApp = apps.find(app => app.instance_id === instanceId)
+            
+            if (targetApp) {
+              // 使用应用的显示名称
+              const appDisplayName = targetApp.display_name || targetApp.name || instanceId
+              newTitle = `${appDisplayName} | ${baseTitle}`
+            } else if (isAppsLoading) {
+              // 应用列表正在加载
+              newTitle = '加载应用... | ' + baseTitle
+            } else {
+              // 找不到应用，可能是无效的instanceId
+              newTitle = '应用详情 | ' + baseTitle
+            }
+          } else {
+            // 其他应用相关页面
+            newTitle = '应用 | ' + baseTitle
+          }
+        }
+      }
       // 如果是聊天页面
       else if (pathname?.startsWith('/chat')) {
         if (pathname === '/chat/new') {
@@ -154,7 +189,7 @@ export function DynamicTitle() {
         document.title = baseTitle
       }
     }
-  }, [pathname, currentConversationId, conversations, isLoading, lastTitle, baseTitle])
+  }, [pathname, currentConversationId, conversations, isLoading, lastTitle, baseTitle, apps, isAppsLoading])
   
   // 这个组件不渲染任何内容
   return null

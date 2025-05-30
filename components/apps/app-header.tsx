@@ -23,7 +23,7 @@ export function AppHeader({ totalApps, filteredApps }: AppHeaderProps) {
             "text-3xl font-bold font-serif",
             isDark ? "text-stone-100" : "text-stone-900"
           )}>
-            应用广场
+            应用市场
           </h1>
           <p className={cn(
             "font-serif",

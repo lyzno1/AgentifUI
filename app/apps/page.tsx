@@ -34,7 +34,7 @@ export default function AppsPage() {
   // 🎯 在组件挂载时获取应用列表并清除sidebar选中状态
   useEffect(() => {
     fetchApps()
-    // 清除sidebar选中状态，因为在应用广场页面不应该有选中的应用
+    // 清除sidebar选中状态，因为在应用市场页面不应该有选中的应用
     selectItem(null, null)
   }, [fetchApps, selectItem])
 
