@@ -192,8 +192,11 @@ export const ChatInput = ({
   const currentSelectedModel = availableModels.find(app => app.id === currentAppId);
   const hasValidSelectedModel = !!currentSelectedModel;
   
-  // 只有在需要模型验证时才检查模型状态
-  const canSubmitWithModel = !requireModelValidation || (hasAvailableModels && hasValidSelectedModel);
+  // --- BEGIN COMMENT ---
+  // 🎯 修复：只有在需要模型验证且显示模型选择器时才检查模型状态
+  // 历史对话不显示模型选择器，因此不需要模型验证
+  // --- END COMMENT ---
+  const canSubmitWithModel = !requireModelValidation || !showModelSelector || (hasAvailableModels && hasValidSelectedModel);
   // --- END 中文注释 ---
 
   // --- BEGIN COMMENT ---
