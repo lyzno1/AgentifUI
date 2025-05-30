@@ -23,6 +23,10 @@ interface FavoriteAppsState {
   loadFavoriteApps: () => Promise<void>
   clearFavoriteApps: () => void
   isFavorite: (instanceId: string) => boolean
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：简单的后台同步方法，非阻塞更新
+  // --- END COMMENT ---
+  syncWithAppList: (apps: any[]) => void
 }
 
 export const useFavoriteAppsStore = create<FavoriteAppsState>()(
@@ -108,6 +112,44 @@ export const useFavoriteAppsStore = create<FavoriteAppsState>()(
 
       isFavorite: (instanceId) => {
         return get().favoriteApps.some(app => app.instanceId === instanceId)
+      },
+
+      syncWithAppList: (apps: any[]) => {
+        const state = get()
+        if (state.favoriteApps.length === 0) return
+        
+        // --- BEGIN COMMENT ---
+        // 🎯 简单的后台同步：根据应用列表更新常用应用信息
+        // 只更新显示名称、描述和图标，不影响其他数据
+        // --- END COMMENT ---
+        const updatedFavoriteApps = state.favoriteApps.map(favoriteApp => {
+          const matchedApp = apps.find(app => app.id === favoriteApp.instanceId)
+          
+          if (matchedApp) {
+            const appMetadata = matchedApp.config?.app_metadata
+            return {
+              ...favoriteApp,
+              displayName: matchedApp.display_name || matchedApp.name || favoriteApp.displayName,
+              description: matchedApp.description || appMetadata?.brief_description || favoriteApp.description,
+              iconUrl: appMetadata?.icon_url || favoriteApp.iconUrl
+            }
+          }
+          
+          return favoriteApp
+        })
+        
+        // 只有在有变化时才更新
+        const hasChanges = updatedFavoriteApps.some((updated, index) => {
+          const original = state.favoriteApps[index]
+          return updated.displayName !== original.displayName || 
+                 updated.description !== original.description || 
+                 updated.iconUrl !== original.iconUrl
+        })
+        
+        if (hasChanges) {
+          console.log('[FavoriteApps] 后台同步更新常用应用信息')
+          set({ favoriteApps: updatedFavoriteApps })
+        }
       }
     }),
     {

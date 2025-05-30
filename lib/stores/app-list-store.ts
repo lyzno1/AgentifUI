@@ -82,6 +82,14 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       });
       
       console.log(`[AppListStore] 成功获取 ${apps.length} 个应用列表`);
+      
+      // 🎯 后台同步：更新常用应用信息
+      try {
+        const { useFavoriteAppsStore } = await import('./favorite-apps-store');
+        useFavoriteAppsStore.getState().syncWithAppList(apps);
+      } catch (error) {
+        console.warn('[AppListStore] 同步常用应用信息失败:', error);
+      }
     } catch (error: any) {
       set({ 
         error: error.message, 
