@@ -97,7 +97,7 @@ export async function getAllDifyApps(): Promise<Array<{id: string, name: string,
     
     const { data: instances, error } = await supabase
       .from('service_instances')
-      .select('instance_id, display_name, name, description')
+      .select('instance_id, display_name, description')
       .eq('provider_id', providerResult.data.id)
       .order('display_name');
       
@@ -107,7 +107,7 @@ export async function getAllDifyApps(): Promise<Array<{id: string, name: string,
     
     return instances?.map(instance => ({
       id: instance.instance_id,
-      name: instance.display_name || instance.name,
+      name: instance.display_name || instance.instance_id,
       description: instance.description
     })) || [];
     
