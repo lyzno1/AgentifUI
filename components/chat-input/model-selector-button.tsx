@@ -170,7 +170,7 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   useEffect(() => {
     // --- BEGIN COMMENT ---
     // 🎯 修复：只在用户访问新对话页面时才自动切换
-    // 不要在历史对话页面进行自动切换，避免强制跳转到chat/new
+    // 不要在历史对话页面或应用详情页面进行自动切换，避免强制跳转到chat/new
     // --- END COMMENT ---
     const timer = setTimeout(() => {
       // 只有当前应用不是模型类型且有目标模型时才自动切换
@@ -179,8 +179,12 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
         // 检查当前路径是否是新对话页面，只在新对话页面才自动切换
         const pathname = window.location.pathname;
         const isOnNewChatPage = pathname === '/chat/new'
+        const isOnAppDetailPage = pathname && pathname.startsWith('/apps/') && pathname.split('/').length === 3
         
-        if (isOnNewChatPage) {
+        // --- BEGIN COMMENT ---
+        // 🎯 修复：不在应用详情页面进行自动切换，避免干扰用户访问应用
+        // --- END COMMENT ---
+        if (isOnNewChatPage && !isOnAppDetailPage) {
           console.log(`在新对话页面检测到非模型应用 ${currentAppId}，自动切换到模型: ${targetModelApp.id}`);
           
           setIsAutoSwitching(true);
