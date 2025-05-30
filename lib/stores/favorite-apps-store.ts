@@ -149,13 +149,21 @@ export function useAutoAddFavoriteApp() {
       if (result.success && result.data) {
         const instance = result.data
         const appMetadata = instance.config?.app_metadata
+        
+        // 🎯 关键修复：只添加marketplace类型的应用，跳过model类型
+        const appType = appMetadata?.app_type || 'marketplace'
+        
+        if (appType !== 'marketplace') {
+          console.log(`[addToFavorites] 跳过非marketplace应用: ${instance.display_name || instanceId} (类型: ${appType})`)
+          return
+        }
 
         const favoriteApp = {
           instanceId: instance.instance_id,
           displayName: instance.display_name || instance.instance_id,
           description: instance.description || appMetadata?.brief_description,
           iconUrl: appMetadata?.icon_url,
-          appType: appMetadata?.app_type || 'marketplace'
+          appType: 'marketplace' as const
         }
         
         addFavoriteApp(favoriteApp)
