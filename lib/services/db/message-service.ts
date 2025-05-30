@@ -299,6 +299,9 @@ export class MessageService {
    * 将数据库Message转换为前端ChatMessage
    */
   dbMessageToChatMessage(dbMessage: Message): ChatMessage {
+    // 从metadata中提取附件信息
+    const attachments = dbMessage.metadata?.attachments || [];
+    
     return {
       id: `db-${dbMessage.id}`,
       text: dbMessage.content,
@@ -309,7 +312,8 @@ export class MessageService {
       dify_message_id: dbMessage.external_id || undefined,
       metadata: dbMessage.metadata || {},
       wasManuallyStopped: dbMessage.metadata?.stopped_manually === true,
-      token_count: dbMessage.token_count || undefined
+      token_count: dbMessage.token_count || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined
     };
   }
 

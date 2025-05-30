@@ -326,7 +326,7 @@ export default function AppDetailPage() {
           {/* --- BEGIN COMMENT ---
           简化显示逻辑：使用useWelcomeScreen统一判断
           --- END COMMENT --- */}
-          {isWelcomeScreen ? (
+          {isWelcomeScreen && messages.length === 0 ? (
             <div 
               className={cn(
                 "h-full overflow-y-auto scroll-smooth",
@@ -344,17 +344,12 @@ export default function AppDetailPage() {
           ) : (
             <div 
               ref={scrollRef}
-              className={cn(
-                "h-full overflow-y-auto scroll-smooth chat-scroll-container",
-                "w-full mx-auto",
-                widthClass,
-                paddingClass
-              )}
+              className="h-full overflow-y-auto scroll-smooth chat-scroll-container"
             >
               <ChatLoader 
                 messages={messages} 
                 isWaitingForResponse={isWaitingForResponse}
-                isLoadingInitial={false}
+                isLoadingInitial={isSubmitting && messages.length === 0}
               />
             </div>
           )}

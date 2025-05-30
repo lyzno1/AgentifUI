@@ -34,6 +34,11 @@ type LoadingStatus = {
  * 将数据库消息转换为前端消息对象
  */
 function dbMessageToChatMessage(dbMessage: Message): ChatMessage {
+  // --- BEGIN COMMENT ---
+  // 从metadata中提取附件信息
+  // --- END COMMENT ---
+  const attachments = dbMessage.metadata?.attachments || [];
+  
   return {
     id: `db-${dbMessage.id}`, // 添加前缀，保证ID唯一性
     text: dbMessage.content,
@@ -44,7 +49,8 @@ function dbMessageToChatMessage(dbMessage: Message): ChatMessage {
     dify_message_id: dbMessage.external_id || undefined,
     metadata: dbMessage.metadata || {},
     wasManuallyStopped: dbMessage.metadata?.stopped_manually === true,
-    token_count: dbMessage.token_count || undefined
+    token_count: dbMessage.token_count || undefined,
+    attachments: attachments.length > 0 ? attachments : undefined
   };
 }
 

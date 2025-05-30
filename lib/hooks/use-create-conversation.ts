@@ -76,7 +76,9 @@ export function useCreateConversation(): UseCreateConversationReturn {
       // --- BEGIN EARLY HIGHLIGHT ---
       try {
         const currentPath = window.location.pathname;
-        if (currentPath === '/chat/new' || !currentPath.startsWith('/chat/temp-')) {
+        if (currentPath === '/chat/new' || 
+            !currentPath.startsWith('/chat/temp-') ||
+            currentPath.startsWith('/apps/')) { // 🎯 添加应用详情页面的路径支持
           console.log(`[useCreateConversation] Early highlight: Updating URL to /chat/${tempConvId}`);
           window.history.replaceState({}, '', `/chat/${tempConvId}`);
         }
@@ -118,8 +120,10 @@ export function useCreateConversation(): UseCreateConversationReturn {
               if (currentPath === `/chat/${tempConvId}`) {
                 console.log(`[useCreateConversation] Updating URL from ${currentPath} to /chat/${id}`);
                 window.history.replaceState({}, '', `/chat/${id}`);
-              } else if (currentPath.includes('/chat/temp-') || currentPath === '/chat/new') {
-                 console.log(`[useCreateConversation] Updating URL (from new/other temp) to /chat/${id}`);
+              } else if (currentPath.includes('/chat/temp-') || 
+                        currentPath === '/chat/new' ||
+                        currentPath.startsWith('/apps/')) { // 🎯 添加应用详情页面的路径支持
+                 console.log(`[useCreateConversation] Updating URL (from new/temp/apps) to /chat/${id}`);
                 window.history.replaceState({}, '', `/chat/${id}`);
               }
               
@@ -291,7 +295,10 @@ export function useCreateConversation(): UseCreateConversationReturn {
             updateStatusInPendingStore(tempConvId, 'title_fetching'); 
             
             const currentPath = window.location.pathname;
-            if (currentPath === `/chat/${tempConvId}` || currentPath.includes('/chat/temp-') || currentPath === '/chat/new') {
+            if (currentPath === `/chat/${tempConvId}` || 
+                currentPath.includes('/chat/temp-') || 
+                currentPath === '/chat/new' ||
+                currentPath.startsWith('/apps/')) { // 🎯 添加应用详情页面的路径支持
                 console.log(`[useCreateConversation] Updating URL (fallback) from ${currentPath} to /chat/${realConvIdFromStream}`);
                 window.history.replaceState({}, '', `/chat/${realConvIdFromStream}`);
             }
