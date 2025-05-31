@@ -529,3 +529,427 @@ export interface DifyAppParametersResponse {
   file_upload: DifyFileUploadConfig; // 文件上传配置
   system_parameters: DifySystemParameters; // 系统参数
 }
+
+// --- BEGIN COMMENT ---
+// Workflow API 相关类型定义
+// POST /workflows/run
+// 基于完整的 OpenAPI 文档更新
+// --- END COMMENT ---
+
+/** Workflow 输入文件对象 */
+export interface DifyWorkflowInputFile {
+  type: 'document' | 'image' | 'audio' | 'video' | 'custom';
+  transfer_method: 'remote_url' | 'local_file';
+  url?: string; // transfer_method 为 remote_url 时必需
+  upload_file_id?: string; // transfer_method 为 local_file 时必需
+}
+
+/** Dify Workflow 请求体 */
+export interface DifyWorkflowRequestPayload {
+  inputs: Record<string, any>; // 结构化输入参数，支持字符串、数字、布尔值、对象、文件数组
+  response_mode: 'streaming' | 'blocking';
+  user: string;
+  // 注意：Workflow 没有 conversation_id 概念
+}
+
+/** Dify Workflow 执行响应 (blocking模式) */
+export interface DifyWorkflowCompletionResponse {
+  workflow_run_id: string; // UUID 格式
+  task_id: string; // UUID 格式
+  data: DifyWorkflowFinishedData;
+}
+
+/** Workflow 执行完成数据 */
+export interface DifyWorkflowFinishedData {
+  id: string; // workflow 执行 ID (UUID)
+  workflow_id: string; // 关联 Workflow ID (UUID)
+  status: 'running' | 'succeeded' | 'failed' | 'stopped';
+  outputs?: Record<string, any> | null; // 结构化输出 (JSON)
+  error?: string | null;
+  elapsed_time?: number | null; // 耗时(秒)
+  total_tokens?: number | null;
+  total_steps: number; // 总步数，默认 0
+  created_at: number; // 开始时间 (Unix timestamp)
+  finished_at: number; // 结束时间 (Unix timestamp)
+}
+
+/** Workflow SSE 事件 - workflow_started */
+export interface DifyWorkflowSseStartedEvent {
+  event: 'workflow_started';
+  task_id: string;
+  workflow_run_id: string;
+  data: {
+    id: string;
+    workflow_id: string;
+    sequence_number: number;
+    created_at: number;
+  };
+}
+
+/** Workflow SSE 事件 - workflow_finished */
+export interface DifyWorkflowSseFinishedEvent {
+  event: 'workflow_finished';
+  task_id: string;
+  workflow_run_id: string;
+  data: DifyWorkflowFinishedData;
+}
+
+/** Workflow SSE 事件 - node_started */
+export interface DifyWorkflowSseNodeStartedEvent {
+  event: 'node_started';
+  task_id: string;
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    node_type: string;
+    title: string;
+    index: number;
+    predecessor_node_id?: string;
+    inputs: Record<string, any>;
+    created_at: number;
+  };
+}
+
+/** Workflow SSE 事件 - node_finished */
+export interface DifyWorkflowSseNodeFinishedEvent {
+  event: 'node_finished';
+  task_id: string;
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    index: number;
+    predecessor_node_id?: string;
+    inputs?: Record<string, any>;
+    process_data?: any;
+    outputs?: any;
+    status: 'running' | 'succeeded' | 'failed' | 'stopped';
+    error?: string;
+    elapsed_time?: number;
+    execution_metadata?: any;
+    total_tokens?: number;
+    total_price?: string;
+    currency?: string;
+    created_at: number;
+  };
+}
+
+/** Workflow SSE 事件 - error */
+export interface DifyWorkflowSseErrorEvent {
+  event: 'error';
+  task_id: string;
+  workflow_run_id?: string;
+  status: number;
+  code: string;
+  message: string;
+}
+
+/** 所有 Workflow SSE 事件的联合类型 */
+export type DifyWorkflowSseEvent = 
+  | DifyWorkflowSseStartedEvent
+  | DifyWorkflowSseFinishedEvent
+  | DifyWorkflowSseNodeStartedEvent
+  | DifyWorkflowSseNodeFinishedEvent
+  | DifyWorkflowSseErrorEvent;
+
+/** Workflow 流式响应接口 */
+export interface DifyWorkflowStreamResponse {
+  // 节点执行进度流
+  progressStream: AsyncGenerator<DifyWorkflowSseNodeStartedEvent | DifyWorkflowSseNodeFinishedEvent, void, undefined>;
+  
+  // 获取 workflow_run_id
+  getWorkflowRunId: () => string | null;
+  
+  // 获取 task_id
+  getTaskId: () => string | null;
+  
+  // 完成时的 Promise，包含最终结果
+  completionPromise: Promise<DifyWorkflowFinishedData>;
+}
+
+/** Workflow API 错误码 */
+export type DifyWorkflowErrorCode = 
+  | 'invalid_param'
+  | 'app_unavailable' 
+  | 'provider_not_initialize'
+  | 'provider_quota_exceeded'
+  | 'model_currently_not_support'
+  | 'workflow_request_error';
+
+// --- BEGIN COMMENT ---
+// 获取应用基本信息 API 类型定义
+// GET /info
+// --- END COMMENT ---
+
+/** 获取应用基本信息响应 */
+export interface DifyAppInfoResponse {
+  name: string; // 应用名称
+  description: string; // 应用描述
+  tags: string[]; // 应用标签
+}
+
+// --- BEGIN COMMENT ---
+// 消息反馈 API 类型定义
+// POST /messages/:message_id/feedbacks
+// --- END COMMENT ---
+
+/** 消息反馈请求体 */
+export interface DifyMessageFeedbackRequestPayload {
+  rating: 'like' | 'dislike' | null; // 反馈类型：点赞 'like'、点踩 'dislike'、撤销 'null'
+  user: string; // 用户标识符
+  content?: string; // 消息反馈的具体信息（可选）
+}
+
+/** 消息反馈响应体 */
+export interface DifyMessageFeedbackResponse {
+  result: 'success'; // 固定返回 success
+}
+
+// --- BEGIN COMMENT ---
+// 语音转文本 API 类型定义
+// POST /audio-to-text
+// --- END COMMENT ---
+
+/** 语音转文本请求体 */
+export interface DifyAudioToTextRequestPayload {
+  file: File; // 音频文件
+  user: string; // 用户标识符
+}
+
+/** 语音转文本响应体 */
+export interface DifyAudioToTextResponse {
+  text: string; // 转换后的文本
+}
+
+// --- BEGIN COMMENT ---
+// Text-Generation API 类型定义
+// POST /completion-messages
+// --- END COMMENT ---
+
+/** 文本生成请求体 */
+export interface DifyCompletionRequestPayload {
+  inputs: Record<string, any>; // 输入参数
+  response_mode: 'streaming' | 'blocking'; // 响应模式
+  user: string; // 用户标识符
+  files?: DifyFile[]; // 文件列表（可选）
+}
+
+/** 文本生成完成响应 (blocking模式) */
+export interface DifyCompletionResponse {
+  message_id: string; // 消息 ID
+  mode: string; // App 模式，固定为 "completion"
+  answer: string; // 生成的文本
+  metadata: Record<string, any>; // 元数据
+  usage: DifyUsage; // 使用量信息
+  created_at: number; // 创建时间戳
+}
+
+/** 文本生成流式响应接口 */
+export interface DifyCompletionStreamResponse {
+  // 文本块流
+  answerStream: AsyncGenerator<string, void, undefined>;
+  
+  // 获取消息 ID
+  getMessageId: () => string | null;
+  
+  // 获取任务 ID
+  getTaskId: () => string | null;
+  
+  // 完成时的 Promise
+  completionPromise: Promise<{ usage?: DifyUsage; metadata?: Record<string, any> }>;
+}
+
+// --- BEGIN COMMENT ---
+// WebApp 设置 API 类型定义
+// GET /site
+// --- END COMMENT ---
+
+/** WebApp 设置响应 */
+export interface DifyWebAppSettingsResponse {
+  title: string; // WebApp 名称
+  chat_color_theme: string; // 聊天颜色主题, hex 格式
+  chat_color_theme_inverted: boolean; // 聊天颜色主题是否反转
+  icon_type: 'emoji' | 'image'; // 图标类型
+  icon: string; // 图标内容 (emoji 或图片 URL)
+  icon_background: string; // hex 格式的背景色
+  icon_url: string | null; // 图标 URL
+  description: string; // 描述
+  copyright: string; // 版权信息
+  privacy_policy: string; // 隐私政策链接
+  custom_disclaimer: string; // 自定义免责声明
+  default_language: string; // 默认语言
+  show_workflow_steps: boolean; // 是否显示工作流详情
+  use_icon_as_answer_icon: boolean; // 是否使用 WebApp 图标替换聊天中的机器人图标
+}
+
+// --- BEGIN COMMENT ---
+// 应用 Meta 信息 API 类型定义
+// GET /meta
+// --- END COMMENT ---
+
+/** 工具图标详情 */
+export interface DifyToolIconDetail {
+  background: string; // hex 格式的背景色
+  content: string; // emoji
+}
+
+/** 应用 Meta 信息响应 */
+export interface DifyAppMetaResponse {
+  tool_icons: Record<string, string | DifyToolIconDetail>; // 工具图标，键为工具名称，值为图标 URL 或详情对象
+}
+
+/** Workflow 执行详情响应 */
+export interface DifyWorkflowRunDetailResponse {
+  id: string; // workflow 执行 ID (UUID)
+  workflow_id: string; // 关联的 Workflow ID (UUID)
+  status: 'running' | 'succeeded' | 'failed' | 'stopped'; // 执行状态
+  inputs: string; // 任务输入内容的 JSON 字符串
+  outputs: Record<string, any> | null; // 任务输出内容的 JSON 对象
+  error: string | null; // 错误原因
+  total_steps: number; // 任务执行总步数
+  total_tokens: number; // 任务执行总 tokens
+  created_at: number; // 任务开始时间 (Unix timestamp)
+  finished_at: number | null; // 任务结束时间 (Unix timestamp)
+  elapsed_time: number | null; // 耗时(秒)
+}
+
+// --- BEGIN COMMENT ---
+// Workflow 日志 API 类型定义
+// GET /workflows/logs
+// --- END COMMENT ---
+
+/** Workflow 执行状态枚举 */
+export type DifyWorkflowLogStatus = 'succeeded' | 'failed' | 'stopped' | 'running';
+
+/** 获取 Workflow 日志的请求参数 */
+export interface GetDifyWorkflowLogsParams {
+  keyword?: string; // 关键字（可选）
+  status?: DifyWorkflowLogStatus; // 执行状态（可选）
+  page?: number; // 当前页码，默认 1
+  limit?: number; // 每页条数，默认 20
+}
+
+/** Workflow 日志单条记录 */
+export interface DifyWorkflowLogEntry {
+  id: string; // workflow 执行 ID (UUID)
+  workflow_id: string; // 关联的 Workflow ID (UUID)
+  status: DifyWorkflowLogStatus; // 执行状态
+  inputs: string; // 任务输入内容的 JSON 字符串
+  outputs: Record<string, any> | null; // 任务输出内容的 JSON 对象
+  error: string | null; // 错误原因
+  total_steps: number; // 任务执行总步数
+  total_tokens: number; // 任务执行总 tokens
+  created_at: number; // 任务开始时间 (Unix timestamp)
+  finished_at: number | null; // 任务结束时间 (Unix timestamp)
+  elapsed_time: number | null; // 耗时(秒)
+}
+
+/** 获取 Workflow 日志的响应体 */
+export interface GetDifyWorkflowLogsResponse {
+  page: number; // 当前页码
+  limit: number; // 每页条数
+  total: number; // 总条数
+  has_more: boolean; // 是否还有更多数据
+  data: DifyWorkflowLogEntry[]; // 当前页码的数据
+}
+
+// --- BEGIN COMMENT ---
+// 标注列表 API 类型定义
+// GET /apps/annotations
+// --- END COMMENT ---
+
+/** 单个标注条目 */
+export interface DifyAnnotationItem {
+  id: string; // 标注ID (UUID格式)
+  question: string; // 问题
+  answer: string; // 答案内容
+  hit_count: number; // 命中次数
+  created_at: number; // 创建时间戳
+}
+
+/** 获取标注列表的请求参数 */
+export interface GetDifyAnnotationsParams {
+  page?: number; // 分页页码，默认：1
+  limit?: number; // 每页数量，默认 20，范围 1-100
+}
+
+/** 标注列表响应 */
+export interface DifyAnnotationListResponse {
+  data: DifyAnnotationItem[]; // 标注列表
+  has_more: boolean; // 是否有更多数据
+  limit: number; // 每页数量
+  total: number; // 总数量
+  page: number; // 当前页码
+}
+
+// --- BEGIN COMMENT ---
+// 创建标注 API 类型定义
+// POST /apps/annotations
+// --- END COMMENT ---
+
+/** 创建标注请求体 */
+export interface CreateDifyAnnotationRequest {
+  question: string; // 问题
+  answer: string; // 答案内容
+}
+
+/** 创建标注响应 (返回创建的标注条目) */
+export interface CreateDifyAnnotationResponse extends DifyAnnotationItem {
+  // 继承 DifyAnnotationItem 的所有字段
+}
+
+// --- BEGIN COMMENT ---
+// 更新标注 API 类型定义
+// PUT /apps/annotations/{annotation_id}
+// --- END COMMENT ---
+
+/** 更新标注请求体 */
+export interface UpdateDifyAnnotationRequest {
+  question: string; // 问题
+  answer: string; // 答案内容
+}
+
+/** 更新标注响应 (返回更新后的标注条目) */
+export interface UpdateDifyAnnotationResponse extends DifyAnnotationItem {
+  // 继承 DifyAnnotationItem 的所有字段
+}
+
+// --- BEGIN COMMENT ---
+// 删除标注 API 类型定义
+// DELETE /apps/annotations/{annotation_id}
+// 删除成功返回 204 状态码，无响应体
+// --- END COMMENT ---
+
+/** 删除标注响应 (204 状态码，无内容) */
+export interface DeleteDifyAnnotationResponse {
+  // 空接口，表示无响应体
+}
+
+// --- BEGIN COMMENT ---
+// 标注回复初始设置 API 类型定义
+// POST /apps/annotation-reply/{action}
+// --- END COMMENT ---
+
+/** 标注回复设置动作类型 */
+export type DifyAnnotationReplyAction = 'enable' | 'disable';
+
+/** 标注回复初始设置请求体 */
+export interface InitialDifyAnnotationReplySettingsRequest {
+  embedding_provider_name?: string | null; // （可选）指定的嵌入模型提供商名称
+  embedding_model_name?: string | null; // （可选）指定的嵌入模型名称
+  score_threshold: number; // 相似度阈值
+}
+
+/** 异步任务响应 */
+export interface DifyAsyncJobResponse {
+  job_id: string; // 任务 ID (UUID格式)
+  job_status: string; // 任务状态
+}
+
+/** 异步任务状态响应 */
+export interface DifyAsyncJobStatusResponse {
+  job_id: string; // 任务 ID (UUID格式)
+  job_status: string; // 任务状态
+  error_msg?: string | null; // 错误信息（如果任务失败）
+}
