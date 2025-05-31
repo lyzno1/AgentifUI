@@ -530,7 +530,7 @@ const InstanceForm = ({
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {[
-                      '对话模型', '代码模型', '文档模型', '多模态'
+                      '对话模型', '推理模型', '文档模型', '多模态'
                     ].map((tag) => (
                       <button
                         key={tag}
