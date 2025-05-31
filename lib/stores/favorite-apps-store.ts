@@ -7,6 +7,7 @@ interface FavoriteApp {
   description?: string
   iconUrl?: string
   appType: 'model' | 'marketplace'
+  dify_apptype?: 'agent' | 'chatbot' | 'text-generation' | 'chatflow' | 'workflow'
   addedAt: string
   lastUsedAt: string
 }
@@ -131,7 +132,8 @@ export const useFavoriteAppsStore = create<FavoriteAppsState>()(
               ...favoriteApp,
               displayName: matchedApp.display_name || matchedApp.name || favoriteApp.displayName,
               description: matchedApp.description || appMetadata?.brief_description || favoriteApp.description,
-              iconUrl: appMetadata?.icon_url || favoriteApp.iconUrl
+              iconUrl: appMetadata?.icon_url || favoriteApp.iconUrl,
+              dify_apptype: appMetadata?.dify_app_type || favoriteApp.dify_apptype || 'chatflow'
             }
           }
           
@@ -205,7 +207,8 @@ export function useAutoAddFavoriteApp() {
           displayName: instance.display_name || instance.instance_id,
           description: instance.description || appMetadata?.brief_description,
           iconUrl: appMetadata?.icon_url,
-          appType: 'marketplace' as const
+          appType: 'marketplace' as const,
+          dify_apptype: appMetadata?.dify_apptype || 'chatflow'
         }
         
         addFavoriteApp(favoriteApp)

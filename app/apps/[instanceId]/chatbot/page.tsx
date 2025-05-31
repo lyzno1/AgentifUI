@@ -116,8 +116,10 @@ export default function AppDetailPage() {
   // 这比useEffect更早执行，能在渲染前清理状态，避免显示错误内容
   // --- END COMMENT ---
   useLayoutEffect(() => {
-    // 只有当前确实在应用详情页面时才执行清理
-    if (pathname === `/apps/${instanceId}`) {
+    // --- BEGIN COMMENT ---
+    // 🎯 修复：正确判断当前是否在chatbot页面
+    // --- END COMMENT ---
+    if (pathname === `/apps/${instanceId}/chatbot`) {
       console.log('[AppDetail] 路由切换到应用详情页面，立即清理聊天状态')
       
       // 立即清除所有消息

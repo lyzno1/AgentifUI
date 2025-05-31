@@ -19,6 +19,7 @@ interface FavoriteApp {
   description?: string
   iconUrl?: string
   appType: 'model' | 'marketplace'
+  dify_apptype?: 'agent' | 'chatbot' | 'text-generation' | 'chatflow' | 'workflow'
 }
 
 interface SidebarFavoriteAppsProps {
@@ -63,9 +64,26 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
     // 检查当前路由是否是应用详情页面
     if (!pathname.startsWith('/apps/')) return false
 
-    // 检查路由中的instanceId是否匹配
-    const routeInstanceId = pathname.split('/apps/')[1]?.split('/')[0]
-    return routeInstanceId === app.instanceId
+    // 🎯 修复：支持新的路由结构 /apps/[instanceId]/[difyAppType]
+    const pathParts = pathname.split('/apps/')[1]?.split('/')
+    if (!pathParts || pathParts.length === 0) return false
+    
+    const routeInstanceId = pathParts[0]
+    
+    // 基本的instanceId匹配
+    if (routeInstanceId !== app.instanceId) return false
+    
+    // 如果路由只有instanceId（如 /apps/instanceId），则匹配
+    if (pathParts.length === 1) return true
+    
+    // 如果路由有应用类型（如 /apps/instanceId/chatflow），检查应用类型是否匹配
+    if (pathParts.length >= 2) {
+      const routeAppType = pathParts[1]
+      const appDifyType = app.dify_apptype || 'chatflow'
+      return routeAppType === appDifyType
+    }
+    
+    return false
   }, [])
 
   const handleAppClick = async (app: FavoriteApp) => {
@@ -76,8 +94,9 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
       // 切换到指定应用
       await switchToSpecificApp(app.instanceId)
 
-      // 跳转到应用详情页面
-      router.push(`/apps/${app.instanceId}`)
+      // 🎯 根据Dify应用类型跳转到对应页面
+      const difyAppType = app.dify_apptype || 'chatflow'
+      router.push(`/apps/${app.instanceId}/${difyAppType}`)
 
     } catch (error) {
       console.error('切换到常用应用失败:', error)
@@ -93,8 +112,9 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
       // 切换到指定应用
       await switchToSpecificApp(app.instanceId)
 
-      // 跳转到应用详情页面
-      router.push(`/apps/${app.instanceId}`)
+      // 🎯 根据Dify应用类型跳转到对应页面
+      const difyAppType = app.dify_apptype || 'chatflow'
+      router.push(`/apps/${app.instanceId}/${difyAppType}`)
 
     } catch (error) {
       console.error('发起新对话失败:', error)
