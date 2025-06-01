@@ -69,20 +69,13 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   };
 
   // --- BEGIN COMMENT ---
-  // 🎯 智能模型选择逻辑：
+  // 🎯 简化模型选择逻辑：
   // 1. 如果当前应用是模型类型，直接使用
   // 2. 如果当前应用不是模型类型，尝试恢复最后使用的模型
   // 3. 如果没有最后使用的模型或该模型不可用，选择第一个可用模型
   // --- END COMMENT ---
   const currentApp = modelApps.find(app => app.id === currentAppId);
   const isCurrentAppModel = !!currentApp;
-  
-  // --- BEGIN COMMENT ---
-  // 🎯 智能验证和切换逻辑：
-  // 当从非模型应用回到聊天界面时，自动验证并切换到合适的模型
-  // 显示loading状态，就像重新进入页面一样
-  // --- END COMMENT ---
-  const [isAutoSwitching, setIsAutoSwitching] = useState(false);
   
   // 获取应该显示的模型应用
   const getTargetModelApp = () => {
@@ -107,15 +100,11 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   const targetModelApp = getTargetModelApp();
   
   // --- BEGIN COMMENT ---
-  // 🎯 纯乐观UI应用切换：立即更新UI，无任何API调用
-  // 发送消息时的验证会在handleSubmit中自动触发
+  // 🎯 简化应用切换：移除自动跳转，让用户控制导航
   // --- END COMMENT ---
   const handleAppChange = useCallback(async (newAppId: string) => {
     if (newAppId === currentAppId) {
       setIsOpen(false);
-      // --- BEGIN COMMENT ---
-      // 即使没有实际切换，也要恢复焦点
-      // --- END COMMENT ---
       setTimeout(() => focusInput(), 0);
       return;
     }
@@ -136,8 +125,7 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       }
       
       // --- BEGIN COMMENT ---
-      // 🎯 纯乐观UI：使用switchToSpecificApp方法进行切换
-      // 这个方法会处理从AppInfo到ServiceInstance的转换
+      // 🎯 静默切换应用，不强制跳转页面
       // --- END COMMENT ---
       await switchToSpecificApp(newAppId);
       
@@ -145,11 +133,6 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       // 切换成功后清理聊天状态
       // --- END COMMENT ---
       clearMessages();
-      
-      // --- BEGIN COMMENT ---
-      // 🎯 使用Next.js路由进行页面跳转，避免硬刷新
-      // --- END COMMENT ---
-      router.push('/chat/new');
       
       console.log(`已切换到app: ${newAppId}`);
     } catch (error) {
@@ -165,39 +148,23 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
       // --- END COMMENT ---
       setTimeout(() => focusInput(), 0);
     }
-  }, [currentAppId, focusInput, modelApps, setLastUsedModel, switchToSpecificApp, clearMessages, router]);
+  }, [currentAppId, focusInput, modelApps, setLastUsedModel, switchToSpecificApp, clearMessages]);
   
+  // --- BEGIN COMMENT ---
+  // 🎯 简化自动恢复逻辑：只在组件初始化时执行一次
+  // 移除复杂的路径检查和定时器，避免竞态条件
+  // --- END COMMENT ---
   useEffect(() => {
-    // --- BEGIN COMMENT ---
-    // 🎯 修复：只在用户访问新对话页面时才自动切换
-    // 不要在历史对话页面或应用详情页面进行自动切换，避免强制跳转到chat/new
-    // --- END COMMENT ---
-    const timer = setTimeout(() => {
-      // 只有当前应用不是模型类型且有目标模型时才自动切换
-      // 但要确保这不是用户刚刚主动切换的结果
-      if (!isCurrentAppModel && targetModelApp && currentAppId && !isOptimisticSwitching && !isAutoSwitching) {
-        // 检查当前路径是否是新对话页面，只在新对话页面才自动切换
-        const pathname = window.location.pathname;
-        const isOnNewChatPage = pathname === '/chat/new'
-        const isOnAppDetailPage = pathname && pathname.startsWith('/apps/') && pathname.split('/').length === 4
-        
-        // --- BEGIN COMMENT ---
-        // 🎯 修复：不在应用详情页面进行自动切换，避免干扰用户访问应用
-        // --- END COMMENT ---
-        if (isOnNewChatPage && !isOnAppDetailPage) {
-          console.log(`在新对话页面检测到非模型应用 ${currentAppId}，自动切换到模型: ${targetModelApp.id}`);
-          
-          setIsAutoSwitching(true);
-          
-          handleAppChange(targetModelApp.id).finally(() => {
-            setIsAutoSwitching(false);
-          });
-        }
-      }
-    }, 500); // 延迟500ms，给用户操作留出时间
-
-    return () => clearTimeout(timer);
-  }, [isCurrentAppModel, targetModelApp?.id, currentAppId, isOptimisticSwitching, isAutoSwitching, handleAppChange]);
+    // 只在有模型应用且当前应用不是模型类型时才尝试恢复
+    if (modelApps.length > 0 && !isCurrentAppModel && currentAppId && targetModelApp && targetModelApp.id !== currentAppId) {
+      console.log(`检测到非模型应用 ${currentAppId}，静默恢复到模型: ${targetModelApp.id}`);
+      
+      // 静默切换，不显示loading状态，不强制跳转
+      switchToSpecificApp(targetModelApp.id).catch(error => {
+        console.warn('静默恢复模型失败:', error);
+      });
+    }
+  }, [modelApps.length, isCurrentAppModel, currentAppId, targetModelApp?.id]); // 移除handleAppChange依赖，避免循环
 
   // --- BEGIN COMMENT ---
   // 🎯 显示状态判断：
@@ -271,7 +238,7 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
   // 🎯 修复：暗黑模式下使用更亮的颜色，确保与输入框背景有对比度
   // 🎯 修改：把原来显示"验证中..."的时机改成显示骨架屏
   // --- END COMMENT ---
-  if ((isLoading && modelApps.length === 0) || isValidating || isAutoSwitching) {
+  if ((isLoading && modelApps.length === 0) || isValidating) {
     return (
       <div className={cn("flex items-center", className)}>
         <div 
@@ -328,7 +295,7 @@ export function AppSelectorButton({ className }: AppSelectorButtonProps) {
         支持验证状态的spinner显示
         --- END COMMENT --- */}
         <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-          {(isOptimisticSwitching || isValidating || isAutoSwitching) ? (
+          {(isOptimisticSwitching || isValidating) ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : isOpen ? (
             <ChevronUp className="h-3 w-3" />

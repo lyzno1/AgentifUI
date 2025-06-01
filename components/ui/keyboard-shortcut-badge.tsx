@@ -114,9 +114,9 @@ export function getShortcutKeys(action: keyof typeof SHORTCUT_KEYS): string[] {
   
   switch (action) {
     case 'SAVE':
-      return isMac ? SHORTCUT_KEYS.SAVE : SHORTCUT_KEYS.SAVE_WIN;
+      return isMac ? [...SHORTCUT_KEYS.SAVE] : [...SHORTCUT_KEYS.SAVE_WIN];
     default:
-      return SHORTCUT_KEYS[action];
+      return [...SHORTCUT_KEYS[action]];
   }
 }
 
