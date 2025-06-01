@@ -319,9 +319,13 @@ export default function AppDetailPage() {
         "items-center justify-center"
       )}>
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-stone-400 mx-auto mb-4 animate-spin" />
+          <Loader2 className={cn(
+            "w-8 h-8 mx-auto mb-4 animate-spin",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />
           <p className={cn(
-            "text-stone-500 font-serif"
+            "font-serif",
+            isDark ? "text-stone-400" : "text-stone-500"
           )}>
             {isInitializing ? '正在加载应用...' : 
              isValidating ? '正在验证应用配置...' : 

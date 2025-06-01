@@ -280,7 +280,10 @@ export default function AppDetailPage() {
         "items-center justify-center"
       )}>
         <div className="text-center">
-          <Blocks className="w-16 h-16 text-stone-400 mx-auto mb-4" />
+          <Blocks className={cn(
+            "w-16 h-16 mx-auto mb-4",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />
           <h2 className={cn(
             "text-xl font-semibold mb-2 font-serif",
             isDark ? "text-stone-300" : "text-stone-700"
@@ -288,7 +291,8 @@ export default function AppDetailPage() {
             应用加载失败
           </h2>
           <p className={cn(
-            "text-stone-500 mb-4 font-serif"
+            "mb-4 font-serif",
+            isDark ? "text-stone-400" : "text-stone-500"
           )}>
             {initError}
           </p>
@@ -319,9 +323,13 @@ export default function AppDetailPage() {
         "items-center justify-center"
       )}>
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-stone-400 mx-auto mb-4 animate-spin" />
+          <Loader2 className={cn(
+            "w-8 h-8 mx-auto mb-4 animate-spin",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />
           <p className={cn(
-            "text-stone-500 font-serif"
+            "font-serif",
+            isDark ? "text-stone-400" : "text-stone-500"
           )}>
             {isInitializing ? '正在加载应用...' : 
              isValidating ? '正在验证应用配置...' : 
