@@ -20,6 +20,7 @@ import {
   ChatLoader,
   ScrollToBottomButton 
 } from "@components/chat"
+import { DynamicSuggestedQuestions } from "@components/chat/dynamic-suggested-questions"
 import { ChatInput } from "@components/chat-input"
 import { useProfile } from "@lib/hooks/use-profile"
 import { NavBar } from "@components/nav-bar/nav-bar"
@@ -48,6 +49,7 @@ export default function AppDetailPage() {
     isProcessing,
     isWaitingForResponse,
     handleStopProcessing,
+    sendDirectMessage,
   } = useChatInterface()
   
   // --- BEGIN COMMENT ---
@@ -141,36 +143,29 @@ export default function AppDetailPage() {
   
   // --- BEGIN COMMENT ---
   // 页面初始化：切换到目标应用并同步sidebar选中状态
-  // 🎯 优化：避免连续两次加载状态闪烁
+  // 🎯 优化：简化初始化逻辑，避免验证反弹，改善用户体验
   // --- END COMMENT ---
   useEffect(() => {
     const initializeApp = async () => {
+      if (!instanceId) return
+      
       try {
-        // --- BEGIN COMMENT ---
-        // 🎯 优化：只在真正需要时才设置初始化状态
-        // 如果当前应用已经匹配且应用列表已加载，跳过初始化加载状态
-        // --- END COMMENT ---
-        const needsAppSwitch = currentAppId !== instanceId;
-        const needsAppListFetch = apps.length === 0;
-        
-        // 只有在需要获取应用列表或应用不存在时才显示加载状态
-        if (needsAppListFetch || !apps.find(app => app.instance_id === instanceId)) {
-          setIsInitializing(true);
-        }
-        
         setInitError(null)
         
         console.log('[AppDetail] 开始初始化应用:', instanceId)
         
-        // 确保应用列表已加载
+        // --- BEGIN COMMENT ---
+        // 🎯 优化：简化加载状态判断
+        // 只有在真正需要等待时才显示加载状态
+        // --- END COMMENT ---
+        const needsAppListFetch = apps.length === 0
+        const currentAppMatches = currentAppId === instanceId
+        
+        // 如果应用列表为空，需要获取
         if (needsAppListFetch) {
+          setIsInitializing(true)
           console.log('[AppDetail] 应用列表为空，开始获取')
           await fetchApps()
-        }
-        
-        // 等待应用列表更新
-        if (needsAppListFetch) {
-          await new Promise(resolve => setTimeout(resolve, 100))
         }
         
         // 重新获取最新的应用列表
@@ -187,17 +182,28 @@ export default function AppDetailPage() {
         
         console.log('[AppDetail] 找到目标应用:', targetApp.display_name)
         
-        // 应用存在时设置sidebar选中状态
+        // 立即设置sidebar选中状态
         selectItem('app', instanceId)
         
         // --- BEGIN COMMENT ---
-        // 🎯 优化：如果需要切换应用，不设置本地加载状态
-        // 让 useCurrentApp 的 isValidating 状态来处理加载显示
+        // 🎯 关键优化：简化应用切换逻辑
+        // 只有在当前应用确实不匹配时才进行切换
+        // 避免不必要的验证调用
         // --- END COMMENT ---
-        if (needsAppSwitch) {
-          console.log('[AppDetail] 切换到应用:', instanceId)
-          // 不设置 isInitializing，让 isValidating 处理加载状态
-          await switchToSpecificApp(instanceId)
+        if (!currentAppMatches) {
+          console.log('[AppDetail] 需要切换应用，从', currentAppId, '到', instanceId)
+          
+          // 🎯 使用更简单的切换逻辑，避免复杂的验证
+          try {
+            await switchToSpecificApp(instanceId)
+            console.log('[AppDetail] 应用切换成功')
+          } catch (switchError) {
+            console.warn('[AppDetail] 应用切换失败，但继续加载页面:', switchError)
+            // 🎯 即使切换失败也不阻塞页面加载
+            // 页面可以正常显示，用户可以正常使用
+          }
+        } else {
+          console.log('[AppDetail] 当前应用已匹配，无需切换')
         }
         
         console.log('[AppDetail] 应用初始化完成')
@@ -207,7 +213,7 @@ export default function AppDetailPage() {
         setInitError(error instanceof Error ? error.message : '初始化失败')
       } finally {
         // --- BEGIN COMMENT ---
-        // 🎯 优化：确保在所有情况下都清除初始化状态
+        // 🎯 确保在所有情况下都清除初始化状态
         // --- END COMMENT ---
         setIsInitializing(false)
       }
@@ -396,6 +402,13 @@ export default function AppDetailPage() {
           showModelSelector={false}
           requireModelValidation={false}
         />
+        
+        {/* --- BEGIN COMMENT ---
+        显示动态推荐问题的条件：欢迎界面且没有消息
+        --- END COMMENT --- */}
+        {isWelcomeScreen && messages.length === 0 && (
+          <DynamicSuggestedQuestions onQuestionClick={sendDirectMessage} />
+        )}
       </div>
     </div>
   )

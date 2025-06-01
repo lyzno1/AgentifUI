@@ -4,6 +4,7 @@ import React from "react";
 import { cn } from "@lib/utils";
 import { CodeIcon } from "lucide-react";
 import { CopyButton } from "./copy-button";
+import { ExportButton } from "./export-button";
 
 interface CodeBlockHeaderProps {
   language: string | null;
@@ -46,12 +47,25 @@ export const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = React.memo(({
         </span>
       </div>
       
-      {/* 使用通用复制按钮组件 */}
+      {/* --- BEGIN COMMENT ---
+      🎯 按钮组：导出按钮在左，复制按钮在右
+      使用flex布局，间距适中，保持视觉平衡
+      --- END COMMENT --- */}
       {codeContent && (
-        <CopyButton 
-          content={codeContent} 
-          tooltipPlacement="bottom" 
-        />
+        <div className="flex items-center gap-1">
+          {/* 导出按钮 */}
+          <ExportButton 
+            content={codeContent}
+            language={language}
+            tooltipPlacement="bottom" 
+          />
+          
+          {/* 复制按钮 */}
+          <CopyButton 
+            content={codeContent} 
+            tooltipPlacement="bottom" 
+          />
+        </div>
       )}
     </div>
   );
