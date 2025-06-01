@@ -25,11 +25,14 @@ import {
   Zap,
   Loader2,
   Sliders,
-  Star
+  Star,
+  RefreshCw
 } from 'lucide-react';
 import { DifyAppTypeSelector } from '@components/admin/api-config/dify-app-type-selector';
 import { validateDifyFormData } from '@lib/services/dify/validation';
 import type { DifyAppType } from '@lib/types/dify-app-types';
+import { getDifyAppParameters } from '@lib/services/dify/app-service';
+import type { DifyAppParametersResponse } from '@lib/services/dify/types';
 
 interface ApiConfigPageProps {
   selectedInstance?: ServiceInstance | null
@@ -117,37 +120,63 @@ const InstanceForm = ({
     config: {
       api_url: instance?.config?.api_url || '',
       app_metadata: {
-        app_type: instance?.config?.app_metadata?.app_type || 'model',
-        dify_apptype: instance?.config?.app_metadata?.dify_apptype || 'chatbot',
+        app_type: (instance?.config?.app_metadata?.app_type as 'model' | 'marketplace') || 'model',
+        dify_apptype: (instance?.config?.app_metadata?.dify_apptype as 'chatbot' | 'agent' | 'chatflow' | 'workflow' | 'text-generation') || 'chatbot',
         tags: instance?.config?.app_metadata?.tags || [],
       },
       dify_parameters: instance?.config?.dify_parameters || {}
     }
   });
+  
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：基准数据状态，用于正确判断是否有未保存的更改
+  // 当同步参数或重置表单时，需要更新这个基准数据
+  // --- END COMMENT ---
+  const [baselineData, setBaselineData] = useState({
+    instance_id: instance?.instance_id || '',
+    display_name: instance?.display_name || '',
+    description: instance?.description || '',
+    api_path: instance?.api_path || '',
+    apiKey: '',
+    config: {
+      api_url: instance?.config?.api_url || '',
+      app_metadata: {
+        app_type: (instance?.config?.app_metadata?.app_type as 'model' | 'marketplace') || 'model',
+        dify_apptype: (instance?.config?.app_metadata?.dify_apptype as 'chatbot' | 'agent' | 'chatflow' | 'workflow' | 'text-generation') || 'chatbot',
+        tags: instance?.config?.app_metadata?.tags || [],
+      },
+      dify_parameters: instance?.config?.dify_parameters || {}
+    }
+  });
+  
   const [showApiKey, setShowApiKey] = useState(false);
   const [showDifyPanel, setShowDifyPanel] = useState(false);
   const [setAsDefault, setSetAsDefault] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   useEffect(() => {
+    const newData = {
+      instance_id: instance?.instance_id || '',
+      display_name: instance?.display_name || '',
+      description: instance?.description || '',
+      api_path: instance?.api_path || '',
+      apiKey: '',
+      config: {
+        api_url: instance?.config?.api_url || '',
+        app_metadata: {
+          app_type: (instance?.config?.app_metadata?.app_type as 'model' | 'marketplace') || 'model',
+          dify_apptype: (instance?.config?.app_metadata?.dify_apptype as 'chatbot' | 'agent' | 'chatflow' | 'workflow' | 'text-generation') || 'chatbot',
+          tags: instance?.config?.app_metadata?.tags || [],
+        },
+        dify_parameters: instance?.config?.dify_parameters || {}
+      }
+    };
+    
     if (instance) {
-      setFormData({
-        instance_id: instance.instance_id || '',
-        display_name: instance.display_name || '',
-        description: instance.description || '',
-        api_path: instance.api_path || '',
-        apiKey: '',
-        config: {
-          api_url: instance.config?.api_url || '',
-          app_metadata: {
-            app_type: instance.config?.app_metadata?.app_type || 'model',
-            dify_apptype: instance.config?.app_metadata?.dify_apptype || 'chatbot',
-            tags: instance.config?.app_metadata?.tags || [],
-          },
-          dify_parameters: instance.config?.dify_parameters || {}
-        }
-      });
+      setFormData(newData);
+      setBaselineData(newData);
     } else {
-      setFormData({
+      const emptyData = {
         instance_id: '',
         display_name: '',
         description: '',
@@ -156,13 +185,15 @@ const InstanceForm = ({
         config: {
           api_url: '',
           app_metadata: {
-            app_type: 'model',
-            dify_apptype: 'chatbot',
+            app_type: 'model' as const,
+            dify_apptype: 'chatbot' as const,
             tags: [],
           },
           dify_parameters: {}
         }
-      });
+      };
+      setFormData(emptyData);
+      setBaselineData(emptyData);
     }
   }, [instance]);
   
@@ -206,9 +237,129 @@ const InstanceForm = ({
         dify_parameters: difyConfig
       }
     }));
+    
+    // --- BEGIN COMMENT ---
+    // 🎯 修复：Dify参数保存后也更新基准数据
+    // --- END COMMENT ---
+    setBaselineData(prev => ({
+      ...prev,
+      config: {
+        ...prev.config,
+        dify_parameters: difyConfig
+      }
+    }));
+    
     setShowDifyPanel(false);
   };
-  
+
+  // --- BEGIN COMMENT ---
+  // 🎯 修复：智能同步参数逻辑
+  // 编辑模式：优先使用数据库配置，失败时fallback到表单配置
+  // 添加模式：直接使用表单配置
+  // --- END COMMENT ---
+  const handleSyncFromDify = async () => {
+    if (!formData.instance_id) {
+      showFeedback('请先填写应用ID', 'warning');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      let difyParams: DifyAppParametersResponse;
+      
+      if (isEditing) {
+        // 编辑模式：优先使用数据库配置
+        try {
+          console.log('[同步参数] 编辑模式：尝试使用数据库配置');
+          difyParams = await getDifyAppParameters(formData.instance_id);
+        } catch (dbError) {
+          console.log('[同步参数] 数据库配置失败，尝试使用表单配置:', dbError);
+          
+          // 检查表单配置是否完整
+          if (!formData.config.api_url || !formData.apiKey) {
+            throw new Error('数据库配置失效，且表单中的API URL或API Key为空，无法同步参数');
+          }
+          
+          // 使用表单配置作为fallback
+          const { getDifyAppParametersWithConfig } = await import('@lib/services/dify');
+          difyParams = await getDifyAppParametersWithConfig(formData.instance_id, {
+            apiUrl: formData.config.api_url,
+            apiKey: formData.apiKey
+          });
+        }
+      } else {
+        // 添加模式：直接使用表单配置
+        console.log('[同步参数] 添加模式：使用表单配置');
+        
+        // 检查表单配置是否完整
+        if (!formData.config.api_url || !formData.apiKey) {
+          showFeedback('请先填写API URL和API Key', 'warning');
+          return;
+        }
+        
+        // 直接使用表单配置
+        const { getDifyAppParametersWithConfig } = await import('@lib/services/dify');
+        difyParams = await getDifyAppParametersWithConfig(formData.instance_id, {
+          apiUrl: formData.config.api_url,
+          apiKey: formData.apiKey
+        });
+      }
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 修复：正确处理 file_upload 字段的同步
+      // Dify API 只返回实际启用的文件类型，不要强制设置默认值
+      // --- END COMMENT ---
+      const simplifiedParams: DifyParametersSimplifiedConfig = {
+        opening_statement: difyParams.opening_statement || '',
+        suggested_questions: difyParams.suggested_questions || [],
+        suggested_questions_after_answer: difyParams.suggested_questions_after_answer || { enabled: false },
+        speech_to_text: difyParams.speech_to_text || { enabled: false },
+        text_to_speech: difyParams.text_to_speech || { enabled: false },
+        retriever_resource: difyParams.retriever_resource || { enabled: false },
+        annotation_reply: difyParams.annotation_reply || { enabled: false },
+        user_input_form: difyParams.user_input_form || [],
+        // --- 修复：只有当 Dify 返回 file_upload 数据时才设置，否则保持 undefined ---
+        file_upload: difyParams.file_upload || undefined,
+        system_parameters: difyParams.system_parameters || {
+          file_size_limit: 15,
+          image_file_size_limit: 10,
+          audio_file_size_limit: 50,
+          video_file_size_limit: 100
+        }
+      };
+      
+      // 更新表单数据
+      setFormData(prev => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          dify_parameters: simplifiedParams
+        }
+      }));
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 修复：同步参数成功后更新基准数据
+      // 避免显示错误的"有未保存的更改"提示
+      // --- END COMMENT ---
+      setBaselineData(prev => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          dify_parameters: simplifiedParams
+        }
+      }));
+      
+      showFeedback('成功从 Dify API 同步参数配置！', 'success');
+      
+    } catch (error) {
+      console.error('[同步参数] 同步失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '同步参数失败';
+      showFeedback(`同步失败: ${errorMessage}`, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <>
       <div className={cn(
@@ -216,12 +367,33 @@ const InstanceForm = ({
         isDark ? "bg-stone-800 border-stone-600" : "bg-white border-stone-200"
       )}>
         <div className="flex items-center justify-between mb-6">
-          <h3 className={cn(
-            "text-lg font-bold font-serif",
-            isDark ? "text-stone-100" : "text-stone-900"
-          )}>
-            {isEditing ? '编辑应用实例' : '添加应用实例'}
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className={cn(
+              "text-lg font-bold font-serif",
+              isDark ? "text-stone-100" : "text-stone-900"
+            )}>
+              {isEditing ? '编辑应用实例' : '添加应用实例'}
+            </h3>
+            
+            {/* --- BEGIN COMMENT --- */}
+            {/* 🎯 新增：未保存更改提示 */}
+            {/* --- END COMMENT --- */}
+            {(JSON.stringify(formData) !== JSON.stringify(baselineData) || formData.apiKey) && (
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium font-serif",
+                "border border-dashed animate-pulse",
+                isDark 
+                  ? "bg-amber-900/20 border-amber-700/40 text-amber-300" 
+                  : "bg-amber-50 border-amber-300/60 text-amber-700"
+              )}>
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  isDark ? "bg-amber-400" : "bg-amber-500"
+                )} />
+                有未保存的更改
+              </div>
+            )}
+          </div>
           
           <div className="flex items-center gap-3">
             {/* 设为默认应用按钮 */}
@@ -304,21 +476,58 @@ const InstanceForm = ({
               </button>
             )}
             
-            {/* Dify参数配置按钮 */}
-            <button
-              type="button"
-              onClick={() => setShowDifyPanel(true)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg transition-all cursor-pointer",
-                "border border-dashed hover:scale-105",
-                isDark 
-                  ? "border-stone-500/50 bg-stone-600/10 hover:bg-stone-600/20 text-stone-400" 
-                  : "border-stone-500/50 bg-stone-50 hover:bg-stone-100 text-stone-600"
-              )}
-            >
-              <Sliders className="h-4 w-4" />
-              <span className="text-sm font-medium font-serif">Dify 参数配置</span>
-            </button>
+            {/* Dify参数配置按钮组 */}
+            <div className={cn(
+              "flex gap-2 p-2 rounded-lg",
+              isDark 
+                ? "bg-stone-800/50" 
+                : "bg-stone-100/50"
+            )}>
+              <button
+                type="button"
+                onClick={() => setShowDifyPanel(true)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-all cursor-pointer",
+                  "hover:scale-105",
+                  isDark 
+                    ? "bg-stone-700/50 hover:bg-stone-700 text-stone-300 hover:text-stone-200" 
+                    : "bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-800 border border-stone-200"
+                )}
+              >
+                <Sliders className="h-4 w-4" />
+                <span className="text-sm font-medium font-serif">Dify 参数配置</span>
+              </button>
+              
+              {/* --- BEGIN COMMENT --- */}
+              {/* 🎯 新增：从 Dify API 同步参数按钮 */}
+              {/* --- END COMMENT --- */}
+              <button
+                type="button"
+                onClick={handleSyncFromDify}
+                disabled={isSyncing || !formData.instance_id}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-pointer",
+                  "hover:scale-105",
+                  isSyncing || !formData.instance_id
+                    ? isDark
+                      ? "bg-stone-800/50 text-stone-500 cursor-not-allowed"
+                      : "bg-stone-200/50 text-stone-400 cursor-not-allowed border border-stone-200"
+                    : isDark
+                      ? "bg-stone-700/50 hover:bg-stone-700 text-stone-300 hover:text-stone-200"
+                      : "bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-800 border border-stone-200"
+                )}
+                title={!formData.instance_id ? "请先填写应用ID" : "从 Dify API 同步参数"}
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span className="text-sm font-medium font-serif">
+                  {isSyncing ? '同步中...' : '同步参数'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
         

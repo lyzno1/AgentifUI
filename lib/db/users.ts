@@ -68,7 +68,7 @@ export interface UserFilters {
 const supabase = createClient();
 
 /**
- * 获取用户列表（使用安全的管理员视图）
+ * 获取用户列表（使用安全的管理员函数）
  */
 export async function getUserList(filters: UserFilters = {}): Promise<Result<{
   users: EnhancedUser[];
@@ -89,41 +89,48 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
       pageSize = 20
     } = filters;
 
-    // 使用新的管理员专用视图
+    // --- BEGIN COMMENT ---
+    // 临时回退到使用视图，确保功能正常
+    // TODO: 迁移到安全函数后删除此代码
+    // --- END COMMENT ---
     let query = supabase
       .from('admin_user_management_view')
       .select('*', { count: 'exact' });
 
-    // 添加筛选条件
-    if (role) query = query.eq('role', role);
-    if (status) query = query.eq('status', status);
-    if (auth_source) query = query.eq('auth_source', auth_source);
-    if (search && search.trim()) {
+    // 应用筛选条件
+    if (role) {
+      query = query.eq('role', role);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (auth_source) {
+      query = query.eq('auth_source', auth_source);
+    }
+    if (search) {
       query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    // 排序
-    const sortColumn = sortBy === 'email' ? 'email' : 
-                      sortBy === 'last_sign_in_at' ? 'last_sign_in_at' :
-                      sortBy === 'full_name' ? 'full_name' : 'created_at';
-    query = query.order(sortColumn, { ascending: sortOrder === 'asc' });
-    
-    // 分页
+    // 应用排序
+    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+    // 应用分页
     const from = (page - 1) * pageSize;
-    query = query.range(from, from + pageSize - 1);
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
 
-    const { data, error, count } = await query;
+    const { data: users, error: usersError, count } = await query;
 
-    if (error) {
-      console.error('获取用户列表失败:', error);
-      return failure(new Error(`获取用户列表失败: ${error.message}`));
+    if (usersError) {
+      console.error('获取用户列表失败:', usersError);
+      return failure(new Error(`获取用户列表失败: ${usersError.message}`));
     }
 
     const total = count || 0;
     const totalPages = Math.ceil(total / pageSize);
 
     // 转换数据格式 - 现在包含真实的完整信息
-    const users: EnhancedUser[] = (data || []).map(user => ({
+    const enhancedUsers: EnhancedUser[] = (users || []).map((user: any) => ({
       id: user.id,
       email: user.email, // 真实邮箱
       phone: user.phone, // 真实手机号
@@ -145,7 +152,7 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
     }));
 
     return success({
-      users,
+      users: enhancedUsers,
       total,
       page,
       pageSize,

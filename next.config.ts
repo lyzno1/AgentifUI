@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // --- BEGIN COMMENT ---
-// 配置 Next.js，移除自定义 webpack 配置，使用环境变量控制组件
+// 配置 Next.js，使用传统 webpack 避免 Turbopack 字体加载问题
 // --- END COMMENT ---
 
 const nextConfig: NextConfig = {
@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false, // 设为 true 可同时忽略 TS 错误
   },
   
-  // 移除了 webpack 配置，现在用环境变量控制组件
+  // 使用传统 webpack，字体加载正常
 };
 
 export default nextConfig;

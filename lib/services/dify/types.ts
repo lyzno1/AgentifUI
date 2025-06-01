@@ -484,9 +484,50 @@ export interface DifyImageUploadConfig {
   transfer_methods: ('remote_url' | 'local_file')[]; // 传递方式列表，必选一个
 }
 
+/** 文档上传配置 */
+export interface DifyDocumentUploadConfig {
+  enabled: boolean; // 是否开启
+  number_limits: number; // 文档数量限制
+  transfer_methods: ('remote_url' | 'local_file')[]; // 传递方式列表
+}
+
+/** 音频上传配置 */
+export interface DifyAudioUploadConfig {
+  enabled: boolean; // 是否开启
+  number_limits: number; // 音频数量限制
+  transfer_methods: ('remote_url' | 'local_file')[]; // 传递方式列表
+}
+
+/** 视频上传配置 */
+export interface DifyVideoUploadConfig {
+  enabled: boolean; // 是否开启
+  number_limits: number; // 视频数量限制
+  transfer_methods: ('remote_url' | 'local_file')[]; // 传递方式列表
+}
+
+/** 其他文件类型上传配置 */
+export interface DifyOtherUploadConfig {
+  enabled: boolean; // 是否开启
+  number_limits: number; // 文件数量限制
+  transfer_methods: ('remote_url' | 'local_file')[]; // 传递方式列表
+  custom_extensions?: string[]; // 自定义文件扩展名列表
+}
+
 /** 文件上传配置 */
 export interface DifyFileUploadConfig {
-  image: DifyImageUploadConfig; // 图片设置，当前仅支持图片类型：png, jpg, jpeg, webp, gif
+  enabled?: boolean; // 顶层的文件上传总开关
+  allowed_file_types?: string[]; // 允许的文件类型列表
+  allowed_file_extensions?: string[]; // 允许的文件扩展名列表
+  allowed_file_upload_methods?: string[]; // 允许的上传方式
+  max_file_size_mb?: number; // 最大文件大小(MB)
+  number_limits?: number; // 文件数量限制（可能的字段名1）
+  max_files?: number; // 文件数量限制（可能的字段名2）
+  file_count_limit?: number; // 文件数量限制（可能的字段名3）
+  image?: DifyImageUploadConfig; // 图片设置
+  document?: DifyDocumentUploadConfig; // 文档设置  
+  audio?: DifyAudioUploadConfig; // 音频设置
+  video?: DifyVideoUploadConfig; // 视频设置
+  other?: DifyOtherUploadConfig; // 其他文件类型设置
 }
 
 /** 系统参数配置 */
@@ -507,6 +548,14 @@ export interface DifySpeechToText {
   enabled: boolean; // 是否开启
 }
 
+/** 文本转语音配置 */
+export interface DifyTextToSpeech {
+  enabled: boolean; // 是否开启
+  voice?: string; // 语音类型
+  language?: string; // 语言
+  autoPlay?: 'enabled' | 'disabled'; // 自动播放：enabled 开启, disabled 关闭
+}
+
 /** 引用和归属配置 */
 export interface DifyRetrieverResourceConfig {
   enabled: boolean; // 是否开启
@@ -523,6 +572,7 @@ export interface DifyAppParametersResponse {
   suggested_questions: string[]; // 开场推荐问题列表
   suggested_questions_after_answer: DifySuggestedQuestionsAfterAnswer; // 启用回答后给出推荐问题
   speech_to_text: DifySpeechToText; // 语音转文本
+  text_to_speech: DifyTextToSpeech; // 文本转语音
   retriever_resource: DifyRetrieverResourceConfig; // 引用和归属
   annotation_reply: DifyAnnotationReply; // 标记回复
   user_input_form: DifyUserInputFormItem[]; // 用户输入表单配置

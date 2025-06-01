@@ -21,7 +21,7 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   const pathname = usePathname();
   const params = useParams();
   const { currentConversationId } = useChatStore();
-  const { isExpanded, isLocked, isHovering } = useSidebarStore();
+  const { isExpanded, isLocked, isHovering, selectItem } = useSidebarStore();
   const { conversations, refresh } = useCombinedConversations();
   const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -283,8 +283,14 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
           displayName: currentApp.display_name || currentApp.instance_id,
           description: appMetadata?.brief_description || currentApp.description,
           iconUrl: appMetadata?.icon_url,
-          appType: appMetadata?.app_type || 'marketplace'
+          appType: appMetadata?.app_type || 'marketplace',
+          dify_apptype: appMetadata?.dify_apptype
         });
+        
+        // --- BEGIN COMMENT ---
+        // 收藏成功后，更新sidebar的选中状态，确保常用应用列表中显示为选中
+        // --- END COMMENT ---
+        selectItem('app', instanceId, true);
       }
     } catch (error) {
       console.error('收藏操作失败:', error);
