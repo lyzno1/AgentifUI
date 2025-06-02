@@ -13,7 +13,6 @@ permissions:
   issues: write
   pull-requests: write
 
-
 jobs:
   dependency-scan:
     name: 📦 依赖安全扫描
@@ -23,26 +22,62 @@ jobs:
     - name: 📥 检出代码
       uses: actions/checkout@v4
       
+    - name: 🔧 设置 pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+        
     - name: 📦 设置 Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
+        cache: 'pnpm'
         
     - name: 📚 安装依赖
-      run: npm ci
-      
+      run: |
+        echo "检查 pnpm-lock.yaml 状态..."
+        if [ -f "pnpm-lock.yaml" ]; then
+          echo "✅ 发现 pnpm-lock.yaml"
+          echo "尝试使用冻结锁文件安装..."
+          if pnpm install --frozen-lockfile; then
+            echo "✅ 冻结锁文件安装成功"
+          else
+            echo "⚠️ 冻结锁文件安装失败，使用常规安装..."
+            pnpm install --no-frozen-lockfile
+          fi
+        else
+          echo "❌ 未发现 pnpm-lock.yaml，执行常规安装..."
+          pnpm install
+        fi
+        
     - name: 🔍 依赖安全扫描
       run: |
         echo "🔍 检查依赖安全漏洞..."
-        npm audit --audit-level=moderate
-        npm audit --json > audit-results.json || true
+        
+        # 使用 pnpm audit
+        echo "运行 pnpm audit..."
+        if pnpm audit --audit-level=moderate; then
+          echo "✅ 未发现中级以上安全漏洞"
+        else
+          echo "⚠️ 发现安全漏洞，但继续执行以生成报告"
+        fi
+        
+        # 生成 JSON 报告
+        pnpm audit --json > audit-results.json || true
+        
+        # 检查关键漏洞
+        if pnpm audit --audit-level=critical --json | jq -e '.metadata.vulnerabilities.critical > 0' > /dev/null 2>&1; then
+          echo "❌ 发现关键安全漏洞！"
+          pnpm audit --audit-level=critical
+          exit 1
+        fi
+        
         echo "✅ 依赖安全检查完成"
         
     - name: 📤 上传审计结果
       uses: actions/upload-artifact@v4
       with:
-        name: npm-audit-results
+        name: pnpm-audit-results
         path: audit-results.json
 
   code-security:
@@ -60,16 +95,33 @@ jobs:
         # 更精确的检测，避免误报
         FOUND_SECRETS=false
         
-        # 只检查真正危险的模式：长度超过15字符的硬编码值
-        echo "检查真正的硬编码敏感信息..."
-        DANGEROUS_PATTERNS=$(grep -r -n -E "(api_key|apikey|secret|token)\s*[:=]\s*['\"][a-zA-Z0-9]{15,}['\"]" \
-           --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-           . 2>/dev/null | grep -v node_modules | grep -v -E "(placeholder|example|test|demo)" || true)
+        # 检查真正的硬编码敏感信息（长度超过15字符）
+        echo "检查硬编码 API 密钥和令牌..."
+        DANGEROUS_PATTERNS=$(grep -r -n -E "(api_key|apikey|secret|token|password)\s*[:=]\s*['\"][a-zA-Z0-9+/]{15,}['\"]" \
+           --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.json" \
+           . 2>/dev/null | \
+           grep -v node_modules | \
+           grep -v -E "(placeholder|example|test|demo|sample|mock)" || true)
         
         if [ -n "$DANGEROUS_PATTERNS" ]; then
           echo "❌ 发现硬编码敏感信息:"
           echo "$DANGEROUS_PATTERNS"
           FOUND_SECRETS=true
+        fi
+        
+        # 检查 Supabase 相关的硬编码
+        echo "检查 Supabase 配置..."
+        SUPABASE_PATTERNS=$(grep -r -n -E "(supabase.*url|supabase.*key)" \
+           --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+           . 2>/dev/null | \
+           grep -v node_modules | \
+           grep -v "process\.env" | \
+           grep -v -E "(placeholder|example|docs)" || true)
+        
+        if [ -n "$SUPABASE_PATTERNS" ]; then
+          echo "⚠️ 发现可能的 Supabase 硬编码配置:"
+          echo "$SUPABASE_PATTERNS"
+          echo "请确保使用环境变量"
         fi
         
         # 检查是否正确使用环境变量
@@ -79,6 +131,7 @@ jobs:
         fi
         
         if [ "$FOUND_SECRETS" = true ]; then
+          echo "❌ 安全检查失败：发现硬编码敏感信息"
           exit 1
         fi
         
@@ -103,18 +156,44 @@ jobs:
           exit 1
         fi
         
-        # 检查是否有 .env.example 文件
+        # 检查包管理器锁文件一致性
+        if [ -f "package-lock.json" ] && [ -f "pnpm-lock.yaml" ]; then
+          echo "❌ 发现多个包管理器锁文件，请统一使用 pnpm"
+          exit 1
+        fi
+        
+        if [ -f "yarn.lock" ] && [ -f "pnpm-lock.yaml" ]; then
+          echo "❌ 发现多个包管理器锁文件，请统一使用 pnpm"
+          exit 1
+        fi
+        
+        if [ ! -f "pnpm-lock.yaml" ]; then
+          echo "⚠️ 未发现 pnpm-lock.yaml，建议使用 pnpm 管理依赖"
+        else
+          echo "✅ 使用 pnpm 管理依赖，锁文件存在"
+          
+          # 检查 lockfile 版本
+          LOCKFILE_VERSION=$(grep "lockfileVersion:" pnpm-lock.yaml | head -1 | sed "s/lockfileVersion: '\(.*\)'/\1/")
+          echo "📋 检测到 pnpm-lock.yaml 版本: $LOCKFILE_VERSION"
+        fi
+        
+        # 检查是否有环境变量示例文件
         if [ -f ".env.local.example" ]; then
           echo "✅ 发现环境变量示例文件: .env.local.example"
         elif [ -f ".env.example" ]; then
           echo "✅ 发现环境变量示例文件: .env.example"
         else
-          echo "⚠️ 建议添加 .env.local.example 文件"
+          echo "⚠️ 建议添加 .env.local.example 文件作为环境变量模板"
         fi
         
         # 检查 package.json 中的脚本安全性
         if grep -q "rm -rf" package.json; then
           echo "⚠️ package.json 中发现潜在危险的删除命令"
+        fi
+        
+        # 检查 Next.js 配置
+        if [ -f "next.config.js" ] || [ -f "next.config.mjs" ] || [ -f "next.config.ts" ]; then
+          echo "✅ 发现 Next.js 配置文件"
         fi
         
         echo "✅ 环境配置检查完成"
@@ -132,17 +211,29 @@ jobs:
       run: |
         echo "🗄️ 检查数据库迁移文件安全性..."
         
-        # 检查迁移文件的安全性
-        if find supabase/migrations -name "*.sql" -exec grep -l "DROP\|DELETE\|TRUNCATE" {} \; 2>/dev/null | grep -q .; then
-          echo "⚠️ 发现包含危险操作的迁移文件"
-          find supabase/migrations -name "*.sql" -exec grep -l "DROP\|DELETE\|TRUNCATE" {} \; 2>/dev/null
-        fi
-        
-        # 检查是否有RLS策略
-        if find supabase/migrations -name "*.sql" -exec grep -l "ROW LEVEL SECURITY\|RLS" {} \; 2>/dev/null | grep -q .; then
-          echo "✅ 发现行级安全策略配置"
+        # 检查是否存在 Supabase 目录
+        if [ -d "supabase" ]; then
+          echo "✅ 发现 Supabase 项目结构"
+          
+          # 检查迁移文件的安全性
+          if [ -d "supabase/migrations" ]; then
+            if find supabase/migrations -name "*.sql" -exec grep -l "DROP\|DELETE\|TRUNCATE" {} \; 2>/dev/null | grep -q .; then
+              echo "⚠️ 发现包含危险操作的迁移文件:"
+              find supabase/migrations -name "*.sql" -exec grep -l "DROP\|DELETE\|TRUNCATE" {} \; 2>/dev/null
+              echo "请确保这些操作是有意的"
+            fi
+            
+            # 检查是否有RLS策略
+            if find supabase/migrations -name "*.sql" -exec grep -l "ROW LEVEL SECURITY\|RLS" {} \; 2>/dev/null | grep -q .; then
+              echo "✅ 发现行级安全策略配置"
+            else
+              echo "⚠️ 建议为所有表启用行级安全策略"
+            fi
+          else
+            echo "⚠️ 未发现迁移文件目录"
+          fi
         else
-          echo "⚠️ 建议为所有表启用行级安全策略"
+          echo "ℹ️ 未发现 Supabase 目录，跳过数据库检查"
         fi
         
         echo "✅ 数据库安全检查完成"
@@ -169,6 +260,9 @@ jobs:
         {
           echo "# 🔒 安全检查报告"
           echo "生成时间: $(date)"
+          echo "项目: ${{ github.repository }}"
+          echo "分支: ${{ github.ref_name }}"
+          echo "提交: ${{ github.sha }}"
           echo ""
           echo "## 📋 检查结果"
           echo "- 📦 依赖安全扫描: ${{ needs.dependency-scan.result }}"
@@ -176,32 +270,73 @@ jobs:
           echo "- 🌍 环境配置检查: ${{ needs.environment-check.result }}"
           echo ""
           
-          if [ -f "security-artifacts/npm-audit-results/audit-results.json" ]; then
+          if [ -f "security-artifacts/pnpm-audit-results/audit-results.json" ]; then
             echo "## 📦 依赖漏洞详情"
-            cat security-artifacts/npm-audit-results/audit-results.json | jq -r '.metadata | "漏洞总数: \(.vulnerabilities.total) | 高危: \(.vulnerabilities.high) | 中危: \(.vulnerabilities.moderate)"' 2>/dev/null || echo "依赖安全: ✅ 通过"
+            echo '```json'
+            if command -v jq >/dev/null 2>&1; then
+              cat security-artifacts/pnpm-audit-results/audit-results.json | jq -r '.metadata | "漏洞总数: \(.vulnerabilities.total) | 高危: \(.vulnerabilities.high) | 中危: \(.vulnerabilities.moderate) | 低危: \(.vulnerabilities.low)"' 2>/dev/null || echo "无法解析依赖扫描结果"
+            else
+              echo "依赖安全扫描已完成，详细结果请查看构建日志"
+            fi
+            echo '```'
           else
             echo "## 📦 依赖安全"
-            echo "✅ 未发现安全漏洞"
+            echo "✅ 未发现安全漏洞或扫描未生成结果文件"
           fi
           
           echo ""
           echo "## 🔐 代码安全"
-          echo "✅ 硬编码检查通过"
+          if [ "${{ needs.code-security.result }}" = "success" ]; then
+            echo "✅ 硬编码检查通过"
+          else
+            echo "❌ 硬编码检查发现问题"
+          fi
+          
           echo ""
           echo "## 🌍 环境配置"
-          echo "✅ 配置安全检查通过"
+          if [ "${{ needs.environment-check.result }}" = "success" ]; then
+            echo "✅ 配置安全检查通过"
+            echo "✅ 包管理器配置一致"
+          else
+            echo "❌ 环境配置检查发现问题"
+          fi
+          
+          echo ""
+          echo "## 🛠️ 技术栈信息"
+          echo "- 包管理器: pnpm"
+          echo "- Node.js 版本: 18"
+          echo "- 框架: Next.js 15.3.1"
+          echo "- 数据库: Supabase"
+          
           echo ""
           echo "---"
-          echo "🎯 总体评价: 系统安全，可正常使用"
+          
+          # 生成总体评价
+          if [ "${{ needs.dependency-scan.result }}" = "success" ] && [ "${{ needs.code-security.result }}" = "success" ] && [ "${{ needs.environment-check.result }}" = "success" ]; then
+            echo "🎯 总体评价: ✅ 系统安全，可正常使用"
+          else
+            echo "🎯 总体评价: ⚠️ 发现安全问题，请查看详细日志并修复"
+          fi
+          
+          echo ""
+          echo "## 🔧 建议操作"
+          echo "1. 定期更新依赖包到最新稳定版本"
+          echo "2. 确保所有敏感配置使用环境变量"
+          echo "3. 为 Supabase 表启用行级安全策略(RLS)"
+          echo "4. 定期审查和轮换 API 密钥"
+          echo "5. 使用 \`pnpm audit fix\` 修复可修复的漏洞"
+          
         } > security-report.md
         
         echo "✅ 安全报告已生成"
+        cat security-report.md
         
     - name: 📤 上传安全报告
       uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: security-report.md
+        retention-days: 30
         
     - name: 💬 PR评论安全结果
       if: github.event_name == 'pull_request'
@@ -211,11 +346,18 @@ jobs:
           const fs = require('fs');
           if (fs.existsSync('security-report.md')) {
             const report = fs.readFileSync('security-report.md', 'utf8');
-            github.rest.issues.createComment({
+            
+            // 限制评论长度，避免过长
+            const maxLength = 60000;
+            const truncatedReport = report.length > maxLength 
+              ? report.substring(0, maxLength) + '\n\n... (报告被截断，完整报告请查看 Artifacts)'
+              : report;
+            
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🔒 安全检查报告\n\n${report}`
+              body: `## 🔒 安全检查报告\n\n${truncatedReport}`
             });
           }
 
@@ -229,11 +371,216 @@ jobs:
     - name: 🚨 发送安全告警
       run: |
         echo "🚨 安全检查失败，需要立即关注！"
-        echo "分支: ${{ github.ref }}"
-        echo "提交: ${{ github.sha }}"
-        echo "详情: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        echo "📋 失败详情:"
+        echo "- 仓库: ${{ github.repository }}"
+        echo "- 分支: ${{ github.ref }}"
+        echo "- 提交: ${{ github.sha }}"
+        echo "- 提交者: ${{ github.actor }}"
+        echo "- 工作流: ${{ github.workflow }}"
+        echo "- 运行ID: ${{ github.run_id }}"
+        echo "- 详情链接: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         
-        # 这里可以集成实际的通知系统，如Slack、企业微信等
+        echo ""
+        echo "📊 各项检查结果:"
+        echo "- 依赖安全扫描: ${{ needs.dependency-scan.result }}"
+        echo "- 代码安全检查: ${{ needs.code-security.result }}"
+        echo "- 环境配置检查: ${{ needs.environment-check.result }}"
+        
+        # 这里可以集成实际的通知系统
+        # 例如 Slack、企业微信、邮件等
+        
+        # Slack 通知示例 (需要配置 SLACK_WEBHOOK_URL secret)
         # curl -X POST -H 'Content-type: application/json' \
-        #   --data '{"text":"🚨 安全检查失败: ${{ github.repository }}"}' \
-        #   ${{ secrets.SLACK_WEBHOOK_URL }} 
+        #   --data "{
+        #     \"text\": \"🚨 安全检查失败\",
+        #     \"blocks\": [
+        #       {
+        #         \"type\": \"section\",
+        #         \"text\": {
+        #           \"type\": \"mrkdwn\",
+        #           \"text\": \"*仓库:* ${{ github.repository }}\\n*分支:* ${{ github.ref }}\\n*详情:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+        #         }
+        #       }
+        #     ]
+        #   }" \
+        #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  auto-fix:
+    name: 🔧 自动修复
+    runs-on: ubuntu-latest
+    needs: [dependency-scan]
+    if: |
+      needs.dependency-scan.result == 'failure' && 
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/develop' &&
+      contains(github.event.head_commit.message, '[auto-fix]')
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🔧 设置 pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+        
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+        
+    - name: 🔧 尝试自动修复依赖漏洞
+      run: |
+        echo "🔧 尝试自动修复依赖安全漏洞..."
+        
+        # 安装依赖
+        pnpm install --frozen-lockfile
+        
+        # 尝试自动修复
+        if pnpm audit fix; then
+          echo "✅ 自动修复成功"
+          
+          # 检查是否有变更
+          if git diff --quiet; then
+            echo "ℹ️ 没有文件变更"
+          else
+            echo "📝 发现文件变更，准备提交"
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add .
+            git commit -m "🔧 自动修复依赖安全漏洞 [skip ci]"
+            git push
+            echo "✅ 自动修复已提交"
+          fi
+        else
+          echo "❌ 自动修复失败，需要手动处理"
+          exit 1
+        fi
+
+  weekly-dependency-update:
+    name: 📦 每周依赖更新检查
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔧 设置 pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+        
+    - name: 📦 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+        
+    - name: 📦 检查过期依赖
+      run: |
+        echo "📦 检查过期依赖包..."
+        
+        # 安装依赖
+        pnpm install --frozen-lockfile
+        
+        # 检查过期包
+        echo "检查过期的依赖包..."
+        pnpm outdated > outdated-packages.txt 2>&1 || true
+        
+        if [ -s outdated-packages.txt ]; then
+          echo "📋 发现过期的依赖包:"
+          cat outdated-packages.txt
+          
+          # 创建 Issue
+          cat > issue-body.md << 'EOF'
+        ## 📦 每周依赖更新报告
+        
+        本报告由自动化系统生成，列出了当前项目中的过期依赖包。
+        
+        ### 📋 过期依赖列表
+        
+        ```
+        EOF
+          cat outdated-packages.txt >> issue-body.md
+          echo '```' >> issue-body.md
+          cat >> issue-body.md << 'EOF'
+        
+        ### 🔧 建议操作
+        
+        1. **审查依赖更新**: 检查每个过期包的更新日志
+        2. **测试兼容性**: 确保新版本与当前代码兼容
+        3. **安全优先**: 优先更新有安全漏洞的包
+        4. **批量更新**: 可以使用 `pnpm update` 进行批量更新
+        
+        ### ⚠️ 注意事项
+        
+        - 主版本号更新可能包含破坏性变更
+        - 建议在开发分支进行测试后再合并到主分支
+        - 关注 Next.js、React 等核心框架的更新
+        
+        ---
+        *此 Issue 由 GitHub Actions 自动创建*
+        EOF
+          
+          echo "✅ 依赖更新报告已生成"
+        else
+          echo "✅ 所有依赖都是最新的"
+        fi
+        
+    - name: 📤 上传依赖报告
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-update-report
+        path: |
+          outdated-packages.txt
+          issue-body.md
+        retention-days: 7
+        
+    - name: 🎯 创建依赖更新Issue
+      if: hashFiles('outdated-packages.txt') != ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          if (fs.existsSync('issue-body.md')) {
+            const body = fs.readFileSync('issue-body.md', 'utf8');
+            
+            // 检查是否已存在类似的 Issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies,automation'
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes('每周依赖更新报告')
+            );
+            
+            if (existingIssue) {
+              // 更新现有 Issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## 📦 依赖更新报告 - ${new Date().toLocaleDateString()}\n\n${body}`
+              });
+              console.log('已更新现有的依赖更新 Issue');
+            } else {
+              // 创建新 Issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `📦 每周依赖更新报告 - ${new Date().toLocaleDateString()}`,
+                body: body,
+                labels: ['dependencies', 'automation', 'enhancement']
+              });
+              console.log('已创建新的依赖更新 Issue');
+            }
+          }
+

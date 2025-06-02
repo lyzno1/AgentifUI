@@ -18,6 +18,9 @@
     "http",
     "net"
   ],
+
+  "npm.packageManager": "pnpm",
+
   "[typescript]": {
     "editor.defaultFormatter": "vscode.typescript-language-features"
   },
@@ -27,8 +30,6 @@
   
   // Setup font family
   "editor.fontFamily": "Maple Mono NF, Jetbrains Mono, Menlo, Consolas, monospace",
-  // Enable ligatures
-  "editor.fontLigatures": "'calt'",
   // Or enable OpenType features
   "editor.fontLigatures": "'calt', 'cv01', 'ss01', 'zero'",
   
