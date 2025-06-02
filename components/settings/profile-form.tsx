@@ -181,7 +181,7 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
                 账户角色
               </p>
               <p className={cn("font-serif", colors.textColor.tailwind)}>
-                {profile.role === "admin" ? "管理员" : "普通用户"}
+                {profile.role === "admin" ? "管理员" : profile.role === "manager" ? "经理" : "普通用户"}
               </p>
             </div>
           </div>
