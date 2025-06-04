@@ -75,138 +75,175 @@ export async function streamDifyChat(
     let conversationIdCallbackCalled = false;
 
     // --- BEGIN COMMENT ---
+    // 🎯 新增：创建completionPromise来捕获message_end事件的metadata
+    // 这个Promise将在message_end事件触发时resolve，携带完整的metadata信息
+    // --- END COMMENT ---
+    let completionResolve: (value: { usage?: any; metadata?: Record<string, any>; retrieverResources?: any[] }) => void;
+    let completionReject: (reason?: any) => void;
+    let completionResolved = false; // 🎯 添加标志位，防止重复resolve
+    
+    const completionPromise = new Promise<{ usage?: any; metadata?: Record<string, any>; retrieverResources?: any[] }>((resolve, reject) => {
+      completionResolve = resolve;
+      completionReject = reject;
+    });
+
+    // --- BEGIN COMMENT ---
     // 创建一个内部异步生成器来处理解析后的 SSE 事件并提取所需信息
     // --- END COMMENT ---
     async function* processStream(): AsyncGenerator<string, void, undefined> {
-      // --- BEGIN COMMENT ---
-      // 使用 sse-parser 解析流
-      // --- END COMMENT ---
-      for await (const result of parseSseStream(stream)) {
-        if (result.type === 'error') {
-          // --- BEGIN COMMENT ---
-          // 如果 SSE 解析器报告错误，则向上抛出
-          // --- END COMMENT ---
-          console.error('[Dify Service] SSE Parser Error:', result.error);
-          throw new Error('Error parsing SSE stream.'); // 或者更具体的错误处理
-        }
-
+      try {
         // --- BEGIN COMMENT ---
-        // 处理成功解析的事件
+        // 使用 sse-parser 解析流
         // --- END COMMENT ---
-        const event = result.event as DifySseEvent; // 明确事件类型
-        // console.log(`[Dify Service] Received SSE event type: ${event.event}`);
-
-        // --- BEGIN COMMENT ---
-        // 提取 conversation_id 和 task_id (通常在 message_end 事件中)
-        // 注意：这些 ID 可能在流的早期或晚期出现，取决于 Dify 实现
-        // Dify 文档指出 message_end 包含这些信息
-        // --- END COMMENT ---
-        if (event.conversation_id) {
-          if (!conversationId) {
-            conversationId = event.conversation_id;
-            if (onConversationIdReceived && !conversationIdCallbackCalled) {
-            try {
-              onConversationIdReceived(conversationId);
-              conversationIdCallbackCalled = true; // 标记回调已成功执行
-            } catch (callbackError) {
-              console.error('[Dify Service] Error in onConversationIdReceived callback:', callbackError);
-              // 此处不应因回调错误中断主流程
-            }
-          } else if (conversationId !== event.conversation_id) {
-            console.warn('[Dify Service] 警告：事件中的对话ID与已保存的不同！', {
-              saved: conversationId,
-              fromEvent: event.conversation_id
-            });
-          }
-          }
-        }
-        if ('task_id' in event && event.task_id && !taskId) {
-          taskId = event.task_id;
-          console.log('[Dify Service] Extracted taskId:', taskId);
-        }
-
-        // --- BEGIN COMMENT ---
-        // 根据事件类型处理
-        // --- END COMMENT ---
-        switch (event.event) {
-          case 'agent_message': // Dify 返回的思考过程或中间消息
-            // 可以选择性地处理或忽略 agent_message
-            // console.log('[Dify Service] Agent Message:', event.answer);
-            // yield event.answer; // 如果需要显示思考过程，可以 yield
-            break;
-          case 'message': // Dify 返回的最终答案文本块
-            if (event.answer) {
-              // --- BEGIN COMMENT ---
-              // yield 出答案文本块，供 useChatInterface 使用
-              // --- END COMMENT ---
-              yield event.answer;
-            }
-            break;
-          case 'message_end':
+        for await (const result of parseSseStream(stream)) {
+          if (result.type === 'error') {
             // --- BEGIN COMMENT ---
-            // 流结束事件
-            // 确保此时已获取 conversationId 和 taskId
+            // 如果 SSE 解析器报告错误，则向上抛出
             // --- END COMMENT ---
-            if (event.conversation_id && !conversationId) { // 理论上此时 conversationId 应该已经有了
+            console.error('[Dify Service] SSE Parser Error:', result.error);
+            completionReject(new Error('Error parsing SSE stream.'));
+            throw new Error('Error parsing SSE stream.'); // 或者更具体的错误处理
+          }
+
+          // --- BEGIN COMMENT ---
+          // 处理成功解析的事件
+          // --- END COMMENT ---
+          const event = result.event as DifySseEvent; // 明确事件类型
+          
+          // 🎯 过滤message事件，只显示关键事件
+          if (event.event !== 'message') {
+            console.log(`[Dify Service] 🎯 收到关键SSE事件: ${event.event}${event.event === 'message_end' ? ' (关键事件!)' : ''}`);
+          }
+
+          // --- BEGIN COMMENT ---
+          // 提取 conversation_id 和 task_id (通常在 message_end 事件中)
+          // 注意：这些 ID 可能在流的早期或晚期出现，取决于 Dify 实现
+          // Dify 文档指出 message_end 包含这些信息
+          // --- END COMMENT ---
+          if (event.conversation_id) {
+            if (!conversationId) {
               conversationId = event.conversation_id;
-              console.log('[Dify Service] Extracted conversationId from message_end:', conversationId);
               if (onConversationIdReceived && !conversationIdCallbackCalled) {
-                try {
-                  onConversationIdReceived(conversationId);
-                  conversationIdCallbackCalled = true; // 标记回调已成功执行
-                } catch (callbackError) {
-                  console.error('[Dify Service] Error in onConversationIdReceived callback (message_end):', callbackError);
+              try {
+                onConversationIdReceived(conversationId);
+                conversationIdCallbackCalled = true; // 标记回调已成功执行
+              } catch (callbackError) {
+                console.error('[Dify Service] Error in onConversationIdReceived callback:', callbackError);
+                // 此处不应因回调错误中断主流程
+              }
+            } else if (conversationId !== event.conversation_id) {
+              console.warn('[Dify Service] 警告：事件中的对话ID与已保存的不同！', {
+                saved: conversationId,
+                fromEvent: event.conversation_id
+              });
+            }
+            }
+          }
+          if ('task_id' in event && event.task_id && !taskId) {
+            taskId = event.task_id;
+            console.log('[Dify Service] Extracted taskId:', taskId);
+          }
+
+          // --- BEGIN COMMENT ---
+          // 根据事件类型处理
+          // --- END COMMENT ---
+          switch (event.event) {
+            case 'agent_message': // Dify 返回的思考过程或中间消息
+              // 可以选择性地处理或忽略 agent_message
+              // console.log('[Dify Service] Agent Message:', event.answer);
+              // yield event.answer; // 如果需要显示思考过程，可以 yield
+              break;
+            case 'message': // Dify 返回的最终答案文本块
+              if (event.answer) {
+                // --- BEGIN COMMENT ---
+                // yield 出答案文本块，供 useChatInterface 使用
+                // --- END COMMENT ---
+                yield event.answer;
+              }
+              break;
+            case 'message_end':
+              // --- BEGIN COMMENT ---
+              // 🎯 关键修复：在message_end事件中捕获metadata并resolve completionPromise
+              // --- END COMMENT ---
+              console.log('[Dify Service] Received message_end event with metadata:', {
+                metadata: event.metadata,
+                usage: event.metadata?.usage || event.usage,
+                retrieverResources: event.metadata?.retriever_resources
+              });
+              
+              // 确保此时已获取 conversationId 和 taskId
+              if (event.conversation_id && !conversationId) { // 理论上此时 conversationId 应该已经有了
+                conversationId = event.conversation_id;
+                console.log('[Dify Service] Extracted conversationId from message_end:', conversationId);
+                if (onConversationIdReceived && !conversationIdCallbackCalled) {
+                  try {
+                    onConversationIdReceived(conversationId);
+                    conversationIdCallbackCalled = true; // 标记回调已成功执行
+                  } catch (callbackError) {
+                    console.error('[Dify Service] Error in onConversationIdReceived callback (message_end):', callbackError);
+                  }
                 }
               }
-            }
-            if (event.task_id && !taskId) {
-              taskId = event.task_id;
-              console.log('[Dify Service] Extracted taskId from message_end:', taskId);
-            }
-            console.log('[Dify Service] Message stream ended.');
-            // 不需要 break，循环会在流结束后自动停止
-            break;
-          case 'error': // Dify API 返回的错误事件
-            console.error('[Dify Service] Dify API Error Event:', event);
-            throw new Error(`Dify API error: ${event.code} - ${event.message}`);
-          default:
-            // --- BEGIN COMMENT ---
-            // 忽略其他未知类型的事件
-            // console.log('[Dify Service] Ignoring unknown event type:', event.event);
-            // --- END COMMENT ---
-            break;
+              if (event.task_id && !taskId) {
+                taskId = event.task_id;
+                console.log('[Dify Service] Extracted taskId from message_end:', taskId);
+              }
+              
+              // 🎯 解析并传递完整的metadata信息
+              const completionData = {
+                usage: event.metadata?.usage || event.usage,
+                metadata: event.metadata || {},
+                retrieverResources: event.metadata?.retriever_resources || []
+              };
+              
+              console.log('[Dify Service] Resolving completionPromise with data:', completionData);
+              if (!completionResolved) {
+                completionResolve(completionData);
+                completionResolved = true;
+              }
+              
+              console.log('[Dify Service] Message stream ended.');
+              // 不需要 break，循环会在流结束后自动停止
+              break;
+            case 'error': // Dify API 返回的错误事件
+              console.error('[Dify Service] Dify API Error Event:', event);
+              const errorInfo = new Error(`Dify API error: ${event.code} - ${event.message}`);
+              completionReject(errorInfo);
+              throw errorInfo;
+            default:
+              // --- BEGIN COMMENT ---
+              // 忽略其他未知类型的事件
+              // console.log('[Dify Service] Ignoring unknown event type:', event.event);
+              // --- END COMMENT ---
+              break;
+          }
         }
+        console.log('[Dify Service] Finished processing stream.');
+        
+        // 🎯 如果流正常结束但没有收到message_end事件，使用空数据resolve
+        if (completionResolve && !completionResolved) {
+          console.log('[Dify Service] Stream ended without message_end, resolving with empty data');
+          completionResolve({ usage: undefined, metadata: {}, retrieverResources: [] });
+          completionResolved = true;
+        }
+      } catch (error) {
+        console.error('[Dify Service] Error in processStream:', error);
+        if (completionReject) {
+          completionReject(error);
+        }
+        throw error;
       }
-      console.log('[Dify Service] Finished processing stream.');
     }
 
     // --- BEGIN COMMENT ---
     // 返回包含 answerStream 和提取出的 ID 的对象
-    // answerStream 是上面定义的 processStream 函数的调用结果 (一个异步生成器)
-    // 注意：此时 processStream 还没有开始执行，直到 useChatInterface 中的 for-await-of 循环开始消费它
-    // conversationId 和 taskId 在 processStream 执行过程中会被填充
+    // 🎯 新增：包含completionPromise以获取metadata
     // --- END COMMENT ---
     const responsePayload: DifyStreamResponse = {
       answerStream: processStream(),
-      // --- BEGIN COMMENT ---
-      // 这里返回的 conversationId 和 taskId 初始是 null
-      // 它们会在 processStream 被消费时，从流数据中被提取并赋值
-      // useChatInterface 需要在流结束后再读取这两个值，或者服务层提供另一种方式传递它们
-      // 一个改进：让 processStream 返回一个包含最终 ID 的对象，或者使用回调/事件
-      // 暂时先这样，让 Hook 在流结束后从某个地方获取 ID (例如 Store?)
-      // 更好的方法：让 streamDifyChat 在 processStream 结束后才 resolve 一个包含所有信息的对象
-      // --- END COMMENT ---
-      // --- BEGIN REVISED APPROACH --- 
-      // 为了确保在 streamDifyChat 的 Promise resolve 时能拿到 ID，
-      // 我们需要先完整地消费（或部分消费直到拿到 ID）processStream。
-      // 但这会破坏流式传输的初衷。 
-      // 折中方案：返回 answerStream，让调用者 (Hook) 负责在流中提取 ID。
-      // 或者，修改 DifyStreamResponse 结构，让 ID 成为 Promise 或回调？
-      // 最终决定：让 Hook 从流的 message_end 事件中获取 ID。
-      // 因此，这里暂时返回 null，Hook 层需要自己处理。
-      // --- END REVISED APPROACH --- 
       getConversationId: () => conversationId,
       getTaskId: () => taskId,
+      completionPromise // 🎯 新增：提供completionPromise
     };
 
     return responsePayload;
@@ -310,4 +347,4 @@ export async function stopDifyStreamingTask(
     // --- END COMMENT ---
     throw error;
   }
-} 
+}

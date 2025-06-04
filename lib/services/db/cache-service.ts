@@ -195,4 +195,10 @@ export const CacheKeys = {
   serviceInstances: (providerId: string) => `service:instances:${providerId}`,
   apiKey: (serviceInstanceId: string) => `api:key:${serviceInstanceId}`,
   conversationByExternalId: (externalId: string) => `conversation:external:${externalId}`,
+  
+  // App Executions 缓存键（用于工作流和文本生成的一次性任务）
+  // 由于这些是历史记录查询，适合较长的缓存时间
+  userExecutions: (userId: string, page: number = 0) => `user:executions:${userId}:${page}`,
+  execution: (executionId: string) => `execution:${executionId}`,
+  // 注：暂不添加实时订阅，因为执行记录主要用于历史查看，后续如需要可以添加
 }; 

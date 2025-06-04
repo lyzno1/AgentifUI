@@ -331,6 +331,11 @@ export function useChatInterface() {
     // --- END COMMENT ---
     let finalDbConvUUID: string | null = null;
 
+    // --- BEGIN COMMENT ---
+    // 🎯 新增：存储completionPromise，用于获取Dify metadata
+    // --- END COMMENT ---
+    let completionPromise: Promise<{ usage?: any; metadata?: Record<string, any>; retrieverResources?: any[] }> | undefined;
+
     try {
       // 将 messageAttachments (any[]) 转换为 DifyFile[]
       // 假设 DifyFile 需要 type 和 upload_file_id
@@ -398,6 +403,11 @@ export function useChatInterface() {
         answerStream = creationResult.answerStream;
         finalRealConvId = creationResult.realConvId;
         finalTaskId = creationResult.taskId;
+        
+        // --- BEGIN COMMENT ---
+        // 🎯 修复：从新对话创建结果中获取completionPromise
+        // --- END COMMENT ---
+        completionPromise = creationResult.completionPromise;
 
         if (finalRealConvId) {
           // 更新UI和路由
@@ -510,6 +520,9 @@ export function useChatInterface() {
                   if (result.success && result.data) {
                     finalDbConvUUID = result.data.id;
                     setDbConversationUUID(finalDbConvUUID);
+                    console.log(`[handleSubmit] 找到数据库对话ID: ${finalDbConvUUID}`);
+                  } else {
+                    console.warn(`[handleSubmit] 未找到数据库记录，Dify对话ID=${newlyFetchedConvId}`);
                   }
                 }).catch(err => {
                   console.error('[handleSubmit] 回调中查询数据库对话ID失败:', err);
@@ -521,6 +534,11 @@ export function useChatInterface() {
         answerStream = streamServiceResponse.answerStream;
         finalRealConvId = streamServiceResponse.getConversationId() || difyConversationId || undefined; // Fallback to currentConvId
         finalTaskId = streamServiceResponse.getTaskId() || undefined;
+        
+        // --- BEGIN COMMENT ---
+        // 🎯 新增：获取completionPromise用于metadata处理
+        // --- END COMMENT ---
+        completionPromise = streamServiceResponse.completionPromise;
         
         // 更新Dify对话ID
         if (finalRealConvId && finalRealConvId !== difyConversationId) {
@@ -610,6 +628,56 @@ export function useChatInterface() {
       } 
       
       flushChunkBuffer(assistantMessageId); 
+
+      // --- BEGIN COMMENT ---
+      // 🎯 新增：等待并处理Dify metadata
+      // 在流式响应结束后，尝试获取message_end事件中的完整metadata信息
+      // --- END COMMENT ---
+      if (completionPromise) {
+        try {
+          console.log('[handleSubmit] 等待Dify流式完成信息...');
+          const completionData = await completionPromise;
+          
+          if (assistantMessageId && completionData) {
+            const existingMessage = useChatStore.getState().messages.find(m => m.id === assistantMessageId);
+            
+            // 构建增强的metadata，合并Dify返回的信息
+            const enhancedMetadata = {
+              ...(existingMessage?.metadata || {}),
+              // 🎯 保存Dify返回的完整metadata信息
+              dify_metadata: completionData.metadata || {},
+              dify_usage: completionData.usage || {},
+              dify_retriever_resources: completionData.retrieverResources || [],
+              // 保留前端生成的metadata
+              frontend_metadata: {
+                stopped_manually: existingMessage?.metadata?.stopped_manually,
+                stopped_at: existingMessage?.metadata?.stopped_at,
+                attachments: existingMessage?.metadata?.attachments,
+                sequence_index: existingMessage?.metadata?.sequence_index || 1
+              }
+            };
+            
+            // 更新助手消息的metadata和token统计
+            updateMessage(assistantMessageId, {
+              metadata: enhancedMetadata,
+              token_count: completionData.usage?.total_tokens || existingMessage?.token_count,
+              persistenceStatus: 'pending' // 标记为待保存，包含完整metadata
+            });
+            
+            console.log('[handleSubmit] 已更新助手消息的Dify metadata:', {
+              messageId: assistantMessageId,
+              difyMetadata: completionData.metadata,
+              usage: completionData.usage,
+              retrieverResources: completionData.retrieverResources?.length || 0
+            });
+          }
+        } catch (metadataError) {
+          console.error('[handleSubmit] 获取Dify metadata失败:', metadataError);
+          // metadata获取失败不影响主流程，继续执行
+        }
+      } else {
+        console.log('[handleSubmit] 未获取到completionPromise，跳过metadata处理');
+      }
 
       // --- BEGIN COMMENT ---
       // 在流式响应结束后，我们需要：
