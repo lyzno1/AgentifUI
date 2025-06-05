@@ -53,9 +53,15 @@ const extractThinkContent = (rawContent: string): {
   mainContent: string;
   thinkClosed: boolean;
 } => {
+  // --- BEGIN COMMENT ---
+  // 支持两种标签：<think> 和 <details>
+  // 优先检查 <think> 标签，如果没有则检查 <details> 标签
+  // --- END COMMENT ---
+  
+  // 检查 <think> 标签
   const thinkStartTag = '<think>';
   const thinkEndTag = '</think>';
-
+  
   if (rawContent.startsWith(thinkStartTag)) {
     const endTagIndex = rawContent.indexOf(thinkEndTag);
     if (endTagIndex !== -1) {
@@ -66,7 +72,68 @@ const extractThinkContent = (rawContent: string): {
     const thinkContent = rawContent.substring(thinkStartTag.length);
     return { hasThinkBlock: true, thinkContent, mainContent: '', thinkClosed: false };
   }
+  
+  // 检查 <details> 标签
+  const detailsStartRegex = /<details(?:\s[^>]*)?>/i;
+  const detailsMatch = rawContent.match(detailsStartRegex);
+  
+  if (detailsMatch && rawContent.indexOf(detailsMatch[0]) === 0) {
+    const detailsStartTag = detailsMatch[0];
+    const detailsEndTag = '</details>';
+    const endTagIndex = rawContent.indexOf(detailsEndTag);
+    
+    if (endTagIndex !== -1) {
+      // 提取details内容，移除summary部分
+      let detailsContent = rawContent.substring(detailsStartTag.length, endTagIndex);
+      
+      // 移除 <summary>...</summary> 部分，只保留实际内容
+      const summaryRegex = /<summary[^>]*>[\s\S]*?<\/summary>/i;
+      detailsContent = detailsContent.replace(summaryRegex, '').trim();
+      
+      const mainContent = rawContent.substring(endTagIndex + detailsEndTag.length);
+      return { hasThinkBlock: true, thinkContent: detailsContent, mainContent, thinkClosed: true };
+    }
+    
+    // 未闭合的details标签
+    let detailsContent = rawContent.substring(detailsStartTag.length);
+    
+    // 移除 <summary>...</summary> 部分（如果存在）
+    const summaryRegex = /<summary[^>]*>[\s\S]*?<\/summary>/i;
+    detailsContent = detailsContent.replace(summaryRegex, '').trim();
+    
+    return { hasThinkBlock: true, thinkContent: detailsContent, mainContent: '', thinkClosed: false };
+  }
+  
   return { hasThinkBlock: false, thinkContent: '', mainContent: rawContent, thinkClosed: false };
+};
+
+// --- 提取纯净的主要内容用于复制功能 ---
+const extractMainContentForCopy = (rawContent: string): string => {
+  // --- BEGIN COMMENT ---
+  // 检查是否有未闭合的关键标签（think 和 details 都由 Think Block 处理）
+  // --- END COMMENT ---
+  const openThinkCount = (rawContent.match(/<think(?:\s[^>]*)?>/gi) || []).length;
+  const closeThinkCount = (rawContent.match(/<\/think>/gi) || []).length;
+  const openDetailsCount = (rawContent.match(/<details(?:\s[^>]*)?>/gi) || []).length;
+  const closeDetailsCount = (rawContent.match(/<\/details>/gi) || []).length;
+  
+  // 如果有未闭合的标签，说明内容还在生成中，返回空字符串
+  if (openThinkCount > closeThinkCount || openDetailsCount > closeDetailsCount) {
+    return '';
+  }
+  
+  let cleanContent = rawContent;
+  
+  // 移除所有 <think>...</think> 块
+  const thinkRegex = /<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gi;
+  cleanContent = cleanContent.replace(thinkRegex, '');
+  
+  // 移除所有 <details>...</details> 块（现在由 Think Block 处理）
+  const detailsRegex = /<details(?:\s[^>]*)?>[\s\S]*?<\/details>/gi;
+  cleanContent = cleanContent.replace(detailsRegex, '');
+  
+  // 清理多余的空白字符
+  return cleanContent.replace(/\n\s*\n/g, '\n').trim();
 };
 
 interface AssistantMessageProps {
@@ -101,6 +168,37 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = React.memo(({
 
   const toggleOpen = () => {
     setIsOpen((prev) => !prev);
+  };
+
+  // --- BEGIN COMMENT ---
+  // 预处理主内容，转义自定义HTML标签以避免浏览器解析错误
+  // 与Think Block Content使用相同的处理逻辑
+  // --- END COMMENT ---
+  const preprocessMainContent = (content: string): string => {
+    // 定义已知的安全HTML标签白名单
+    const knownHtmlTags = new Set([
+      'div', 'span', 'p', 'br', 'hr', 'strong', 'em', 'b', 'i', 'u', 's',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+      'blockquote', 'pre', 'code',
+      'a', 'img',
+      'sub', 'sup',
+      'mark', 'del', 'ins'
+    ]);
+
+    // 转义不在白名单中的HTML标签，让它们显示为文本
+    return content.replace(/<([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tagName) => {
+      if (!knownHtmlTags.has(tagName.toLowerCase())) {
+        return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      return match;
+    }).replace(/<\/([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tagName) => {
+      if (!knownHtmlTags.has(tagName.toLowerCase())) {
+        return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      return match;
+    });
   };
 
   const calculateStatus = (): ThinkBlockStatus => {
@@ -359,7 +457,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = React.memo(({
           !hasThinkBlock ? "py-2" : "pt-1 pb-2" // 根据是否有思考块调整垂直间距
         )}>
           <StreamingText
-            content={mainContent}
+            content={preprocessMainContent(mainContent)}
             isStreaming={isStreaming}
             isComplete={!isStreaming}
             typewriterSpeed={150}
@@ -386,7 +484,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = React.memo(({
           {/* 助手消息操作按钮 - 添加-ml-2来确保左对齐，调整间距 */}
           <AssistantMessageActions
             messageId={id}
-            content={content} // 使用原始文本而不是处理后的mainContent
+            content={extractMainContentForCopy(content) || undefined}
             onRegenerate={() => console.log('Regenerate message', id)}
             onFeedback={(isPositive) => console.log('Feedback', isPositive ? 'positive' : 'negative', id)} //后续修改反馈功能
             isRegenerating={isStreaming}
