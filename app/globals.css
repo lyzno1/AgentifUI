@@ -300,6 +300,22 @@ html, body {
     letter-spacing: normal !important;
   }
 
+  /* 🎯 Think Block内容的字体大小调整 - 与助手消息保持一致 */
+  .think-block-content, .think-block-content * {
+    font-size-adjust: 0.52 !important;
+    letter-spacing: 0.01em !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+
+  /* 🎯 Think Block中的代码块保持等宽字体，不应用字体大小调整 */
+  .think-block-content code, .think-block-content pre,
+  .think-block-content code *, .think-block-content pre * {
+    font-size-adjust: none !important;
+    letter-spacing: normal !important;
+  }
+
   /* 🎯 侧边栏中使用衬线字体的元素的字体大小调整 */
   .font-serif {
     font-size-adjust: 0.52 !important;
@@ -362,6 +378,17 @@ html, body {
     font-size-adjust: none;
   }
 
+  /* Think Block内容优化 */
+  .think-block-content, .think-block-content * {
+    font-size-adjust: 0.52;
+  }
+
+  /* Think Block中的代码块不应用字体大小调整 */
+  .think-block-content code, .think-block-content pre,
+  .think-block-content code *, .think-block-content pre * {
+    font-size-adjust: none;
+  }
+
   /* --- BEGIN MODIFIED COMMENT ---
    * 🎯 欢迎屏幕字体大小调整优化
    * 确保在支持font-size-adjust的浏览器中获得最佳效果
@@ -391,6 +418,16 @@ html, body {
   
   /* 助手消息中的中文字符保持原始大小 */
   .assistant-message-content :lang(zh), .assistant-message-content :lang(zh-CN) {
+    font-size: 0.98em;
+  }
+
+  /* Think Block内容的回退方案 */
+  .think-block-content {
+    font-size: 1.02em; /* 轻微增大英文字体 */
+  }
+  
+  /* Think Block中的中文字符保持原始大小 */
+  .think-block-content :lang(zh), .think-block-content :lang(zh-CN) {
     font-size: 0.98em;
   }
 

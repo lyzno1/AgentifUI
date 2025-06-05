@@ -52,6 +52,7 @@ export function useCreateConversation(): UseCreateConversationReturn {
   const [error, setError] = useState<any>(null);
 
   const addPending = usePendingConversationStore((state) => state.addPending);
+  const addPendingWithLimit = usePendingConversationStore((state) => state.addPendingWithLimit);
   const setRealIdAndStatus = usePendingConversationStore((state) => state.setRealIdAndStatus);
   const updateTitleInPendingStore = usePendingConversationStore((state) => state.updateTitle);
   const updateStatusInPendingStore = usePendingConversationStore((state) => state.updateStatus);
@@ -91,7 +92,14 @@ export function useCreateConversation(): UseCreateConversationReturn {
       setError(null);
 
       const tempConvId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      addPending(tempConvId, "创建中..."); 
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 使用新的addPendingWithLimit方法，支持自动"挤出"效果
+      // --- END COMMENT ---
+      addPendingWithLimit(tempConvId, "创建中...", 5, (evictedCount) => {
+        console.log(`[useCreateConversation] 新对话创建触发挤出效果，预计挤出${evictedCount}个对话`);
+        // 这里可以添加动画效果或通知用户
+      }); 
       updateStatusInPendingStore(tempConvId, 'creating');
 
       // --- BEGIN EARLY HIGHLIGHT ---

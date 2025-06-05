@@ -190,7 +190,7 @@ export default function ChatPage() {
           onStop={handleStopProcessing}
           isWelcomeScreen={isWelcomeScreen}
           isTransitioningToWelcome={isTransitioningToWelcome}
-          showModelSelector={isNewChat}
+          showModelSelector={isNewChat && messages.length === 0}
         />
         
         {/* --- BEGIN COMMENT ---

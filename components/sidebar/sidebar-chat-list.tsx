@@ -73,9 +73,30 @@ export function SidebarChatList({
     }
   }, [isLoadingConversations, conversations]);
   
-  const displayConversations = (isLoadingConversations && conversations.length === 0 && prevLoadedConversations.length > 0) 
-    ? prevLoadedConversations 
-    : conversations;
+  // --- BEGIN COMMENT ---
+  // 🎯 检测对话列表变化，识别被挤出的对话（瞬间消失效果）
+  // --- END COMMENT ---
+  React.useEffect(() => {
+    const prevIds = new Set(prevLoadedConversations.map(conv => conv.id));
+    const currentIds = new Set(conversations.map(conv => conv.id));
+    
+    // 找出在之前列表中存在但在当前列表中不存在的对话ID
+    const disappearedIds = Array.from(prevIds).filter(id => !currentIds.has(id));
+    
+    if (disappearedIds.length > 0) {
+      console.log(`[SidebarChatList] 🎯 检测到${disappearedIds.length}个对话被挤出:`, disappearedIds);
+      // 瞬间挤出效果：对话直接从列表中消失
+    }
+  }, [conversations, prevLoadedConversations]);
+  
+  // --- BEGIN COMMENT ---
+  // 🎯 显示逻辑：直接显示当前对话列表（瞬间挤出效果）
+  // --- END COMMENT ---
+  const displayConversations = React.useMemo(() => {
+    return (isLoadingConversations && conversations.length === 0 && prevLoadedConversations.length > 0) 
+      ? prevLoadedConversations 
+      : conversations;
+  }, [isLoadingConversations, conversations, prevLoadedConversations]);
   
   const unpinnedChats = React.useMemo(() => {
     return displayConversations.filter(chat => !chat.isPending);
@@ -396,7 +417,10 @@ export function SidebarChatList({
                 const isActive = isChatActive(chat);
                 
                 return (
-                  <div className="group relative" key={chat.tempId || chat.id}> 
+                  <div 
+                    className="group relative"
+                    key={chat.tempId || chat.id}
+                  > 
                     {/* 使用新的 SidebarListButton 替代 SidebarButton */}
                     <SidebarListButton
                       icon={<SidebarChatIcon size="sm" isDark={isDark} />}
@@ -445,37 +469,40 @@ export function SidebarChatList({
               const isActive = isChatActive(chat);
               const itemIsLoading = false; 
 
-              return (
-                <div className="group relative" key={chat.id}>
-                  {/* 使用新的 SidebarListButton 替代 SidebarButton */}
-                  <SidebarListButton
-                    icon={<SidebarChatIcon size="sm" isDark={isDark} />}
-                    active={isActive}
-                    onClick={() => onSelectChat(chat.id)}
-                    isLoading={itemIsLoading}
-                    hasOpenDropdown={openDropdownId === chat.id}
-                    disableHover={!!openDropdownId}
-                    moreActionsTrigger={
-                      <div className={cn(
-                        "transition-opacity",
-                        // --- BEGIN COMMENT ---
-                        // 🎯 当有菜单打开时，禁用group-hover效果，避免其他item的more button在悬停时显示
-                        // 但当前打开菜单的item的more button应该保持显示
-                        // --- END COMMENT ---
-                        openDropdownId === chat.id
-                          ? "opacity-100" // 当前打开菜单的item，more button保持显示
-                          : openDropdownId 
-                            ? "opacity-0" // 有其他菜单打开时，此item的more button不显示
-                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100" // 正常状态下的悬停显示
-                      )}>
+                                            return (
+                <div 
+                  className="group relative"
+                  key={chat.id}
+                >
+                    {/* 使用新的 SidebarListButton 替代 SidebarButton */}
+                    <SidebarListButton
+                      icon={<SidebarChatIcon size="sm" isDark={isDark} />}
+                      active={isActive}
+                      onClick={() => onSelectChat(chat.id)}
+                      isLoading={itemIsLoading}
+                      hasOpenDropdown={openDropdownId === chat.id}
+                      disableHover={!!openDropdownId}
+                      moreActionsTrigger={
+                        <div className={cn(
+                          "transition-opacity",
+                          // --- BEGIN COMMENT ---
+                          // 🎯 当有菜单打开时，禁用group-hover效果，避免其他item的more button在悬停时显示
+                          // 但当前打开菜单的item的more button应该保持显示
+                          // --- END COMMENT ---
+                          openDropdownId === chat.id
+                            ? "opacity-100" // 当前打开菜单的item，more button保持显示
+                            : openDropdownId 
+                              ? "opacity-0" // 有其他菜单打开时，此item的more button不显示
+                              : "opacity-0 group-hover:opacity-100 focus-within:opacity-100" // 正常状态下的悬停显示
+                        )}>
                         {createMoreActions(chat, itemIsLoading)}
                       </div>
                     }
-                  >
-                    {renderChatItemContent(chat, itemIsLoading)}
-                  </SidebarListButton>
-                </div>
-              );
+                    >
+                      {renderChatItemContent(chat, itemIsLoading)}
+                    </SidebarListButton>
+                  </div>
+                );
             })}
             
             {/* --- 查看全部按钮 --- */}

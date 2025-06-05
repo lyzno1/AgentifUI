@@ -387,7 +387,7 @@ export const ThinkBlockContent: React.FC<ThinkBlockContentProps> = ({
     >
       <div
         id="think-block-content"
-        className="think-block-content flex-1 markdown-body w-full border rounded-md p-5 font-sans text-base max-w-full transform-gpu"
+        className="think-block-content flex-1 markdown-body w-full border rounded-md p-5 font-serif text-base max-w-full transform-gpu"
         style={{
           backgroundColor: 'var(--md-think-content-bg)',
           borderColor: 'var(--md-think-content-border)',

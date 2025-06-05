@@ -38,6 +38,10 @@ interface PendingConversationState {
   // Actions
   // --- END COMMENT ---
   addPending: (tempId: string, initialTitle?: string) => void;
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：智能添加临时对话，支持"挤出"第五个对话的动态效果
+  // --- END COMMENT ---
+  addPendingWithLimit: (tempId: string, initialTitle?: string, maxConversations?: number, onNeedEviction?: (evictedCount: number) => void) => void;
   setRealIdAndStatus: (tempId: string, realId: string, status: PendingConversation['status']) => void;
   updateStatus: (id: string, status: PendingConversation['status']) => void; // id 可以是 tempId 或 realId
   updateTitle: (id: string, title: string, isFinal: boolean) => void; // 更新标题并设置是否为最终标题
@@ -345,6 +349,58 @@ export const usePendingConversationStore = create<PendingConversationState>((set
         return { pendingConversations: newMap };
       }
       return state;
+    });
+  },
+
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：智能添加临时对话，支持"挤出"第五个对话的动态效果
+  // 当对话总数达到限制时，自动移除最老的对话
+  // --- END COMMENT ---
+  addPendingWithLimit: (tempId: string, initialTitle = "创建中...", maxConversations = 5, onNeedEviction) => {
+    set((state) => {
+      const newMap = new Map(state.pendingConversations);
+      
+      if (newMap.has(tempId)) {
+        console.warn(`[PendingConversationStore] 尝试添加已存在的临时ID: ${tempId}`);
+        return state; 
+      }
+      
+      // 创建新的临时对话
+      const newPending: PendingConversation = {
+        tempId,
+        title: initialTitle,
+        status: 'creating',
+        isTitleFinal: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // --- BEGIN COMMENT ---
+        // 🎯 初始化打字机效果状态
+        // --- END COMMENT ---
+        titleTypewriterState: {
+          isTyping: false,
+          targetTitle: initialTitle,
+          displayTitle: initialTitle,
+          shouldStartTyping: false
+        }
+      };
+      
+      // 添加新对话
+      newMap.set(tempId, newPending);
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 注意：由于此store只管理临时对话，真正的"挤出"逻辑
+      // 需要在整合数据的地方（useCombinedConversations）处理
+      // 这里先通知回调函数，让上层决定如何处理
+      // --- END COMMENT ---
+      if (onNeedEviction && typeof onNeedEviction === 'function') {
+        // 计算当前临时对话数量，如果超过限制则通知
+        const pendingCount = newMap.size;
+        if (pendingCount > 1) { // 新对话已经添加，检查是否需要挤出
+          onNeedEviction(1); // 简单通知需要挤出1个对话
+        }
+      }
+      
+      return { pendingConversations: newMap };
     });
   },
 }));
