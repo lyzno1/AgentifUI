@@ -3,6 +3,7 @@ import { useWorkflowExecutionStore } from '@lib/stores/workflow-execution-store'
 import type { AppExecution, ExecutionStatus } from '@lib/types/database'
 import type { DifyWorkflowRequestPayload } from '@lib/services/dify/types'
 import { useProfile } from '@lib/hooks/use-profile'
+import { useAutoAddFavoriteApp } from '@lib/stores/favorite-apps-store'
 
 /**
  * 工作流执行Hook - 万无一失的数据保存版本
@@ -16,6 +17,11 @@ import { useProfile } from '@lib/hooks/use-profile'
 export function useWorkflowExecution(instanceId: string) {
   const { profile } = useProfile()
   const userId = profile?.id
+  
+  // --- BEGIN COMMENT ---
+  // 添加常用应用管理hook
+  // --- END COMMENT ---
+  const { addToFavorites } = useAutoAddFavoriteApp()
   
   // --- 安全地获取Store状态，避免频繁重渲染 ---
   const isExecuting = useWorkflowExecutionStore(state => state.isExecuting)
@@ -327,6 +333,13 @@ export function useWorkflowExecution(instanceId: string) {
         throw new Error(`完整数据保存失败: ${saveResult.error?.message || '未知错误'}`)
       }
       
+      // --- BEGIN COMMENT ---
+      // 🎯 在工作流执行成功后添加应用到常用列表
+      // 这是最佳时机：确保工作流真正执行成功，且只在首次执行时添加一次
+      // --- END COMMENT ---
+      console.log(`[工作流执行] 添加应用到常用列表: ${instanceId}`)
+      addToFavorites(instanceId)
+      
       // 完成执行
       getActions().stopExecution()
       getActions().unlockForm()
@@ -409,7 +422,7 @@ export function useWorkflowExecution(instanceId: string) {
         abortControllerRef.current = null
       }
     }
-  }, [instanceId, userId, getActions, saveCompleteExecutionData])
+  }, [instanceId, userId, getActions, saveCompleteExecutionData, addToFavorites])
   
   /**
    * 停止工作流执行

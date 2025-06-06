@@ -288,7 +288,7 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
       },
       'document': { 
         name: '文档', 
-        accept: "txt,md,mdx,markdown,pdf,html,xlsx,xls,doc,docx,csv,eml,msg,pptx,ppt,xml,epub"
+        accept: ".txt,.md,.mdx,.markdown,.pdf,.html,.xlsx,.xls,.doc,.docx,.csv,.eml,.msg,.pptx,.ppt,.xml,.epub"
       },
       'audio': { 
         name: '音频', 

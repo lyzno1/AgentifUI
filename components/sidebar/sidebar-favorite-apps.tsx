@@ -229,7 +229,12 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
           }}
           disabled={isAppBusy} // 🎯 应用忙碌时禁用
         >
-          发起新对话
+          {/* --- BEGIN COMMENT ---
+          根据应用类型显示不同的按钮文本
+          --- END COMMENT --- */}
+          {app.dify_apptype === 'workflow' ? '开始工作流' : 
+           app.dify_apptype === 'text-generation' ? '开始文本生成' : 
+           '开始对话'}
         </DropdownMenuV2.Item>
         <DropdownMenuV2.Divider />
         <DropdownMenuV2.Item
