@@ -444,7 +444,19 @@ export interface GetConversationVariablesResponse {
 // 应用参数相关类型定义 (GET /parameters)
 // --- END COMMENT ---
 
-/** 用户输入表单控件 - 文本输入 */
+/** Dify 数字输入控件 */
+export interface DifyNumberInputControl {
+  label: string; // 控件展示标签名
+  variable: string; // 控件 ID
+  required: boolean; // 是否必填
+  default: number | string; // 默认值（可以是数字或字符串）
+  min?: number; // 最小值限制
+  max?: number; // 最大值限制
+  step?: number; // 步长，默认为1
+  precision?: number; // 小数位数限制
+}
+
+/** Dify 文本输入控件 */
 export interface DifyTextInputControl {
   label: string; // 控件展示标签名
   variable: string; // 控件 ID
@@ -470,11 +482,25 @@ export interface DifySelectControl {
   options: string[]; // 选项值列表
 }
 
+/** 文件输入控件 */
+export interface DifyFileInputControl {
+  label: string; // 控件展示标签名
+  variable: string; // 控件 ID
+  required: boolean; // 是否必填
+  default?: File[]; // 默认值（文件数组）
+  number_limits?: number; // 文件数量限制
+  allowed_file_types?: string[]; // 允许的文件类型
+  max_file_size_mb?: number; // 最大文件大小(MB)
+}
+
 /** 用户输入表单项 */
 export interface DifyUserInputFormItem {
   'text-input'?: DifyTextInputControl;
+  'number'?: DifyNumberInputControl;
   'paragraph'?: DifyParagraphControl;
   'select'?: DifySelectControl;
+  'file'?: DifyFileInputControl;
+  'file-list'?: DifyFileInputControl; // 多文件模式
 }
 
 /** 图片上传配置 */

@@ -144,6 +144,112 @@ export async function updateExecution(
 }
 
 /**
+ * 万无一失的完整执行数据更新函数
+ * 专门用于工作流执行完成时的完整数据保存
+ * @param id 执行记录ID
+ * @param completeData 完整的执行数据
+ * @returns 更新后的执行记录对象Result
+ */
+export async function updateCompleteExecutionData(
+  id: string,
+  completeData: {
+    status: ExecutionStatus;
+    external_execution_id?: string | null;
+    task_id?: string | null;
+    outputs?: Record<string, any> | null;
+    total_steps?: number;
+    total_tokens?: number;
+    elapsed_time?: number | null;
+    error_message?: string | null;
+    completed_at?: string | null;
+    metadata?: Record<string, any>;
+  }
+): Promise<Result<AppExecution>> {
+  console.log('[数据库] 开始完整执行数据更新，ID:', id)
+  console.log('[数据库] 更新数据:', JSON.stringify(completeData, null, 2))
+  
+  try {
+    // 构建安全的更新数据对象，确保所有字段都有明确的值
+    const safeUpdateData: Partial<AppExecution> = {
+      status: completeData.status,
+      updated_at: new Date().toISOString(),
+      
+      // Dify标识符 - 明确处理null值
+      ...(completeData.external_execution_id !== undefined && {
+        external_execution_id: completeData.external_execution_id
+      }),
+      ...(completeData.task_id !== undefined && {
+        task_id: completeData.task_id
+      }),
+      
+      // 执行结果 - 明确处理null值
+      ...(completeData.outputs !== undefined && {
+        outputs: completeData.outputs
+      }),
+      ...(completeData.total_steps !== undefined && {
+        total_steps: completeData.total_steps
+      }),
+      ...(completeData.total_tokens !== undefined && {
+        total_tokens: completeData.total_tokens
+      }),
+      ...(completeData.elapsed_time !== undefined && {
+        elapsed_time: completeData.elapsed_time
+      }),
+      
+      // 错误和完成信息
+      ...(completeData.error_message !== undefined && {
+        error_message: completeData.error_message
+      }),
+      ...(completeData.completed_at !== undefined && {
+        completed_at: completeData.completed_at
+      }),
+      
+      // metadata - 确保是有效的JSON对象
+      ...(completeData.metadata !== undefined && {
+        metadata: completeData.metadata || {}
+      })
+    };
+    
+    console.log('[数据库] 安全更新数据对象:', JSON.stringify(safeUpdateData, null, 2))
+    
+    // 使用原生Supabase客户端进行更新，确保所有字段都能正确保存
+    const { data, error } = await supabase
+      .from('app_executions')
+      .update(safeUpdateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('[数据库] 完整数据更新失败:', error)
+      return failure(error);
+    }
+    
+    if (!data) {
+      console.error('[数据库] 更新成功但未返回数据')
+      return failure(new Error('更新成功但未返回数据'));
+    }
+    
+    console.log('[数据库] ✅ 完整数据更新成功')
+    console.log('[数据库] 更新后的数据:', JSON.stringify(data, null, 2))
+    
+    // 清除相关缓存
+    try {
+      await cacheService.delete(`execution:${id}`);
+      await cacheService.delete(`executions:user:${data.user_id}`);
+    } catch (cacheError) {
+      console.warn('[数据库] 清除缓存时出错:', cacheError);
+    }
+    
+    return success(data as AppExecution);
+    
+  } catch (error) {
+    console.error('[数据库] 完整数据更新时发生异常:', error)
+    return failure(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+/**
  * 更新执行状态（优化版本）
  * @param id 执行记录ID
  * @param status 新状态
@@ -182,26 +288,26 @@ export async function updateExecutionStatus(
 }
 
 /**
- * 删除执行记录（优化版本）
+ * 删除执行记录（软删除版本）
  * @param id 执行记录ID
  * @returns 是否删除成功的Result
  */
 export async function deleteExecution(id: string): Promise<Result<boolean>> {
-  console.log(`[删除执行记录] 开始删除执行记录，ID: ${id}`);
+  console.log(`[软删除执行记录] 开始软删除执行记录，ID: ${id}`);
   
-  const result = await dataService.delete('app_executions', id);
+  const result = await dataService.softDelete('app_executions', id);
   
   if (result.success) {
-    console.log(`[删除执行记录] 删除操作完成，ID: ${id}`);
+    console.log(`[软删除执行记录] 软删除操作完成，ID: ${id}`);
     return success(true);
   } else {
-    console.error(`[删除执行记录] 删除执行记录失败:`, result.error);
+    console.error(`[软删除执行记录] 软删除执行记录失败:`, result.error);
     return success(false);
   }
 }
 
 /**
- * 获取服务实例的执行记录（优化版本）
+ * 获取服务实例的执行记录（优化版本，过滤软删除记录）
  * @param serviceInstanceId 服务实例ID
  * @param limit 限制数量
  * @returns 执行记录列表的Result
@@ -210,16 +316,38 @@ export async function getExecutionsByServiceInstance(
   serviceInstanceId: string,
   limit: number = 10
 ): Promise<Result<AppExecution[]>> {
-  return dataService.findMany<AppExecution>(
-    'app_executions',
-    { service_instance_id: serviceInstanceId },
-    { column: 'created_at', ascending: false },
-    { offset: 0, limit },
-    {
-      cache: true,
-      cacheTTL: 2 * 60 * 1000, // 2分钟缓存
+  try {
+    console.log('[获取执行记录] 开始查询，服务实例ID:', serviceInstanceId)
+    
+    // 先尝试获取所有记录，然后在应用层过滤
+    const result = await dataService.findMany<AppExecution>(
+      'app_executions',
+      { service_instance_id: serviceInstanceId },
+      { column: 'created_at', ascending: false },
+      { offset: 0, limit: limit * 2 }, // 获取更多记录以确保有足够的非删除记录
+      {
+        cache: true,
+        cacheTTL: 2 * 60 * 1000, // 2分钟缓存
+      }
+    );
+    
+    if (!result.success) {
+      console.error('[获取执行记录] 数据服务查询失败:', result.error);
+      return failure(result.error);
     }
-  );
+    
+    // 在应用层过滤软删除的记录
+    const filteredData = result.data
+      .filter(execution => execution.status !== 'deleted')
+      .slice(0, limit); // 限制最终返回的数量
+    
+    console.log('[获取执行记录] 查询成功，总数:', result.data.length, '过滤后:', filteredData.length)
+    
+    return success(filteredData);
+  } catch (error) {
+    console.error('[获取执行记录] 查询时发生异常:', error);
+    return failure(error instanceof Error ? error : new Error(String(error)));
+  }
 }
 
 /**
