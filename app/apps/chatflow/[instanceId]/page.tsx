@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useLayoutEffect } from "react"
 import { useRouter, useParams, usePathname } from "next/navigation"
 import { useMobile, useChatWidth, useChatInterface, useWelcomeScreen, useChatScroll } from "@lib/hooks"
 import { useChatflowInterface } from "@lib/hooks/use-chatflow-interface"
+import { useChatflowState } from "@lib/hooks/use-chatflow-state"
 import { cn } from "@lib/utils"
 import { 
   Loader2,
@@ -21,7 +22,7 @@ import {
   ChatLoader,
   ScrollToBottomButton 
 } from "@components/chat"
-import { DynamicSuggestedQuestions } from "@components/chat/dynamic-suggested-questions"
+
 import { ChatInput } from "@components/chat-input"
 import { ChatflowInputArea } from "@components/chatflow/chatflow-input-area"
 import { ChatflowNodeTracker } from "@components/chatflow/chatflow-node-tracker"
@@ -45,18 +46,24 @@ export default function AppDetailPage() {
   const { profile } = useProfile()
   
   // --- BEGIN COMMENT ---
-  // 使用 chatflow 接口逻辑，支持表单和文本输入
+  // 🎯 使用统一的chatflow状态管理，支持智能弹窗控制
   // --- END COMMENT ---
   const {
     messages,
     handleSubmit: originalHandleSubmit,
     isProcessing,
-    isWaitingForResponse,
     handleStopProcessing,
     sendDirectMessage,
-    handleChatflowSubmit,
-    nodeTracker
-  } = useChatflowInterface()
+    nodeTracker,
+    showNodeTracker,
+    setShowNodeTracker,
+    showFloatingController
+  } = useChatflowState(true) // chatflow页面始终是chatflow应用
+  
+  // --- BEGIN COMMENT ---
+  // 获取chatflow特有的提交函数
+  // --- END COMMENT ---
+  const { handleChatflowSubmit, isWaitingForResponse } = useChatflowInterface()
   
   // --- BEGIN COMMENT ---
   // 使用统一的欢迎界面逻辑，现在支持应用详情页面
@@ -75,23 +82,9 @@ export default function AppDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // --- BEGIN COMMENT ---
-  // 节点跟踪器控制状态
+  // 🎯 移除重复的自动显示逻辑，现在由useChatflowState统一管理
+  // 支持用户主动关闭后不再自动打开的智能行为
   // --- END COMMENT ---
-  const [showNodeTracker, setShowNodeTracker] = useState(true)
-  const [showFloatingController, setShowFloatingController] = useState(false)
-  
-  // --- BEGIN COMMENT ---
-  // 监听节点执行状态，自动显示悬浮控制器（一旦显示就保持显示）
-  // --- END COMMENT ---
-  useEffect(() => {
-    const hasNodes = nodeTracker.nodes.length > 0
-    const isExecuting = nodeTracker.isExecuting
-    
-    if (hasNodes || isExecuting) {
-      setShowFloatingController(true)
-      // 一旦有节点执行，就保持显示悬浮球，不再自动隐藏
-    }
-  }, [nodeTracker.nodes.length, nodeTracker.isExecuting])
   
   // --- BEGIN COMMENT ---
   // 添加滚动管理，确保消息列表能正确滚动
@@ -409,17 +402,7 @@ export default function AppDetailPage() {
                   onFormConfigChange={setHasFormConfig}
                 />
                 
-                {/* --- 推荐问题（仅在没有表单配置时显示） --- */}
-                {!hasFormConfig && (
-                  <div className={cn(
-                    "w-full mx-auto",
-                    widthClass,
-                    paddingClass,
-                    "pt-4"
-                  )}>
-                    <DynamicSuggestedQuestions onQuestionClick={sendDirectMessage} />
-                  </div>
-                )}
+
               </div>
             </div>
           ) : (
@@ -437,7 +420,7 @@ export default function AppDetailPage() {
               <ChatflowNodeTracker
                 isVisible={showNodeTracker}
                 className={cn(
-                  "fixed bottom-40 right-6 z-10 max-w-sm",
+                  "fixed bottom-40 right-6 z-30 max-w-sm",
                   "transition-all duration-300"
                 )}
               />
@@ -453,7 +436,10 @@ export default function AppDetailPage() {
           isVisible={showFloatingController}
           isTrackerVisible={showNodeTracker}
           onToggleTracker={() => setShowNodeTracker(!showNodeTracker)}
-          onClose={() => setShowFloatingController(false)}
+          onClose={() => {
+            // chatflow应用的悬浮球不能关闭，只能关闭跟踪器
+            setShowNodeTracker(false)
+          }}
         />
 
         {/* --- 对话模式下的输入框 --- */}
