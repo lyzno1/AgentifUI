@@ -1,5 +1,5 @@
 "use client"
-import { Settings, HelpCircle } from "lucide-react"
+import { Settings } from "lucide-react"
 import { SidebarButton } from "./sidebar-button"
 import { useSidebarStore } from "@lib/stores/sidebar-store"
 import { cn } from "@lib/utils"
@@ -27,16 +27,6 @@ export function SidebarFooter() {
         className="group"
       >
         <span className="font-serif">设置</span>
-      </SidebarButton>}
-      {!isMobile && <SidebarButton
-        icon={<HelpCircle className={cn(
-          "h-5 w-5 transition-all duration-300",
-        )} />}
-        onClick={() => console.log("Help")}
-        aria-label="帮助"
-        className="group"
-      >
-        <span className="font-serif">帮助</span>
       </SidebarButton>}
       
       {isMobile && <MobileUserButton />}

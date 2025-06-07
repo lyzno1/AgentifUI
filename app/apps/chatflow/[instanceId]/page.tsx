@@ -5,6 +5,7 @@ import { useRouter, useParams, usePathname } from "next/navigation"
 import { useMobile, useChatWidth, useChatInterface, useWelcomeScreen, useChatScroll } from "@lib/hooks"
 import { useChatflowInterface } from "@lib/hooks/use-chatflow-interface"
 import { useChatflowState } from "@lib/hooks/use-chatflow-state"
+import { useChatflowExecutionStore } from "@lib/stores/chatflow-execution-store"
 import { cn } from "@lib/utils"
 import { 
   Loader2,
@@ -44,6 +45,11 @@ export default function AppDetailPage() {
   // 获取用户资料，用于欢迎界面显示
   // --- END COMMENT ---
   const { profile } = useProfile()
+  
+  // --- BEGIN COMMENT ---
+  // 🎯 获取chatflow执行状态清理方法
+  // --- END COMMENT ---
+  const { resetExecution } = useChatflowExecutionStore()
   
   // --- BEGIN COMMENT ---
   // 🎯 使用统一的chatflow状态管理，支持智能弹窗控制
@@ -157,9 +163,14 @@ export default function AppDetailPage() {
       // 重置提交状态
       setIsSubmitting(false)
       
+      // --- BEGIN COMMENT ---
+      // 🎯 新增：清理chatflow执行状态，确保不会显示之前的节点数据
+      // --- END COMMENT ---
+      resetExecution()
+      
       console.log('[AppDetail] 聊天状态清理完成')
     }
-  }, [pathname, instanceId, clearMessages, setCurrentConversationId, setIsWelcomeScreen])
+  }, [pathname, instanceId, clearMessages, setCurrentConversationId, setIsWelcomeScreen, resetExecution])
   
   // --- BEGIN COMMENT ---
   // 页面初始化：切换到目标应用并同步sidebar选中状态

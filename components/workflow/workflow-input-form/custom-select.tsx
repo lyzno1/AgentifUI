@@ -103,46 +103,45 @@ export function CustomSelect({
   const selectedOption = options.find(option => option === value)
   
   const triggerClasses = cn(
-    "w-full px-3 py-2 rounded-lg border font-serif transition-all duration-200",
-    "focus:outline-none focus:ring-2 focus:ring-stone-500/30 focus:border-stone-500",
-    "focus:shadow-md focus:shadow-stone-500/20",
-    "cursor-pointer select-none",
-    "flex items-center justify-between",
+    "w-full px-4 py-3 rounded-xl border-2 font-serif transition-all duration-300",
+    "focus:outline-none focus:ring-4 focus:ring-stone-500/20 focus:border-stone-500",
+    "focus:shadow-lg focus:shadow-stone-500/25 backdrop-blur-sm",
+    "cursor-pointer select-none flex items-center justify-between",
     error
-      ? "border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-red-500/30 focus:border-red-500"
+      ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" + (isDark ? " bg-red-900/10" : " bg-red-50/50")
       : isDark
-        ? "border-stone-600 bg-stone-700 text-stone-100 hover:border-stone-500"
-        : "border-stone-300 bg-white text-stone-900 hover:border-stone-400",
+        ? "bg-stone-800/90 border-stone-600 text-stone-100 hover:border-stone-500"
+        : "bg-white/90 border-stone-300 text-stone-900 hover:border-stone-400",
     className
   )
   
   const dropdownClasses = cn(
-    "absolute top-full left-0 right-0 mt-1 z-50",
-    "rounded-lg border shadow-lg backdrop-blur-sm",
+    "absolute top-full left-0 right-0 mt-2 z-40",
+    "rounded-xl border-2 shadow-xl backdrop-blur-xl",
     "max-h-60 overflow-y-auto",
-    "transform transition-all duration-200 ease-out",
+    "transform transition-all duration-300 ease-out",
     isOpen 
       ? "opacity-100 scale-100 translate-y-0" 
       : "opacity-0 scale-95 -translate-y-2 pointer-events-none",
-    isDark
-      ? "bg-stone-700/95 border-stone-600"
+    isDark 
+      ? "bg-stone-800/95 border-stone-600"
       : "bg-white/95 border-stone-300"
   )
   
   const optionClasses = (index: number, isSelected: boolean) => cn(
-    "px-3 py-2 cursor-pointer transition-all duration-150",
+    "px-4 py-3 cursor-pointer transition-all duration-200",
     "flex items-center justify-between font-serif",
-    "first:rounded-t-lg last:rounded-b-lg",
+    "first:rounded-t-xl last:rounded-b-xl",
     index === highlightedIndex
-      ? isDark
-        ? "bg-stone-600 text-stone-100"
-        : "bg-stone-100 text-stone-900"
+      ? isDark 
+        ? "bg-stone-700 text-stone-100 shadow-sm"
+        : "bg-stone-100 text-stone-900 shadow-sm"
       : isSelected
         ? isDark
-          ? "bg-stone-600/50 text-stone-200"
+          ? "bg-stone-700/50 text-stone-200"
           : "bg-stone-50 text-stone-800"
         : isDark
-          ? "text-stone-300 hover:bg-stone-600/30"
+          ? "text-stone-300 hover:bg-stone-700/30"
           : "text-stone-700 hover:bg-stone-50"
   )
   
@@ -157,7 +156,7 @@ export function CustomSelect({
         aria-haspopup="listbox"
       >
         <span className={cn(
-          selectedOption ? "" : "text-stone-400 dark:text-stone-500"
+          selectedOption ? "" : isDark ? "text-stone-500" : "text-stone-400"
         )}>
           {selectedOption || placeholder}
         </span>

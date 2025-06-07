@@ -8,7 +8,8 @@ import { FormField } from "@components/workflow/workflow-input-form/form-field"
 import { FileUploadField } from "@components/workflow/workflow-input-form/file-upload-field"
 import { validateFormData } from "@components/workflow/workflow-input-form/validation"
 import type { DifyUserInputFormItem } from "@lib/services/dify/types"
-import { Send, RotateCcw, Loader2, Sparkles } from "lucide-react"
+import { Send, RotateCcw, Loader2, Workflow } from "lucide-react"
+import { useCurrentApp } from "@lib/hooks/use-current-app"
 
 interface ChatflowInputAreaProps {
   instanceId: string
@@ -38,6 +39,7 @@ export function ChatflowInputArea({
 }: ChatflowInputAreaProps) {
   const { colors, isDark } = useThemeColors()
   const { widthClass, paddingClass } = useChatWidth()
+  const { currentAppInstance } = useCurrentApp()
   
   // --- 状态管理 ---
   const [query, setQuery] = useState("")
@@ -176,6 +178,13 @@ export function ChatflowInputArea({
     // 验证查询字段（必填）
     if (!query.trim()) {
       newErrors.query = "请输入您的问题或需求"
+    } else {
+      // 检查查询字段长度限制（如果有的话）
+      // 注意：这里我们设置一个合理的默认最大长度，防止过长的输入
+      const maxQueryLength = 2000 // 设置合理的查询最大长度
+      if (query.length > maxQueryLength) {
+        newErrors.query = `问题描述长度不能超过${maxQueryLength}个字符`
+      }
     }
     
     // 验证表单字段（如果有的话）
@@ -280,179 +289,265 @@ export function ChatflowInputArea({
       "py-8",
       className
     )}>
-      {/* --- 表单标题 --- */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <Sparkles className={cn(
-            "h-5 w-5",
-            isDark ? "text-stone-400" : "text-stone-500"
-          )} />
-          <h3 className={cn(
-            "text-lg font-semibold font-serif",
-            isDark ? "text-stone-200" : "text-stone-800"
-          )}>
-            {hasFormConfig ? "请填写详细信息" : "开始对话"}
-          </h3>
-        </div>
-        <p className={cn(
-          "text-sm font-serif",
-          isDark ? "text-stone-400" : "text-stone-600"
-        )}>
-          {hasFormConfig ? "填写完成后将开始执行Chatflow" : "输入您的问题开始对话"}
-        </p>
-      </div>
-
-      {/* --- 表单内容 --- */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* --- 查询输入框（必填） --- */}
+      {/* --- 现代化表单容器 --- */}
+      <div className={cn(
+        "max-w-2xl mx-auto",
+        "backdrop-blur-xl rounded-2xl shadow-xl transition-all duration-300",
+        isDark 
+          ? "bg-gradient-to-br from-stone-900/95 to-stone-800/95 border border-stone-700/60 shadow-stone-900/40 hover:shadow-stone-900/60"
+          : "bg-gradient-to-br from-white/95 to-stone-50/95 border border-stone-200/60 shadow-stone-200/40 hover:shadow-2xl hover:shadow-stone-300/50"
+      )}>
+        {/* --- 表单头部 --- */}
         <div className={cn(
-          "p-4 rounded-xl border transition-colors",
-          isDark 
-            ? "bg-stone-900/50 border-stone-700" 
-            : "bg-stone-50/50 border-stone-200"
+          "p-8 pb-6 border-b",
+          isDark ? "border-stone-700/50" : "border-stone-200/50"
         )}>
-          <label className={cn(
-            "block text-sm font-medium font-serif mb-2",
-            isDark ? "text-stone-300" : "text-stone-700"
-          )}>
-            您的问题或需求 <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={query}
-            onChange={handleQueryChange}
-            onKeyDown={handleQueryKeyDown}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            placeholder="请描述您的问题或需求..."
-            rows={3}
-            className={cn(
-              "w-full px-3 py-2 rounded-lg border resize-none font-serif",
-              "focus:outline-none focus:ring-2 focus:ring-stone-500/30 focus:border-stone-500",
-              "focus:shadow-md focus:shadow-stone-500/20",
-              "transition-all duration-200",
-              isDark
-                ? "bg-stone-800 border-stone-600 text-stone-200 placeholder-stone-500"
-                : "bg-white border-stone-300 text-stone-900 placeholder-stone-400",
-              errors.query && "border-red-500 focus:ring-red-500/30 focus:border-red-500"
-            )}
-            disabled={isProcessing || isWaiting}
-          />
-          {errors.query && (
-            <p className="mt-1 text-sm text-red-500 font-serif">{errors.query}</p>
-          )}
-        </div>
-
-        {/* --- 动态表单字段 --- */}
-        {hasFormConfig && userInputForm.map((formItem: DifyUserInputFormItem, index: number) => {
-          const fieldType = Object.keys(formItem)[0]
-          const fieldConfig = formItem[fieldType as keyof typeof formItem]
-          
-          if (!fieldConfig) return null
-          
-          // 文件上传字段特殊处理
-          if (fieldType === 'file' || fieldType === 'file-list') {
-            return (
-              <div key={`${fieldConfig.variable}-${index}`} className={cn(
-                "p-4 rounded-xl border transition-colors",
-                isDark 
-                  ? "bg-stone-900/50 border-stone-700" 
-                  : "bg-stone-50/50 border-stone-200"
-              )}>
-                <FileUploadField
-                  config={fieldConfig}
-                  value={formData[fieldConfig.variable]}
-                  onChange={(value) => handleFieldChange(fieldConfig.variable, value)}
-                  error={errors[fieldConfig.variable]}
-                  label={fieldConfig.label}
-                  instanceId={instanceId}
-                  isSingleFileMode={fieldType === 'file'}
-                />
-              </div>
-            )
-          }
-          
-          // 其他字段类型
-          return (
-            <div key={`${fieldConfig.variable}-${index}`} className={cn(
-              "p-4 rounded-xl border transition-colors",
+          <div className="text-center space-y-4">
+            <div className={cn(
+              "inline-flex items-center justify-center w-16 h-16 rounded-2xl",
+              "shadow-lg",
               isDark 
-                ? "bg-stone-900/50 border-stone-700" 
-                : "bg-stone-50/50 border-stone-200"
+                ? "bg-gradient-to-br from-stone-800 to-stone-700 border border-stone-600/50 shadow-stone-900/50"
+                : "bg-gradient-to-br from-stone-100 to-stone-200 border border-stone-300/50 shadow-stone-200/50"
             )}>
-              <FormField
-                type={fieldType as 'text-input' | 'number' | 'paragraph' | 'select'}
-                config={fieldConfig}
-                value={formData[fieldConfig.variable]}
-                onChange={(value) => handleFieldChange(fieldConfig.variable, value)}
-                error={errors[fieldConfig.variable]}
-              />
+              <Workflow className={cn(
+                "h-7 w-7",
+                isDark ? "text-stone-300" : "text-stone-600"
+              )} />
             </div>
-          )
-        })}
-
-        {/* --- 表单操作按钮 --- */}
-        <div className="flex gap-3 pt-6">
-          {/* 重置按钮 */}
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={isProcessing || isWaiting || (!query && Object.values(formData).every(v => !v || (Array.isArray(v) && v.length === 0)))}
-            className={cn(
-              "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-serif transition-all duration-200",
-              "border",
-              isProcessing || isWaiting || (!query && Object.values(formData).every(v => !v || (Array.isArray(v) && v.length === 0)))
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:shadow-md",
-              isDark
-                ? "border-stone-600 text-stone-300 hover:bg-stone-700/50 hover:text-stone-200"
-                : "border-stone-300 text-stone-700 hover:bg-stone-100 hover:text-stone-800"
-            )}
-          >
-            <RotateCcw className="h-4 w-4" />
-            重置
-          </button>
-          
-          {/* 提交按钮 */}
-          <button
-            type="submit"
-            disabled={isProcessing || isWaiting || !canSubmit()}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl",
-              "text-sm font-serif font-medium transition-all duration-200",
-              isProcessing || isWaiting || !canSubmit()
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:shadow-lg transform hover:scale-[1.02]",
-              isDark
-                ? "bg-stone-700 hover:bg-stone-600 text-stone-100"
-                : "bg-stone-800 hover:bg-stone-700 text-white"
-            )}
-          >
-            {isProcessing || isWaiting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                发送中...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" />
-                开始对话
-              </>
-            )}
-          </button>
+            
+            <div className="space-y-2">
+              <h1 className={cn(
+                "text-2xl font-bold font-serif",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                {currentAppInstance?.display_name || "AI 对话"}
+              </h1>
+              <p className={cn(
+                "font-serif max-w-md mx-auto leading-relaxed",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )}>
+                {currentAppInstance?.description || "请输入您的问题，开始智能对话"}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* --- 表单提示 --- */}
-        {Object.keys(errors).length > 0 && (
-          <div className={cn(
-            "p-3 rounded-lg border-l-4 border-red-500",
-            isDark ? "bg-red-900/20 text-red-200" : "bg-red-50 text-red-800"
-          )}>
-            <p className="text-sm font-serif">
-              请检查并修正表单中的错误
-            </p>
+        {/* --- 表单内容区域 --- */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          {/* --- 主要查询输入区域 --- */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                "bg-gradient-to-r from-stone-500 to-stone-400"
+              )} />
+              <label className={cn(
+                "text-base font-semibold font-serif",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                您的问题或需求 <span className="text-red-500 ml-1">*</span>
+              </label>
+            </div>
+            
+            <div className="relative group">
+              <textarea
+                value={query}
+                onChange={handleQueryChange}
+                onKeyDown={handleQueryKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                placeholder="请详细描述您的问题或需求..."
+                rows={4}
+                className={cn(
+                  "w-full px-5 py-4 rounded-xl border-2 resize-none font-serif",
+                  "backdrop-blur-sm transition-all duration-300",
+                  "focus:outline-none focus:ring-4 focus:ring-stone-500/20 focus:border-stone-500",
+                  "focus:shadow-lg focus:shadow-stone-500/25",
+                  errors.query 
+                    ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                    : isDark
+                      ? "bg-stone-800/80 border-stone-600 text-stone-100 focus:bg-stone-800 group-hover:border-stone-500 placeholder:text-stone-400"
+                      : "bg-white/80 border-stone-300 text-stone-900 focus:bg-white group-hover:border-stone-400 placeholder:text-stone-500"
+                )}
+                disabled={isProcessing || isWaiting}
+              />
+              
+              {errors.query && (
+                <div className={cn(
+                  "mt-3 flex items-center gap-2",
+                  isDark ? "text-red-400" : "text-red-600"
+                )}>
+                  <div className="w-1 h-1 rounded-full bg-red-500" />
+                  <p className="text-sm font-serif">{errors.query}</p>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </form>
+
+          {/* --- 动态表单字段区域 --- */}
+          {hasFormConfig && userInputForm.length > 0 && (
+            <div className="space-y-6">
+              {/* 分隔线 */}
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "flex-1 h-px bg-gradient-to-r from-transparent to-transparent",
+                  isDark ? "via-stone-600" : "via-stone-300"
+                )} />
+                <span className={cn(
+                  "px-4 py-2 rounded-full text-sm font-serif border",
+                  isDark 
+                    ? "bg-stone-800 text-stone-400 border-stone-700"
+                    : "bg-stone-100 text-stone-600 border-stone-200"
+                )}>
+                  补充信息
+                </span>
+                <div className={cn(
+                  "flex-1 h-px bg-gradient-to-r from-transparent to-transparent",
+                  isDark ? "via-stone-600" : "via-stone-300"
+                )} />
+              </div>
+              
+              {/* 表单字段网格 */}
+              <div className="grid gap-6">
+                {userInputForm.map((formItem: DifyUserInputFormItem, index: number) => {
+                  const fieldType = Object.keys(formItem)[0]
+                  const fieldConfig = formItem[fieldType as keyof typeof formItem]
+                  
+                  if (!fieldConfig) return null
+                  
+                  return (
+                    <div 
+                      key={`${fieldConfig.variable}-${index}`} 
+                      className={cn(
+                        "group relative p-6 rounded-xl transition-all duration-300",
+                        isDark
+                          ? "bg-gradient-to-br from-stone-800/80 to-stone-700/80 border border-stone-600/60 hover:shadow-lg hover:shadow-stone-900/50 hover:border-stone-500"
+                          : "bg-gradient-to-br from-stone-50/80 to-white/80 border border-stone-200/60 hover:shadow-lg hover:shadow-stone-200/50 hover:border-stone-300"
+                      )}
+                    >
+                      {/* 字段装饰线 */}
+                      <div className={cn(
+                        "absolute top-0 left-6 w-12 h-1 rounded-full transition-all duration-300 group-hover:w-16",
+                        isDark 
+                          ? "bg-gradient-to-r from-stone-500 to-stone-600"
+                          : "bg-gradient-to-r from-stone-400 to-stone-300"
+                      )} />
+                      
+                      {/* 文件上传字段 */}
+                      {(fieldType === 'file' || fieldType === 'file-list') ? (
+                        <FileUploadField
+                          config={fieldConfig}
+                          value={formData[fieldConfig.variable]}
+                          onChange={(value) => handleFieldChange(fieldConfig.variable, value)}
+                          error={errors[fieldConfig.variable]}
+                          label={fieldConfig.label}
+                          instanceId={instanceId}
+                          isSingleFileMode={fieldType === 'file'}
+                        />
+                      ) : (
+                        <FormField
+                          type={fieldType as 'text-input' | 'number' | 'paragraph' | 'select'}
+                          config={fieldConfig}
+                          value={formData[fieldConfig.variable]}
+                          onChange={(value) => handleFieldChange(fieldConfig.variable, value)}
+                          error={errors[fieldConfig.variable]}
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* --- 表单操作区域 --- */}
+          <div className={cn(
+            "pt-6 border-t",
+            isDark ? "border-stone-700/50" : "border-stone-200/50"
+          )}>
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* 重置按钮 */}
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={isProcessing || isWaiting || (!query && Object.values(formData).every(v => !v || (Array.isArray(v) && v.length === 0)))}
+                className={cn(
+                  "flex items-center justify-center gap-3 px-6 py-3 rounded-xl",
+                  "text-sm font-serif font-medium transition-all duration-300 backdrop-blur-sm border-2",
+                  isDark 
+                    ? "border-stone-600 bg-stone-800/80 text-stone-300"
+                    : "border-stone-300 bg-white/80 text-stone-700",
+                  isProcessing || isWaiting || (!query && Object.values(formData).every(v => !v || (Array.isArray(v) && v.length === 0)))
+                    ? "opacity-50 cursor-not-allowed"
+                    : cn(
+                        "active:scale-[0.98] transform",
+                        isDark
+                          ? "hover:shadow-lg hover:shadow-stone-900/50 hover:border-stone-500 hover:bg-stone-700"
+                          : "hover:shadow-lg hover:shadow-stone-200/50 hover:border-stone-400 hover:bg-stone-50"
+                      )
+                )}
+              >
+                <RotateCcw className="h-4 w-4" />
+                重置表单
+              </button>
+              
+              {/* 提交按钮 */}
+              <button
+                type="submit"
+                disabled={isProcessing || isWaiting || !canSubmit()}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-xl",
+                  "text-base font-serif font-semibold transition-all duration-300 text-white shadow-lg",
+                  isDark
+                    ? "bg-gradient-to-r from-stone-700 to-stone-600 shadow-stone-900/50"
+                    : "bg-gradient-to-r from-stone-800 to-stone-700 shadow-stone-800/25",
+                  isProcessing || isWaiting || !canSubmit()
+                    ? "opacity-50 cursor-not-allowed"
+                    : cn(
+                        "active:scale-[0.98] transform hover:scale-[1.02]",
+                        isDark
+                          ? "hover:shadow-xl hover:shadow-stone-900/60 hover:from-stone-600 hover:to-stone-500"
+                          : "hover:shadow-xl hover:shadow-stone-800/30 hover:from-stone-700 hover:to-stone-600"
+                      )
+                )}
+              >
+                {isProcessing || isWaiting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>处理中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-5 w-5" />
+                    <span>开始对话</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 表单错误提示 */}
+            {Object.keys(errors).length > 0 && (
+              <div className={cn(
+                "mt-6 p-4 rounded-xl border shadow-lg",
+                isDark
+                  ? "bg-gradient-to-r from-red-900/20 to-red-800/20 border-red-700/50 shadow-red-900/20"
+                  : "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200 shadow-red-100/50"
+              )}>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <p className={cn(
+                    "text-sm font-serif",
+                    isDark ? "text-red-300" : "text-red-700"
+                  )}>
+                    请检查并修正表单中标记的错误信息
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

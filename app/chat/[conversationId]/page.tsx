@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useLayoutEffect } from 'react';
+import { useParams, usePathname } from 'next/navigation';
 import { ChatInput } from '@components/chat-input';
 import { 
   ChatLoader, 
@@ -36,16 +36,23 @@ import { ChatflowFloatingController } from '@components/chatflow/chatflow-floati
 import { ChatflowNodeTracker } from '@components/chatflow/chatflow-node-tracker';
 import { useChatflowDetection } from '@lib/hooks/use-chatflow-detection';
 import { useChatflowState } from '@lib/hooks/use-chatflow-state';
+import { useChatflowExecutionStore } from '@lib/stores/chatflow-execution-store';
 
 export default function ChatPage() {
   const params = useParams<{ conversationId: string }>();
   const conversationIdFromUrl = params.conversationId;
+  const pathname = usePathname();
   
   // --- BEGIN COMMENT ---
   // 获取sidebar状态和mobile状态，用于计算backdrop边距
   // --- END COMMENT ---
   const { isExpanded, isLocked } = useSidebarStore();
   const isMobile = useMobile();
+  
+  // --- BEGIN COMMENT ---
+  // 🎯 获取chatflow执行状态清理方法
+  // --- END COMMENT ---
+  const { resetExecution } = useChatflowExecutionStore();
   
   // --- BEGIN COMMENT ---
   // 使用 useChatPageState hook 管理聊天页面状态
@@ -81,6 +88,22 @@ export default function ChatPage() {
     setShowNodeTracker,
     showFloatingController
   } = useChatflowState(isChatflowApp);
+  
+  // --- BEGIN COMMENT ---
+  // 🎯 关键修复：路由切换时清理chatflow执行状态
+  // 确保切换到历史对话时不会显示之前的节点数据
+  // --- END COMMENT ---
+  useLayoutEffect(() => {
+    if (pathname?.startsWith('/chat/') && conversationIdFromUrl && 
+        conversationIdFromUrl !== 'new' && !conversationIdFromUrl.includes('temp-')) {
+      console.log('[ChatPage] 路由切换到历史对话，清理chatflow执行状态')
+      
+      // 清理chatflow执行状态，确保不会显示之前的节点数据
+      resetExecution();
+      
+      console.log('[ChatPage] chatflow执行状态清理完成')
+    }
+  }, [pathname, conversationIdFromUrl, resetExecution]);
   
   // --- BEGIN COMMENT ---
   // 使用分页加载钩子获取历史消息

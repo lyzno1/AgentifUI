@@ -30,23 +30,24 @@ export function FormField({ type, config, value, onChange, error, instanceId }: 
   const { isDark } = useTheme()
   
   const baseInputClasses = cn(
-    "w-full px-3 py-2 rounded-lg border font-serif transition-all duration-200",
-    "focus:outline-none focus:ring-2 focus:ring-stone-500/30 focus:border-stone-500",
-    "focus:shadow-md focus:shadow-stone-500/20",
+    "w-full px-4 py-3 rounded-xl border-2 font-serif transition-all duration-300",
+    "focus:outline-none focus:ring-4 focus:ring-stone-500/20 focus:border-stone-500",
+    "focus:shadow-lg focus:shadow-stone-500/25 backdrop-blur-sm",
     error
-      ? "border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-red-500/30 focus:border-red-500"
+      ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" + (isDark ? " bg-red-900/10" : " bg-red-50/50")
       : isDark
-        ? "border-stone-600 bg-stone-700 text-stone-100 placeholder-stone-400"
-        : "border-stone-300 bg-white text-stone-900 placeholder-stone-500"
+        ? "bg-stone-800/90 border-stone-600 text-stone-100 placeholder-stone-400 hover:border-stone-500"
+        : "bg-white/90 border-stone-300 text-stone-900 placeholder-stone-500 hover:border-stone-400"
   )
   
   const labelClasses = cn(
-    "block text-sm font-medium font-serif mb-2",
-    isDark ? "text-stone-200" : "text-stone-700"
+    "flex items-center gap-2 text-sm font-semibold font-serif mb-3",
+    isDark ? "text-stone-200" : "text-stone-800"
   )
   
   const errorClasses = cn(
-    "mt-1 text-xs font-serif text-red-500"
+    "mt-2 flex items-center gap-2",
+    isDark ? "text-red-400" : "text-red-600"
   )
   
   const renderInput = () => {
@@ -97,14 +98,19 @@ export function FormField({ type, config, value, onChange, error, instanceId }: 
       
       case 'paragraph':
         const paragraphConfig = config as DifyParagraphControl
+        const hasMaxLength = (paragraphConfig as any).max_length
         return (
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={`请输入${config.label}`}
             rows={6}
-            maxLength={(paragraphConfig as any).max_length || undefined}
-            className={cn(baseInputClasses, "resize-none")}
+            maxLength={hasMaxLength || undefined}
+            className={cn(
+              baseInputClasses, 
+              "resize-none",
+              hasMaxLength ? "pb-8" : "" // 为字符计数器留出空间
+            )}
           />
         )
       
@@ -194,15 +200,32 @@ export function FormField({ type, config, value, onChange, error, instanceId }: 
   }
   
   return (
-    <div className="space-y-1 px-1">
+    <div className="space-y-1">
       <label className={labelClasses}>
+        <div className={cn(
+          "w-1.5 h-1.5 rounded-full",
+          "bg-gradient-to-r from-stone-500 to-stone-400"
+        )} />
         {config.label}
         {config.required && (
           <span className="text-red-500 ml-1">*</span>
         )}
       </label>
       
-      {renderInput()}
+      <div className="relative">
+        {renderInput()}
+        
+        {/* 字符计数（仅对有长度限制的字段显示） */}
+        {(type === 'text-input' || type === 'paragraph') && (config as any).max_length && (
+          <div className={cn(
+            "absolute bottom-3 right-4 text-xs font-mono transition-opacity duration-200",
+            isDark ? "text-stone-500" : "text-stone-400",
+            (value || '').length > 0 ? "opacity-100" : "opacity-0"
+          )}>
+            {(value || '').length} / {(config as any).max_length}
+          </div>
+        )}
+      </div>
       
       {/* 数字类型的范围提示 */}
       {type === 'number' && getNumberHint() && (
@@ -214,20 +237,11 @@ export function FormField({ type, config, value, onChange, error, instanceId }: 
         </div>
       )}
       
-      {/* 字符计数（仅对有长度限制的字段显示） */}
-      {(type === 'text-input' || type === 'paragraph') && (config as any).max_length && (
-        <div className={cn(
-          "text-xs font-serif text-right",
-          isDark ? "text-stone-400" : "text-stone-500"
-        )}>
-          {(value || '').length} / {(config as any).max_length}
-        </div>
-      )}
-      
       {/* 错误提示 */}
       {error && (
         <div className={errorClasses}>
-          {error}
+          <div className="w-1 h-1 rounded-full bg-red-500" />
+          <span className="text-sm font-serif">{error}</span>
         </div>
       )}
     </div>

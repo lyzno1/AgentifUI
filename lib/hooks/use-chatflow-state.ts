@@ -36,19 +36,18 @@ export function useChatflowState(isChatflowApp: boolean) {
   // 🎯 悬浮球显示逻辑：在chatflow应用中始终显示
   const showFloatingController = isChatflowApp;
   
-  // 🎯 监听节点执行状态，智能显示节点跟踪器
-  // 只有在用户没有主动关闭的情况下才自动打开
+  // 🎯 关键修复：只在真正开始执行时才自动显示跟踪器
+  // 不基于历史节点数据，避免chatflow应用间切换时自动弹出
   React.useEffect(() => {
     if (!isChatflowApp) return;
     
-    const hasNodes = nodeTracker?.nodes?.length > 0;
     const isExecuting = nodeTracker?.isExecuting;
     
-    // 当开始执行或有节点数据时，只有在用户没有主动关闭的情况下才自动显示跟踪器
-    if ((hasNodes || isExecuting) && !userHasClosed) {
+    // 只有在真正开始执行时，且用户没有主动关闭的情况下才自动显示跟踪器
+    if (isExecuting && !userHasClosed) {
       setShowNodeTracker(true);
     }
-  }, [isChatflowApp, nodeTracker?.nodes?.length, nodeTracker?.isExecuting, userHasClosed]);
+  }, [isChatflowApp, nodeTracker?.isExecuting, userHasClosed]);
   
   // 🎯 包装setShowNodeTracker，跟踪用户的主动操作
   const handleToggleNodeTracker = React.useCallback((show: boolean) => {

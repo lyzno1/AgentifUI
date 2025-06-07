@@ -322,23 +322,31 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
   }
   
   return (
-    <div className="space-y-2 px-1">
+    <div className="space-y-4">
       {/* 标签 */}
       {label && (
-        <label className={cn(
-          "block text-sm font-medium font-serif mb-2",
-          isDark ? "text-stone-200" : "text-stone-700"
-        )}>
-          {label}
-          {successCount > 0 && (
-            <span className={cn(
-              "ml-2 text-xs",
-              isDark ? "text-stone-400" : "text-stone-500"
-            )}>
-              ({successCount}/{maxFiles} 已上传)
-            </span>
-          )}
-        </label>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-1.5 h-1.5 rounded-full",
+            "bg-gradient-to-r from-stone-500 to-stone-400"
+          )} />
+          <label className={cn(
+            "text-sm font-semibold font-serif",
+            isDark ? "text-stone-200" : "text-stone-800"
+          )}>
+            {label}
+            {successCount > 0 && (
+              <span className={cn(
+                "ml-2 px-2 py-1 rounded-full text-xs",
+                isDark 
+                  ? "bg-stone-700 text-stone-400"
+                  : "bg-stone-100 text-stone-600"
+              )}>
+                {successCount}/{maxFiles} 已上传
+              </span>
+            )}
+          </label>
+        </div>
       )}
       
       {/* 上传区域 */}
@@ -347,35 +355,61 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           className={cn(
-            "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer",
-            "transition-all duration-200 ease-in-out",
-            "hover:scale-[1.005] hover:shadow-md",
+            "group relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer",
+            "transition-all duration-300 ease-in-out backdrop-blur-sm",
+            "hover:scale-[1.01] hover:shadow-lg",
+            isDark 
+              ? "bg-gradient-to-br from-stone-800/80 to-stone-700/80"
+              : "bg-gradient-to-br from-white/80 to-stone-50/80",
             error
-              ? "border-red-500 bg-red-50 dark:bg-red-900/20 hover:border-red-400"
+              ? "border-red-400 hover:border-red-300" + (isDark ? " bg-red-900/10" : " bg-red-50/50")
               : isDark
-                ? "border-stone-600 bg-stone-700 hover:border-stone-500 hover:bg-stone-600"
-                : "border-stone-300 bg-stone-50 hover:border-stone-400 hover:bg-stone-100",
+                ? "border-stone-600 hover:border-stone-500"
+                : "border-stone-300 hover:border-stone-400",
             isUploading && "opacity-75 cursor-not-allowed"
           )}
           onClick={() => !isUploading && fileInputRef.current?.click()}
         >
-          <Upload className={cn(
-            "h-8 w-8 mx-auto mb-2",
-            isDark ? "text-stone-400" : "text-stone-500"
-          )} />
-          <p className={cn(
-            "text-sm font-serif",
-            isDark ? "text-stone-300" : "text-stone-600"
-          )}>
-            {isUploading ? "正在上传..." : "点击或拖拽文件到此处上传"}
-          </p>
+          {/* 背景装饰 */}
           <div className={cn(
-            "text-xs font-serif mt-2 space-y-1",
-            isDark ? "text-stone-400" : "text-stone-500"
-          )}>
-            <p>最多上传 {maxFiles} 个文件 (剩余 {maxFiles - uploadFiles.length} 个)</p>
-            <p>{fileTypeInfo.hint}</p>
-            {getFileSizeHint() && <p>{getFileSizeHint()}</p>}
+            "absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100",
+            "transition-opacity duration-300",
+            isDark 
+              ? "bg-gradient-to-br from-stone-700/50 to-stone-600/50"
+              : "bg-gradient-to-br from-stone-100/50 to-stone-200/50"
+          )} />
+          
+          <div className="relative z-10 space-y-4">
+            <div className={cn(
+              "inline-flex items-center justify-center w-16 h-16 rounded-2xl",
+              "shadow-lg group-hover:scale-110 transition-transform duration-300",
+              isDark 
+                ? "bg-gradient-to-br from-stone-700 to-stone-600 border border-stone-600/50 shadow-stone-900/50"
+                : "bg-gradient-to-br from-stone-100 to-stone-200 border border-stone-300/50 shadow-stone-200/50"
+            )}>
+              <Upload className={cn(
+                "h-7 w-7",
+                isDark ? "text-stone-300" : "text-stone-600"
+              )} />
+            </div>
+            
+            <div className="space-y-2">
+              <p className={cn(
+                "text-base font-semibold font-serif",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                {isUploading ? "正在上传文件..." : "拖拽文件到此处或点击上传"}
+              </p>
+              
+              <div className={cn(
+                "text-sm font-serif space-y-1",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )}>
+                <p>最多上传 {maxFiles} 个文件 (剩余 {maxFiles - uploadFiles.length} 个)</p>
+                <p>{fileTypeInfo.hint}</p>
+                {getFileSizeHint() && <p>{getFileSizeHint()}</p>}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -383,12 +417,18 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
       {/* 超出限制提示 */}
       {uploadFiles.length >= maxFiles && (
         <div className={cn(
-          "px-3 py-2 rounded-lg text-sm font-serif border",
+          "flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg",
           isDark 
-            ? "bg-orange-900/30 border-orange-500/30 text-orange-300" 
-            : "bg-orange-100 border-orange-300 text-orange-700"
+            ? "bg-gradient-to-r from-amber-900/20 to-amber-800/20 border-amber-700/50 shadow-amber-900/20"
+            : "bg-gradient-to-r from-amber-50 to-amber-100/50 border-amber-200 shadow-amber-100/50"
         )}>
-          已达到最大文件数量限制 ({uploadFiles.length}/{maxFiles})
+          <div className="w-2 h-2 rounded-full bg-amber-500" />
+          <p className={cn(
+            "text-sm font-serif",
+            isDark ? "text-amber-300" : "text-amber-700"
+          )}>
+            已达到最大文件数量限制 ({uploadFiles.length}/{maxFiles})
+          </p>
         </div>
       )}
       
@@ -405,117 +445,167 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
       
       {/* 已选文件列表 */}
       {uploadFiles.length > 0 && (
-        <div className="space-y-2">
-          {uploadFiles.map((uploadFile) => (
-            <div
-              key={uploadFile.id}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border relative",
-                "transition-all duration-200 ease-in-out",
-                "animate-in slide-in-from-top-2 fade-in duration-300",
-                isDark 
-                  ? "border-stone-600 bg-stone-700" 
-                  : "border-stone-200 bg-stone-50",
-                uploadFile.status === 'error' && (isDark ? "border-red-500/30" : "border-red-400/30")
-              )}
-            >
-              {/* 状态图标 */}
-              <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center relative">
-                {uploadFile.status === 'uploading' && <Spinner size="sm" />}
-                {uploadFile.status === 'success' && (
-                  <CheckCircle2Icon className={cn("w-4 h-4", isDark ? "text-green-400" : "text-green-500")} />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex-1 h-px bg-gradient-to-r from-transparent to-transparent",
+              isDark ? "via-stone-600" : "via-stone-300"
+            )} />
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-serif border",
+              isDark 
+                ? "bg-stone-800 text-stone-400 border-stone-700"
+                : "bg-stone-100 text-stone-600 border-stone-200"
+            )}>
+              已选文件
+            </span>
+            <div className={cn(
+              "flex-1 h-px bg-gradient-to-r from-transparent to-transparent",
+              isDark ? "via-stone-600" : "via-stone-300"
+            )} />
+          </div>
+          
+          <div className="grid gap-3">
+            {uploadFiles.map((uploadFile) => (
+              <div
+                key={uploadFile.id}
+                className={cn(
+                  "group relative flex items-center gap-4 p-4 rounded-xl border",
+                  "transition-all duration-300 ease-in-out backdrop-blur-sm hover:shadow-lg",
+                  "animate-in slide-in-from-top-2 fade-in duration-300",
+                  isDark 
+                    ? "bg-gradient-to-r from-stone-800/90 to-stone-700/90"
+                    : "bg-gradient-to-r from-white/90 to-stone-50/90",
+                  uploadFile.status === 'success' && (isDark ? "border-green-700/50" : "border-green-200"),
+                  uploadFile.status === 'error' && (isDark ? "border-red-700/50" : "border-red-200"),
+                  uploadFile.status === 'uploading' && (isDark ? "border-stone-500/50" : "border-stone-400"),
+                  uploadFile.status === 'pending' && (isDark ? "border-stone-600" : "border-stone-200")
                 )}
-                {uploadFile.status === 'error' && (
-                  <TooltipWrapper content="重新上传" placement="top" id={`retry-${uploadFile.id}`}>
-                    <button 
-                      type="button"
-                      onClick={() => handleRetryUpload(uploadFile.id)}
-                      className={cn(
-                        "w-full h-full flex items-center justify-center rounded-full",
-                        "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20",
-                        "focus:outline-none transition-colors duration-150"
-                      )}
-                      aria-label="重试上传"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  </TooltipWrapper>
-                )}
-                {uploadFile.status === 'pending' && (
-                  <File className={cn("w-4 h-4", isDark ? "text-stone-400" : "text-stone-500")} />
-                )}
-              </div>
-              
-              {/* 文件信息 */}
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "text-sm font-serif truncate",
-                  isDark ? "text-stone-200" : "text-stone-700"
-                )}>
-                  {uploadFile.name}
-                </p>
-                <div className="flex items-center gap-2">
-                  <p className={cn(
-                    "text-xs font-serif",
-                    isDark ? "text-stone-400" : "text-stone-500"
+              >
+                {/* 状态指示器 */}
+                <div className="relative flex-shrink-0">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                    uploadFile.status === 'success' && (isDark ? "bg-green-900/30" : "bg-green-100"),
+                    uploadFile.status === 'error' && (isDark ? "bg-red-900/30" : "bg-red-100"),
+                    uploadFile.status === 'uploading' && (isDark ? "bg-stone-700/50" : "bg-stone-200"),
+                    uploadFile.status === 'pending' && (isDark ? "bg-stone-700" : "bg-stone-100")
                   )}>
-                    {formatBytes(uploadFile.size)}
-                  </p>
-
-                  {uploadFile.status === 'error' && uploadFile.error && (
-                    <span className="text-xs font-serif text-red-500">
-                      {uploadFile.error}
-                    </span>
+                    {uploadFile.status === 'uploading' && <Spinner size="sm" />}
+                    {uploadFile.status === 'success' && (
+                      <CheckCircle2Icon className={cn(
+                        "w-5 h-5",
+                        isDark ? "text-green-400" : "text-green-600"
+                      )} />
+                    )}
+                    {uploadFile.status === 'error' && (
+                      <TooltipWrapper content="重新上传" placement="top" id={`retry-${uploadFile.id}`}>
+                        <button 
+                          type="button"
+                          onClick={() => handleRetryUpload(uploadFile.id)}
+                          className={cn(
+                            "w-full h-full flex items-center justify-center rounded-xl",
+                            "focus:outline-none transition-colors duration-200",
+                            isDark 
+                              ? "text-red-400 hover:bg-red-800/50"
+                              : "text-red-600 hover:bg-red-200"
+                          )}
+                          aria-label="重试上传"
+                        >
+                          <RotateCcw className="w-5 h-5" />
+                        </button>
+                      </TooltipWrapper>
+                    )}
+                    {uploadFile.status === 'pending' && (
+                      <File className={cn(
+                        "w-5 h-5",
+                        isDark ? "text-stone-400" : "text-stone-600"
+                      )} />
+                    )}
+                  </div>
+                  
+                  {/* 脉冲动画（上传中） */}
+                  {uploadFile.status === 'uploading' && (
+                    <div className="absolute inset-0 rounded-xl border-2 border-stone-400 animate-ping opacity-30" />
                   )}
                 </div>
+                
+                {/* 文件信息 */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <p className={cn(
+                    "text-sm font-semibold font-serif truncate",
+                    isDark ? "text-stone-200" : "text-stone-800"
+                  )}>
+                    {uploadFile.name}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "text-xs font-mono px-2 py-1 rounded-full",
+                      isDark 
+                        ? "bg-stone-700 text-stone-400"
+                        : "bg-stone-100 text-stone-600"
+                    )}>
+                      {formatBytes(uploadFile.size)}
+                    </span>
+                    
+                    {uploadFile.status === 'error' && uploadFile.error && (
+                      <span className={cn(
+                        "text-xs font-serif",
+                        isDark ? "text-red-400" : "text-red-600"
+                      )}>
+                        {uploadFile.error}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* 删除按钮 */}
+                <TooltipWrapper content="移除文件" placement="top" id={`remove-${uploadFile.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFile(uploadFile.id)}
+                    className={cn(
+                      "p-2 rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100",
+                      isDark 
+                        ? "hover:bg-stone-600 text-stone-400 hover:text-stone-200"
+                        : "hover:bg-stone-200 text-stone-500 hover:text-stone-700"
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </TooltipWrapper>
+                
+                {/* 上传进度条 */}
+                {uploadFile.status === 'uploading' && (
+                  <div className={cn(
+                    "absolute bottom-0 left-0 right-0 h-1 rounded-b-xl overflow-hidden",
+                    isDark ? "bg-stone-700" : "bg-stone-200"
+                  )}>
+                    <div 
+                      className="h-full bg-gradient-to-r from-stone-500 to-stone-400 transition-all duration-300 rounded-b-xl"
+                      style={{ width: `${uploadFile.progress}%` }}
+                    />
+                  </div>
+                )}
               </div>
-              
-              {/* 删除按钮 */}
-              <TooltipWrapper content="移除文件" placement="top" id={`remove-${uploadFile.id}`}>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFile(uploadFile.id)}
-                  className={cn(
-                    "p-1 rounded-full transition-colors",
-                    isDark
-                      ? "hover:bg-stone-600 text-stone-400 hover:text-stone-300"
-                      : "hover:bg-stone-200 text-stone-500 hover:text-stone-600"
-                  )}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </TooltipWrapper>
-              
-              {/* 上传进度条 */}
-              {uploadFile.status === 'uploading' && (
-                <div className={cn(
-                  "absolute bottom-0 left-0 h-1 transition-all duration-300 rounded-b-lg",
-                  isDark ? "bg-stone-400" : "bg-stone-600"
-                )} style={{ width: `${uploadFile.progress}%` }} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
       
       {/* 错误提示 */}
       {error && (
-        <div className="flex items-center gap-2 text-xs font-serif text-red-500">
-          <AlertCircle className="h-4 w-4" />
-          {error}
-        </div>
-      )}
-      
-      {/* 上传状态提示 */}
-      {hasError && (
         <div className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-serif",
+          "flex items-center gap-3 p-4 rounded-xl border shadow-lg",
           isDark 
-            ? "bg-red-900/30 border border-red-500/30 text-red-300" 
-            : "bg-red-100 border border-red-300 text-red-700"
+            ? "bg-gradient-to-r from-red-900/20 to-red-800/20 border-red-700/50 shadow-red-900/20"
+            : "bg-gradient-to-r from-red-50 to-red-100/50 border-red-200 shadow-red-100/50"
         )}>
-          <AlertCircle className="h-4 w-4" />
-          部分文件上传失败，请点击重试按钮重新上传
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <p className={cn(
+            "text-sm font-serif",
+            isDark ? "text-red-300" : "text-red-700"
+          )}>{error}</p>
         </div>
       )}
     </div>
