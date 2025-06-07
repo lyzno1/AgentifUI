@@ -35,14 +35,14 @@ const notoSansSC = Noto_Sans_SC({
 const crimsonPro = Crimson_Pro({ 
   subsets: ['latin'], 
   variable: '--font-crimson',
-  display: 'swap',
+  display: 'optional',
 });
 
 const notoSerifSC = Noto_Serif_SC({ 
   subsets: ['latin'],
   weight: ['400', '500', '700'], 
   variable: '--font-noto-serif',
-  display: 'swap',
+  display: 'optional',
 });
 
 const playfair = Playfair_Display({ 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useLayoutEffect } from "react"
 import { useRouter, useParams, usePathname } from "next/navigation"
 import { useMobile, useChatWidth, useChatInterface, useWelcomeScreen, useChatScroll } from "@lib/hooks"
+import { useChatflowInterface } from "@lib/hooks/use-chatflow-interface"
 import { cn } from "@lib/utils"
 import { 
   Loader2,
@@ -22,6 +23,9 @@ import {
 } from "@components/chat"
 import { DynamicSuggestedQuestions } from "@components/chat/dynamic-suggested-questions"
 import { ChatInput } from "@components/chat-input"
+import { ChatflowInputArea } from "@components/chatflow/chatflow-input-area"
+import { ChatflowNodeTracker } from "@components/chatflow/chatflow-node-tracker"
+import { ChatflowFloatingController } from "@components/chatflow/chatflow-floating-controller"
 import { useProfile } from "@lib/hooks/use-profile"
 import { NavBar } from "@components/nav-bar/nav-bar"
 import { useThemeColors } from "@lib/hooks/use-theme-colors"
@@ -41,7 +45,7 @@ export default function AppDetailPage() {
   const { profile } = useProfile()
   
   // --- BEGIN COMMENT ---
-  // 使用聊天接口逻辑，获取messages状态和相关方法
+  // 使用 chatflow 接口逻辑，支持表单和文本输入
   // --- END COMMENT ---
   const {
     messages,
@@ -50,7 +54,9 @@ export default function AppDetailPage() {
     isWaitingForResponse,
     handleStopProcessing,
     sendDirectMessage,
-  } = useChatInterface()
+    handleChatflowSubmit,
+    nodeTracker
+  } = useChatflowInterface()
   
   // --- BEGIN COMMENT ---
   // 使用统一的欢迎界面逻辑，现在支持应用详情页面
@@ -67,6 +73,25 @@ export default function AppDetailPage() {
   // 本地状态管理
   // --- END COMMENT ---
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // --- BEGIN COMMENT ---
+  // 节点跟踪器控制状态
+  // --- END COMMENT ---
+  const [showNodeTracker, setShowNodeTracker] = useState(true)
+  const [showFloatingController, setShowFloatingController] = useState(false)
+  
+  // --- BEGIN COMMENT ---
+  // 监听节点执行状态，自动显示悬浮控制器（一旦显示就保持显示）
+  // --- END COMMENT ---
+  useEffect(() => {
+    const hasNodes = nodeTracker.nodes.length > 0
+    const isExecuting = nodeTracker.isExecuting
+    
+    if (hasNodes || isExecuting) {
+      setShowFloatingController(true)
+      // 一旦有节点执行，就保持显示悬浮球，不再自动隐藏
+    }
+  }, [nodeTracker.nodes.length, nodeTracker.isExecuting])
   
   // --- BEGIN COMMENT ---
   // 添加滚动管理，确保消息列表能正确滚动
@@ -88,6 +113,7 @@ export default function AppDetailPage() {
   // --- END COMMENT ---
   const [isInitializing, setIsInitializing] = useState(true)
   const [initError, setInitError] = useState<string | null>(null)
+  const [hasFormConfig, setHasFormConfig] = useState(false)
   
   // --- BEGIN COMMENT ---
   // 应用相关状态
@@ -368,15 +394,32 @@ export default function AppDetailPage() {
             <div 
               className={cn(
                 "h-full overflow-y-auto scroll-smooth",
-                "w-full mx-auto",
-                widthClass,
-                paddingClass
+                "w-full mx-auto"
               )}
             >
               <div className="py-8">
-                <div className="mb-8">
-                  <WelcomeScreen username={profile?.username} />
-                </div>
+                {/* --- 移除重复的欢迎界面，避免与表单标题重合 --- */}
+                
+                {/* --- Chatflow 输入区域 --- */}
+                <ChatflowInputArea
+                  instanceId={instanceId}
+                  onSubmit={handleChatflowSubmit}
+                  isProcessing={isProcessing}
+                  isWaiting={isWaitingForResponse}
+                  onFormConfigChange={setHasFormConfig}
+                />
+                
+                {/* --- 推荐问题（仅在没有表单配置时显示） --- */}
+                {!hasFormConfig && (
+                  <div className={cn(
+                    "w-full mx-auto",
+                    widthClass,
+                    paddingClass,
+                    "pt-4"
+                  )}>
+                    <DynamicSuggestedQuestions onQuestionClick={sendDirectMessage} />
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -389,34 +432,49 @@ export default function AppDetailPage() {
                 isWaitingForResponse={isWaitingForResponse}
                 isLoadingInitial={false}
               />
+              
+              {/* --- Chatflow 节点跟踪器 --- */}
+              <ChatflowNodeTracker
+                isVisible={showNodeTracker}
+                className={cn(
+                  "fixed bottom-40 right-6 z-10 max-w-sm",
+                  "transition-all duration-300"
+                )}
+              />
             </div>
           )}
         </div>
 
         {/* 滚动到底部按钮 */}
         <ScrollToBottomButton />
-
-        {/* 输入框背景 */}
-        <ChatInputBackdrop />
         
-        {/* --- BEGIN COMMENT ---
-        聊天输入框 - 简化配置
-        --- END COMMENT --- */}
-        <ChatInput
-          onSubmit={handleSubmit}
-          placeholder={`与 ${currentApp.display_name || '应用'} 开始对话...`}
-          isProcessing={isProcessing}
-          isWaiting={isWaitingForResponse}
-          onStop={handleStopProcessing}
-          showModelSelector={false}
-          requireModelValidation={false}
+        {/* --- Chatflow 悬浮控制器 --- */}
+        <ChatflowFloatingController
+          isVisible={showFloatingController}
+          isTrackerVisible={showNodeTracker}
+          onToggleTracker={() => setShowNodeTracker(!showNodeTracker)}
+          onClose={() => setShowFloatingController(false)}
         />
-        
-        {/* --- BEGIN COMMENT ---
-        显示动态推荐问题的条件：欢迎界面且没有消息
-        --- END COMMENT --- */}
-        {isWelcomeScreen && messages.length === 0 && (
-          <DynamicSuggestedQuestions onQuestionClick={sendDirectMessage} />
+
+        {/* --- 对话模式下的输入框 --- */}
+        {!isWelcomeScreen && (
+          <>
+            {/* 输入框背景 */}
+            <ChatInputBackdrop />
+            
+            {/* --- BEGIN COMMENT ---
+            聊天输入框 - 仅在对话模式下显示
+            --- END COMMENT --- */}
+            <ChatInput
+              onSubmit={handleSubmit}
+              placeholder={`与 ${currentApp.display_name || '应用'} 继续对话...`}
+              isProcessing={isProcessing}
+              isWaiting={isWaitingForResponse}
+              onStop={handleStopProcessing}
+              showModelSelector={false}
+              requireModelValidation={false}
+            />
+          </>
         )}
       </div>
     </div>

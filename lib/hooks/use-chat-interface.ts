@@ -25,7 +25,7 @@ import { useChatStore, selectIsProcessing, ChatMessage } from '@lib/stores/chat-
 import { streamDifyChat, stopDifyStreamingTask } from '@lib/services/dify/chat-service';
 import { useSupabaseAuth } from '@lib/supabase/hooks'; // 假设 Supabase Auth Hook
 import { useCurrentApp } from '@lib/hooks/use-current-app'; // 使用新的 hook
-import type { DifyChatRequestPayload, DifyStopTaskResponse, DifyStreamResponse } from '@lib/services/dify/types';
+import type { DifyChatRequestPayload, DifyStopTaskResponse, DifyStreamResponse, DifySseNodeStartedEvent, DifySseNodeFinishedEvent } from '@lib/services/dify/types';
 import type { ServiceInstance } from '@lib/types/database';
 import { useCreateConversation } from './use-create-conversation';
 import { usePendingConversationStore } from '@lib/stores/pending-conversation-store';
@@ -43,7 +43,7 @@ import { getConversationByExternalId } from '@lib/db/conversations';
 // --- END COMMENT ---
 const CHUNK_APPEND_INTERVAL = 30; 
 
-export function useChatInterface() {
+export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent) => void) {
   const router = useRouter();
   const currentPathname = usePathname();
   const { isWelcomeScreen, setIsWelcomeScreen } = useChatInputStore();
@@ -192,7 +192,7 @@ export function useChatInterface() {
     }
   }, [currentPathname]);
 
-  const handleSubmit = useCallback(async (message: string, files?: any[]) => {
+  const handleSubmit = useCallback(async (message: string, files?: any[], inputs?: Record<string, any>) => {
     if (isSubmittingRef.current) {
       console.warn("[handleSubmit] Submission blocked: already submitting.");
       return;
@@ -355,7 +355,7 @@ export function useChatInterface() {
       const basePayloadForNewConversation = {
         query: message,
         user: currentUserId, // 使用动态获取的 currentUserId
-        inputs: {}, 
+        inputs: inputs || {}, 
         ...(difyFiles && { files: difyFiles }),
       };
       
@@ -392,7 +392,8 @@ export function useChatInterface() {
             // 这样确保时序正确，避免复杂的定时器逻辑
             // --- END COMMENT ---
             console.log(`[handleSubmit] 数据库ID回调完成，用户消息已保存，助手消息将在流式响应结束后保存`);
-          }
+          },
+          onNodeEvent // 🎯 传递节点事件回调，支持chatflow节点控制
         );
 
         if (creationResult.error) {
@@ -476,7 +477,7 @@ export function useChatInterface() {
         // 为现有对话构造一个不包含 user 的基础 payload，因为 DifyChatRequestPayload 会单独添加
         const payloadForExistingStream = {
             query: message,
-            inputs: {}, // 与 basePayloadForNewConversation 的 inputs 保持一致
+            inputs: inputs || {}, // 与 basePayloadForNewConversation 的 inputs 保持一致
             ...(difyFiles && { files: difyFiles }),
         };
         
@@ -529,7 +530,8 @@ export function useChatInterface() {
                 });
               }
             }
-          }
+          },
+          onNodeEvent // 🎯 修复：传递节点事件回调，支持chatflow节点控制
         );
         answerStream = streamServiceResponse.answerStream;
         finalRealConvId = streamServiceResponse.getConversationId() || difyConversationId || undefined; // Fallback to currentConvId
@@ -1004,7 +1006,7 @@ export function useChatInterface() {
       setMessage(messageText);
       
       // 调用现有的handleSubmit逻辑
-      await handleSubmit(messageText, files);
+      await handleSubmit(messageText, files, {});
       
     } catch (error) {
       console.error("[sendDirectMessage] 发送失败:", error);
