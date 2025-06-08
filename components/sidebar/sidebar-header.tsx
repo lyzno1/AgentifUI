@@ -81,13 +81,13 @@ export function SidebarHeader() {
         </div>
       </div>
       
-      {/* 🎯 发起新对话按钮 - 主要行动按钮，增强视觉突出度 */}
+      {/* 🎯 发起新对话按钮 - 重要功能，适中的视觉突出度 */}
       <SidebarButton
         icon={<Plus className={cn(
           "h-5 w-5 transition-transform duration-200 group-hover:rotate-90",
           isDark
-            ? "text-white"
-            : "text-white"
+            ? "text-stone-100"
+            : "text-stone-100"
         )} />}
         disableLockBehavior={true}
         onClick={() => {
@@ -118,30 +118,28 @@ export function SidebarHeader() {
           "group font-medium transition-all duration-200",
           isDark 
             ? [
-              "bg-gradient-to-r from-stone-600 to-stone-500 hover:from-stone-500 hover:to-stone-400",
-              "border border-stone-500/60 hover:border-stone-400/80",
-              "text-white",
-              "shadow-lg shadow-stone-900/25 hover:shadow-xl hover:shadow-stone-900/35",
-              "hover:scale-[1.01]"
+              "bg-stone-700/80 hover:bg-stone-600/90",
+              "border border-stone-600/60 hover:border-stone-500/80",
+              "text-stone-100 hover:text-white",
+              "shadow-md shadow-stone-900/20 hover:shadow-lg hover:shadow-stone-900/30"
             ]
             : [
-              "bg-gradient-to-r from-stone-700 to-stone-600 hover:from-stone-600 hover:to-stone-500",
-              "border border-stone-600/60 hover:border-stone-500/80",
+              "bg-stone-600/90 hover:bg-stone-500/95",
+              "border border-stone-500/60 hover:border-stone-400/80",
               "text-white",
-              "shadow-lg shadow-stone-900/15 hover:shadow-xl hover:shadow-stone-900/25",
-              "hover:scale-[1.01]"
+              "shadow-md shadow-stone-900/15 hover:shadow-lg hover:shadow-stone-900/25"
             ]
         )}
       >
         <span className="font-serif">发起新对话</span>
       </SidebarButton>
 
-      {/* 🎯 应用市场按钮 - 辅助功能，降低视觉权重 */}
+      {/* 🎯 应用市场按钮 - 次要功能，更轻量的视觉设计 */}
       <SidebarButton
         icon={
           <Blocks className={cn(
             "h-5 w-5 transition-colors duration-200",
-            isDark ? "text-stone-400 group-hover:text-stone-300" : "text-stone-500 group-hover:text-stone-600"
+            isDark ? "text-stone-400 group-hover:text-stone-200" : "text-stone-600 group-hover:text-stone-700"
           )} />
         }
         disableLockBehavior={true}
@@ -150,19 +148,19 @@ export function SidebarHeader() {
         }}
         aria-label="应用市场"
         className={cn(
-          "group font-normal transition-all duration-200",
+          "group font-medium transition-all duration-200",
           isDark
             ? [
-              "bg-stone-800/40 hover:bg-stone-700/60",
+              "bg-stone-800/60 hover:bg-stone-700/80",
               "border border-stone-700/40 hover:border-stone-600/60",
-              "text-stone-400 hover:text-stone-300",
-              "shadow-sm shadow-stone-900/10 hover:shadow-md hover:shadow-stone-900/15"
+              "text-stone-300 hover:text-stone-100",
+              "shadow-sm shadow-stone-900/10 hover:shadow-md hover:shadow-stone-900/20"
             ]
             : [
-              "bg-stone-100/70 hover:bg-stone-200/90",
-              "border border-stone-200/70 hover:border-stone-300/90",
-              "text-stone-500 hover:text-stone-600",
-              "shadow-sm shadow-stone-900/5 hover:shadow-md hover:shadow-stone-900/10"
+              "bg-stone-300/90 hover:bg-stone-400/95",
+              "border border-stone-400/50 hover:border-stone-500/70",
+              "text-stone-700 hover:text-stone-800",
+              "shadow-sm shadow-stone-900/8 hover:shadow-md hover:shadow-stone-900/15"
             ]
         )}
       >

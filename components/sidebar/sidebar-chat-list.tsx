@@ -512,12 +512,12 @@ export function SidebarChatList({
                 <SidebarListButton
                   icon={
                     <Clock className={cn(
-                      "h-5 w-5",
+                      "h-4 w-4",
                       isDark
-                        ? "text-gray-400"
+                        ? "text-stone-400"
                         : openDropdownId 
-                          ? "text-gray-500" // 有菜单打开时禁用悬停效果
-                          : "text-gray-500 group-hover:text-primary" // 正常状态下的悬停效果
+                          ? "text-stone-500" 
+                          : "text-stone-500 group-hover:text-stone-600"
                     )} />
                   }
                   disableHover={!!openDropdownId} // 🎯 当有菜单打开时禁用悬停效果
@@ -528,10 +528,10 @@ export function SidebarChatList({
                     router.push('/chat/recents')
                   }}
                   className={cn(
-                    "w-full group font-medium",
+                    "w-full group font-medium transition-all duration-200",
                     isDark 
-                      ? "bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500/80 shadow-sm hover:shadow-md text-gray-100 hover:text-white" 
-                      : "bg-primary/10 hover:bg-primary/15 text-primary shadow-sm hover:shadow-md border border-stone-300/50"
+                      ? "bg-stone-800/50 hover:bg-stone-700/80 border border-stone-700/50 hover:border-stone-600/80 text-stone-300 hover:text-stone-100" 
+                      : "bg-stone-50/80 hover:bg-stone-100/90 border border-stone-200/60 hover:border-stone-300/80 text-stone-600 hover:text-stone-700"
                   )}
                 >
                   <span className="text-xs font-medium font-serif">查看全部历史</span>

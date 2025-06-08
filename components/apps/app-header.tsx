@@ -1,83 +1,57 @@
 "use client"
 
-import { Blocks } from "lucide-react"
+import { Package } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useThemeColors } from "@lib/hooks/use-theme-colors"
 
 interface AppHeaderProps {
   totalApps: number
   filteredApps: number
-  selectedCategory?: string
+  selectedCategory: string
 }
 
 export function AppHeader({ totalApps, filteredApps, selectedCategory }: AppHeaderProps) {
-  const { isDark } = useThemeColors()
-
-  const getCategoryDescription = () => {
-    if (!selectedCategory || selectedCategory === '全部') {
-      return '发现和使用各种AI应用工具'
-    }
-    
-    switch (selectedCategory) {
-      case '常用应用':
-        return '您经常使用的AI应用工具'
-      case 'Chatbot':
-        return '基础对话聊天机器人应用'
-      case 'Agent':
-        return '智能代理，支持工具调用和推理'
-      case 'Chatflow':
-        return '对话流程编排应用'
-      case '工作流':
-        return '自动化工作流程应用'
-      case '文本生成':
-        return '单次文本生成和内容创作应用'
-      case '其他':
-        return '其他类型的AI应用工具'
-      default:
-        return `${selectedCategory} 类型的AI应用`
-    }
-  }
+  const { colors, isDark } = useThemeColors()
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-xl bg-stone-600 text-white">
-          <Blocks className="w-6 h-6" />
+    <div className="mb-6">
+      {/* 主标题区域 */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center",
+          "bg-gradient-to-br from-blue-500 to-purple-600"
+        )}>
+          <Package className="w-4 h-4 text-white" />
         </div>
+        
         <div>
           <h1 className={cn(
-            "text-3xl font-bold font-serif",
-            isDark ? "text-stone-100" : "text-stone-900"
+            "text-2xl font-bold font-serif",
+            colors.mainText.tailwind
           )}>
             应用市场
-            {selectedCategory && selectedCategory !== '全部' && (
-              <span className={cn(
-                "text-xl font-normal ml-3",
-                isDark ? "text-stone-400" : "text-stone-600"
-              )}>
-                · {selectedCategory}
-              </span>
-            )}
           </h1>
-          <p className={cn(
-            "font-serif",
-            isDark ? "text-stone-400" : "text-stone-600"
-          )}>
-            {getCategoryDescription()}
-          </p>
         </div>
       </div>
-      
+
+      {/* 简洁的统计信息 */}
       <div className={cn(
-        "flex items-center gap-6 text-sm font-serif",
+        "text-sm font-serif flex items-center gap-4",
         isDark ? "text-stone-400" : "text-stone-600"
       )}>
-        <span>共 {totalApps} 个应用</span>
-        {filteredApps !== totalApps && (
-          <span>当前显示 {filteredApps} 个</span>
-        )}
-        {selectedCategory && selectedCategory !== '全部' && (
-          <span>分类：{selectedCategory}</span>
+        <span>
+          {selectedCategory === "全部" 
+            ? `共 ${totalApps} 个应用` 
+            : `${selectedCategory} · ${filteredApps} 个应用`
+          }
+        </span>
+        {selectedCategory !== "全部" && filteredApps !== totalApps && (
+          <span className={cn(
+            "text-xs px-2 py-0.5 rounded",
+            isDark ? "bg-stone-800 text-stone-400" : "bg-stone-100 text-stone-600"
+          )}>
+            共 {totalApps} 个
+          </span>
         )}
       </div>
     </div>

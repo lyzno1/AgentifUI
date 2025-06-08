@@ -48,20 +48,20 @@ export default function AppearanceSettingsPage() {
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* 系统主题 - 放在最前面作为推荐选项 */}
-            <ThemeCard 
-              title="跟随系统" 
-              theme="system"
-              currentTheme={theme || 'system'}
-              onClick={() => handleThemeChange('system')}
-            />
-            
-            {/* 浅色主题 */}
+            {/* 浅色主题 - 放在最前面 */}
             <ThemeCard 
               title="浅色模式" 
               theme="light"
               currentTheme={theme || 'system'}
               onClick={() => handleThemeChange('light')}
+            />
+            
+            {/* 系统主题 */}
+            <ThemeCard 
+              title="跟随系统" 
+              theme="system"
+              currentTheme={theme || 'system'}
+              onClick={() => handleThemeChange('system')}
             />
             
             {/* 深色主题 */}
