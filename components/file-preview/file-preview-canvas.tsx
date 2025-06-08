@@ -22,7 +22,10 @@ const FileContentViewer: React.FC<{ file: MessageAttachment | null; isDark: bool
         <p><strong>类型:</strong> {file.type}</p>
         <p><strong>大小:</strong> {formatBytes(file.size)}</p>
       </div>
-      <p className="mt-6 text-xs text-stone-500 dark:text-stone-400">
+      <p className={cn(
+        "mt-6 text-xs",
+        isDark ? "text-stone-400" : "text-stone-500"
+      )}>
         (文件内容预览功能暂不可用)
       </p>
     </div>

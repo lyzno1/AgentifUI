@@ -197,7 +197,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
   
   return (
     <div className={cn(
-      "h-full w-full relative flex flex-col",
+      "h-screen w-full relative overflow-hidden",
       colors.mainBackground.tailwind,
       colors.mainText.tailwind
     )}>
@@ -205,7 +205,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
       <NavBar />
       
       {/* --- 主内容区域，为 NavBar 留出空间 --- */}
-      <div className="pt-14 flex-1 min-h-0">
+      <div className="absolute top-12 left-0 right-0 bottom-0 overflow-hidden">
         <WorkflowLayout instanceId={instanceId} />
       </div>
     </div>

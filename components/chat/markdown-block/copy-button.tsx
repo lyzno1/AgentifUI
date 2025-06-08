@@ -4,6 +4,7 @@ import React from "react";
 import { cn } from "@lib/utils";
 import { FiCopy, FiCheck } from "react-icons/fi";
 import { TooltipWrapper } from "@components/ui/tooltip-wrapper";
+import { useTheme } from "@lib/hooks/use-theme";
 
 interface CopyButtonProps {
   content?: string;
@@ -26,6 +27,8 @@ export const CopyButton: React.FC<CopyButtonProps> = React.memo(({
   tooltipPlacement = "bottom",
   onCopy
 }) => {
+  const { isDark } = useTheme()
+  
   // 复制功能状态
   const [isCopied, setIsCopied] = React.useState(false);
   
@@ -68,11 +71,11 @@ export const CopyButton: React.FC<CopyButtonProps> = React.memo(({
         className={cn(
           "flex items-center justify-center p-1.5 rounded-md",
           // 基础文本颜色 - 符合石色主题
-          "text-stone-500 dark:text-stone-400", 
+          isDark ? "text-stone-400" : "text-stone-500", 
           // 悬停文本颜色 - 亮色模式变深，暗色模式变亮
-          "hover:text-stone-700 dark:hover:text-stone-300",
+          isDark ? "hover:text-stone-300" : "hover:text-stone-700",
           // 悬停背景色 - 使用半透明的中间色调，适合亮暗两种模式
-          "hover:bg-stone-300/40 dark:hover:bg-stone-600/40",
+          isDark ? "hover:bg-stone-600/40" : "hover:bg-stone-300/40",
           "focus:outline-none",
           className
         )}

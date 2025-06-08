@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '@lib/hooks/use-theme'
 import { cn } from '@lib/utils'
-import { Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import type { ChatflowNode } from '@lib/stores/chatflow-execution-store'
+import { Loader2, Clock, CheckCircle, XCircle, AlertCircle, RotateCcw, GitBranch, Zap } from 'lucide-react'
+import type { ChatflowNode, ChatflowIteration, ChatflowParallelBranch } from '@lib/stores/chatflow-execution-store'
+import { useChatflowExecutionStore } from '@lib/stores/chatflow-execution-store'
 
 interface ChatflowExecutionBarProps {
   node: ChatflowNode
@@ -28,6 +29,10 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
   const [isVisible, setIsVisible] = useState(false)
   const [elapsedTime, setElapsedTime] = useState(0)
   
+  // 🎯 使用store中的展开状态
+  const { iterationExpandedStates, toggleIterationExpanded } = useChatflowExecutionStore()
+  const isExpanded = iterationExpandedStates[node.id] || false
+  
   // --- 延迟显示动画 ---
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,6 +54,23 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
       setElapsedTime(node.endTime - node.startTime)
     }
   }, [node.status, node.startTime, node.endTime])
+  
+  // --- 自动展开逻辑已移至store中的iteration_started事件处理 ---
+  
+  // --- 🎯 调试：监听节点变化 ---
+  useEffect(() => {
+    if (node.isIterationNode) {
+      console.log('[ChatflowExecutionBar] 🔍 迭代节点状态更新:', {
+        id: node.id,
+        title: node.title,
+        isIterationNode: node.isIterationNode,
+        totalIterations: node.totalIterations,
+        currentIteration: node.currentIteration,
+        iterationsCount: node.iterations?.length || 0,
+        status: node.status
+      })
+    }
+  }, [node])
   
   const formatTime = (ms: number) => {
     if (ms < 1000) return `${ms}ms`
@@ -84,6 +106,20 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
   }
   
   const getStatusText = () => {
+    // 🎯 迭代节点显示特殊状态文本
+    if (node.isIterationNode) {
+      switch (node.status) {
+        case 'running':
+          return '正在迭代...'
+        case 'completed':
+          return '迭代完成'
+        case 'failed':
+          return '迭代失败'
+        default:
+          return '等待迭代'
+      }
+    }
+    
     switch (node.status) {
       case 'running':
         return node.description || '正在处理...'
@@ -104,19 +140,32 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
       case 'start':
         return '开始节点'
       case 'llm':
-        return 'AI 推理'
+        return 'LLM 推理'
       case 'knowledge-retrieval':
         return '知识检索'
       case 'question-classifier':
-        return '问题分类'
+        return '问题分类器'
       case 'if-else':
-        return '条件判断'
+        return '条件分支'
       case 'code':
         return '代码执行'
       case 'template-transform':
         return '模板转换'
       case 'variable-assigner':
         return '变量赋值'
+      case 'variable-aggregator':
+        return '变量聚合器'
+      case 'document-extractor':
+        return '文档提取器'
+      case 'parameter-extractor':
+        return '参数提取器'
+      case 'http-request':
+        return 'HTTP 请求'
+      case 'list-operator':
+        return '列表操作'
+      case 'iteration':
+      case 'loop':
+        return '循环迭代'
       case 'end':
         return '结束节点'
       default:
@@ -124,45 +173,60 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
     }
   }
   
+  // --- 移除节点类型图标，保持原来的文字显示 ---
+  
   const getBarStyles = () => {
     const baseStyles = cn(
-      "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-all duration-300",
+      "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300", // 🎯 恢复细bar样式
       "transform font-serif",
-      isVisible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
     )
+    
+    // --- BEGIN COMMENT ---
+    // 🎯 优化：迭代中的节点使用左侧指示条+连接点设计，提供清晰的层级视觉指示
+    // --- END COMMENT ---
+    const iterationStyles = node.isInIteration ? cn(
+      "relative ml-6 pl-4",
+      // 使用新的指示条样式
+      "iteration-node",
+      // 轻微的背景色区分
+      isDark ? "bg-stone-800/20" : "bg-stone-50/40"
+    ) : ""
+    
+    const combinedBaseStyles = cn(baseStyles, iterationStyles)
     
     switch (node.status) {
       case 'running':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-700/50 border-stone-600 shadow-lg shadow-stone-900/30"
             : "bg-stone-200/50 border-stone-300 shadow-lg shadow-stone-200/50"
         )
       case 'completed':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-600/30 border-stone-500"
             : "bg-stone-100 border-stone-300"
         )
       case 'failed':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-red-900/20 border-red-700/50"
             : "bg-red-50 border-red-200"
         )
       case 'pending':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-800/50 border-stone-700/50"
             : "bg-stone-50 border-stone-200"
         )
       default:
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-800/50 border-stone-700/50"
             : "bg-stone-50 border-stone-200"
@@ -170,55 +234,292 @@ export function ChatflowExecutionBar({ node, index, delay = 0 }: ChatflowExecuti
     }
   }
   
-  return (
-    <div className={getBarStyles()}>
-      {/* 左侧：状态图标 */}
-      <div className="flex-shrink-0">
-        {getStatusIcon()}
+    return (
+    <div className="space-y-1">
+      <div 
+        className={cn(
+          getBarStyles(),
+          // 🎯 所有bar都有悬停效果，只有迭代和并行分支节点才有cursor pointer
+          "hover:scale-[1.02] hover:shadow-md transition-all duration-200",
+          (node.isIterationNode || node.isParallelNode) && "cursor-pointer"
+        )}
+        onClick={(node.isIterationNode || node.isParallelNode) ? () => toggleIterationExpanded(node.id) : undefined}
+      >
+        {/* 左侧：状态图标 */}
+        <div className="flex-shrink-0">
+          {getStatusIcon()}
+        </div>
+        
+        {/* 中间：节点信息 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 节点标题行 */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className={cn(
+                "font-medium text-sm font-serif truncate",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                {getNodeTitle()}
+              </span>
+            </div>
+            
+            {/* 🎯 状态标签行 - 右移一些距离让"执行完成"对齐 */}
+            <div className="flex items-center gap-2 flex-shrink-0 ml-8">
+              {/* 迭代计数显示 */}
+              {node.isIterationNode && node.totalIterations && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
+                  isDark && "bg-stone-700/50 text-stone-300"
+                )}>
+                  {node.currentIteration || 0}/{node.totalIterations}
+                </span>
+              )}
+                
+              {/* 并行分支进度指示 */}
+              {node.isParallelNode && node.totalBranches && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
+                  isDark && "bg-stone-700/50 text-stone-300"
+                )}>
+                  {node.completedBranches || 0}/{node.totalBranches}
+                </span>
+              )}
+              
+              <span className={cn(
+                "text-xs px-2 py-0.5 rounded-full font-serif",
+                node.status === 'running'
+                  ? isDark
+                    ? "bg-stone-600/40 text-stone-200"
+                    : "bg-stone-300/60 text-stone-700"
+                  : node.status === 'completed'
+                    ? isDark
+                      ? "bg-stone-500/40 text-stone-100"
+                      : "bg-stone-200 text-stone-800"
+                    : node.status === 'failed'
+                      ? isDark
+                        ? "bg-red-700/30 text-red-200"
+                        : "bg-red-100 text-red-700"
+                      : isDark
+                        ? "bg-stone-700/50 text-stone-400"
+                        : "bg-stone-200/80 text-stone-600"
+              )}>
+                {getStatusText()}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* 右侧：计时信息 */}
+        <div className="flex-shrink-0 w-16 text-right">
+          {(node.status === 'running' || node.status === 'completed') && elapsedTime > 0 && (
+            <div className={cn(
+              "text-xs font-serif",
+              isDark ? "text-stone-400" : "text-stone-500"
+            )}>
+              {formatTime(elapsedTime)}
+            </div>
+          )}
+        </div>
       </div>
       
-      {/* 中间：节点信息 */}
+      {/* 🎯 展开状态说明：展开/折叠控制的是迭代中的子节点显示 */}
+      {/* 实际的子节点显示由父组件根据 isExpanded 状态控制 */}
+      
+      {/* 🎯 新增：展开的并行分支列表 */}
+      <CollapsibleContent 
+        isExpanded={isExpanded} 
+        show={!!(node.isParallelNode && node.parallelBranches && node.parallelBranches.length > 0)}
+      >
+        <div className="space-y-2 ml-4">
+          {/* 并行分支进度条 */}
+          {node.totalBranches && (
+            <div className="px-3 py-2">
+              <ProgressBar
+                current={node.completedBranches || 0}
+                total={node.totalBranches}
+                type="branch"
+                isDark={isDark}
+              />
+            </div>
+          )}
+          
+          {/* 分支列表 */}
+          <div className="space-y-1">
+            {node.parallelBranches?.map((branch, index) => (
+              <ParallelBranchItem
+                key={branch.id}
+                branch={branch}
+                index={index}
+                isDark={isDark}
+              />
+            ))}
+          </div>
+        </div>
+      </CollapsibleContent>
+    </div>
+  )
+}
+
+// --- 🎯 新增：带有退出动画的折叠内容组件 ---
+interface CollapsibleContentProps {
+  isExpanded: boolean
+  show: boolean
+  children: React.ReactNode
+}
+
+function CollapsibleContent({ isExpanded, show, children }: CollapsibleContentProps) {
+  // 🎯 简化：只有展开时才渲染，关闭时立即消失
+  if (!show || !isExpanded) {
+    return null
+  }
+  
+  return (
+    <div className="animate-in slide-in-from-top-2 fade-in duration-250">
+      {children}
+    </div>
+  )
+}
+
+// --- 迭代项组件已移除，改为简化的展开信息显示 ---
+
+// --- 🎯 新增：并行分支项组件 ---
+interface ParallelBranchItemProps {
+  branch: ChatflowParallelBranch
+  index: number
+  isDark: boolean
+}
+
+function ParallelBranchItem({ branch, index, isDark }: ParallelBranchItemProps) {
+  const [elapsedTime, setElapsedTime] = useState(0)
+  
+  useEffect(() => {
+    if (branch.status === 'running' && branch.startTime) {
+      const interval = setInterval(() => {
+        setElapsedTime(Date.now() - branch.startTime)
+      }, 100)
+      return () => clearInterval(interval)
+    } else if (branch.status === 'completed' && branch.startTime && branch.endTime) {
+      setElapsedTime(branch.endTime - branch.startTime)
+    }
+  }, [branch.status, branch.startTime, branch.endTime])
+  
+  const formatTime = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`
+    const seconds = (ms / 1000).toFixed(1)
+    return `${seconds}s`
+  }
+  
+  const getBranchIcon = () => {
+    switch (branch.status) {
+      case 'running':
+        return <Loader2 className="h-3 w-3 animate-spin text-stone-500" />
+      case 'completed':
+        return <CheckCircle className="h-3 w-3 text-stone-600" />
+      case 'failed':
+        return <XCircle className="h-3 w-3 text-red-500" />
+      default:
+        return <Clock className="h-3 w-3 text-stone-400" />
+    }
+  }
+  
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-2 rounded-md border-l-2 ml-4 font-serif",
+      branch.status === 'running' && cn(
+        "border-l-stone-400",
+        isDark ? "bg-stone-800/20" : "bg-stone-100"
+      ),
+      branch.status === 'completed' && cn(
+        "border-l-stone-500",
+        isDark ? "bg-stone-700/20" : "bg-stone-50"
+      ),
+      branch.status === 'failed' && cn(
+        "border-l-red-500",
+        isDark ? "bg-red-900/20" : "bg-red-50"
+      ),
+      branch.status === 'pending' && cn(
+        "border-l-stone-300",
+        isDark ? "bg-stone-800/20" : "bg-stone-50"
+      )
+    )}>
+      <div className="flex-shrink-0">
+        <GitBranch className="h-3 w-3 mr-1" />
+        {getBranchIcon()}
+      </div>
+      
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className={cn(
-            "font-medium text-sm",
+            "text-sm font-medium",
             isDark ? "text-stone-200" : "text-stone-800"
           )}>
-            {getNodeTitle()}
+            分支 {String.fromCharCode(65 + branch.index)}
           </span>
           <span className={cn(
-            "text-xs px-2 py-0.5 rounded-full",
-            node.status === 'running'
-              ? isDark
-                ? "bg-stone-600/40 text-stone-200"
-                : "bg-stone-300/60 text-stone-700"
-              : node.status === 'completed'
-                ? isDark
-                  ? "bg-stone-500/40 text-stone-100"
-                  : "bg-stone-200 text-stone-800"
-                : node.status === 'failed'
-                  ? isDark
-                    ? "bg-red-700/30 text-red-200"
-                    : "bg-red-100 text-red-700"
-                  : isDark
-                    ? "bg-stone-700/50 text-stone-400"
-                    : "bg-stone-200/80 text-stone-600"
+            "text-xs",
+            isDark ? "text-stone-400" : "text-stone-600"
           )}>
-            {getStatusText()}
+            {branch.description || '执行中...'}
           </span>
         </div>
       </div>
       
-      {/* 右侧：计时信息 */}
-      <div className="flex-shrink-0">
-        {(node.status === 'running' || node.status === 'completed') && elapsedTime > 0 && (
-          <div className={cn(
-            "text-xs font-mono",
+      <div className="flex-shrink-0 w-12 text-right"> {/* 🎯 固定宽度避免抖动 */}
+        {elapsedTime > 0 && (
+          <span className={cn(
+            "text-xs font-serif",
             isDark ? "text-stone-400" : "text-stone-500"
           )}>
             {formatTime(elapsedTime)}
-          </div>
+          </span>
         )}
+      </div>
+    </div>
+  )
+}
+
+// --- 🎯 新增：进度条组件 ---
+interface ProgressBarProps {
+  current: number
+  total: number
+  type: 'iteration' | 'branch'
+  isDark: boolean
+}
+
+function ProgressBar({ current, total, type, isDark }: ProgressBarProps) {
+  const percentage = total > 0 ? (current / total) * 100 : 0
+  
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-1">
+        <span className={cn(
+          "text-xs font-medium font-serif",
+          isDark ? "text-stone-300" : "text-stone-700"
+        )}>
+          {type === 'iteration' ? '迭代进度' : '分支进度'}
+        </span>
+        <span className={cn(
+          "text-xs font-serif",
+          isDark ? "text-stone-400" : "text-stone-500"
+        )}>
+          {current}/{total}
+        </span>
+      </div>
+      
+      <div className={cn(
+        "w-full h-2 rounded-full overflow-hidden",
+        isDark ? "bg-stone-700" : "bg-stone-200"
+      )}>
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500 ease-out chatflow-progress-bar",
+            "bg-gradient-to-r from-stone-400 to-stone-500" // 🎯 统一使用stone色系
+          )}
+          style={{ 
+            width: `${percentage}%`,
+            '--progress-width': `${percentage}%`
+          } as React.CSSProperties}
+        />
       </div>
     </div>
   )

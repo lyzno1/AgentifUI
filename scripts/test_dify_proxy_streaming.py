@@ -17,7 +17,7 @@ headers = {
 
 payload = {
     "inputs": {},
-    "query": "VHF是什么", # 可以换个问题测试
+    "query": "研究一下VHF是什么", # 可以换个问题测试
     "response_mode": "streaming", # 必须是 streaming
     "conversation_id": "",       # 根据需要填写
     "user": "python-test-script", # 可以自定义用户标识

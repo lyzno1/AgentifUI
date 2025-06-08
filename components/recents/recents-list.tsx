@@ -334,9 +334,9 @@ export function RecentsList({
                     className={cn(
                       "p-1 rounded-md transition-all duration-200 ease-in-out",
                       "cursor-pointer",
-                      "hover:bg-black/5 dark:hover:bg-white/10",
+                      isDark ? "hover:bg-white/10" : "hover:bg-black/5",
                       "hover:scale-110",
-                      "active:bg-black/10 dark:active:bg-white/20",
+                      isDark ? "active:bg-white/20" : "active:bg-black/10",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     )}
                     data-more-button-id={`recents-dropdown-${conversation.id}`}

@@ -476,7 +476,7 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
                   isDark 
                     ? "bg-gradient-to-r from-stone-800/90 to-stone-700/90"
                     : "bg-gradient-to-r from-white/90 to-stone-50/90",
-                  uploadFile.status === 'success' && (isDark ? "border-green-700/50" : "border-green-200"),
+                                      uploadFile.status === 'success' && (isDark ? "border-stone-500/50" : "border-stone-400"),
                   uploadFile.status === 'error' && (isDark ? "border-red-700/50" : "border-red-200"),
                   uploadFile.status === 'uploading' && (isDark ? "border-stone-500/50" : "border-stone-400"),
                   uploadFile.status === 'pending' && (isDark ? "border-stone-600" : "border-stone-200")
@@ -486,7 +486,7 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
                 <div className="relative flex-shrink-0">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                    uploadFile.status === 'success' && (isDark ? "bg-green-900/30" : "bg-green-100"),
+                    uploadFile.status === 'success' && (isDark ? "bg-stone-700/50" : "bg-stone-200"),
                     uploadFile.status === 'error' && (isDark ? "bg-red-900/30" : "bg-red-100"),
                     uploadFile.status === 'uploading' && (isDark ? "bg-stone-700/50" : "bg-stone-200"),
                     uploadFile.status === 'pending' && (isDark ? "bg-stone-700" : "bg-stone-100")
@@ -495,7 +495,7 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
                     {uploadFile.status === 'success' && (
                       <CheckCircle2Icon className={cn(
                         "w-5 h-5",
-                        isDark ? "text-green-400" : "text-green-600"
+                        isDark ? "text-stone-300" : "text-stone-600"
                       )} />
                     )}
                     {uploadFile.status === 'error' && (
@@ -575,18 +575,7 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
                   </button>
                 </TooltipWrapper>
                 
-                {/* 上传进度条 */}
-                {uploadFile.status === 'uploading' && (
-                  <div className={cn(
-                    "absolute bottom-0 left-0 right-0 h-1 rounded-b-xl overflow-hidden",
-                    isDark ? "bg-stone-700" : "bg-stone-200"
-                  )}>
-                    <div 
-                      className="h-full bg-gradient-to-r from-stone-500 to-stone-400 transition-all duration-300 rounded-b-xl"
-                      style={{ width: `${uploadFile.progress}%` }}
-                    />
-                  </div>
-                )}
+
               </div>
             ))}
           </div>

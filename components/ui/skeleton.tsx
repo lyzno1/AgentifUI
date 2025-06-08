@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@lib/utils';
+import { useTheme } from '@lib/hooks/use-theme';
 
 interface SkeletonProps {
   className?: string;
@@ -10,6 +11,8 @@ interface SkeletonProps {
 
 // 基础骨架屏组件
 export function Skeleton({ className, width, height }: SkeletonProps) {
+  const { isDark } = useTheme()
+  
   const style = {
     width: width ? (typeof width === 'number' ? `${width}px` : width) : undefined,
     height: height ? (typeof height === 'number' ? `${height}px` : height) : undefined,
@@ -17,7 +20,11 @@ export function Skeleton({ className, width, height }: SkeletonProps) {
 
   return (
     <div 
-      className={cn("dark:bg-stone-700/50 bg-gray-200 animate-pulse rounded-md", className)}
+      className={cn(
+        "animate-pulse rounded-md",
+        isDark ? "bg-stone-700/50" : "bg-gray-200",
+        className
+      )}
       style={style}
     />
   );
@@ -121,6 +128,8 @@ export function TableSkeleton({ rows = 3, className }: { rows?: number, classNam
 
 // API配置页面骨架屏
 export function ApiConfigSkeleton() {
+  const { isDark } = useTheme()
+  
   return (
     <div className="space-y-8">
       {/* 标题区域 */}
@@ -130,16 +139,34 @@ export function ApiConfigSkeleton() {
       </div>
       
       {/* API密钥管理提示区域 */}
-      <div className="p-4 rounded-lg bg-blue-50/80 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30">
-        <Skeleton className="h-6 w-1/4 mb-2 bg-blue-200/50 dark:bg-blue-700/30" />
-        <Skeleton className="h-4 w-full mb-1 bg-blue-200/50 dark:bg-blue-700/30" />
-        <Skeleton className="h-4 w-full mb-1 bg-blue-200/50 dark:bg-blue-700/30" />
-        <Skeleton className="h-4 w-3/4 bg-blue-200/50 dark:bg-blue-700/30" />
+      <div className={cn(
+        "p-4 rounded-lg border",
+        isDark ? "bg-blue-900/20 border-blue-800/30" : "bg-blue-50/80 border-blue-100"
+      )}>
+        <Skeleton className={cn(
+          "h-6 w-1/4 mb-2",
+          isDark ? "bg-blue-700/30" : "bg-blue-200/50"
+        )} />
+        <Skeleton className={cn(
+          "h-4 w-full mb-1",
+          isDark ? "bg-blue-700/30" : "bg-blue-200/50"
+        )} />
+        <Skeleton className={cn(
+          "h-4 w-full mb-1",
+          isDark ? "bg-blue-700/30" : "bg-blue-200/50"
+        )} />
+        <Skeleton className={cn(
+          "h-4 w-3/4",
+          isDark ? "bg-blue-700/30" : "bg-blue-200/50"
+        )} />
       </div>
       
       {/* 选项卡区域 */}
       <div>
-        <div className="flex pb-2 mb-6 border-b dark:border-stone-700/50">
+        <div className={cn(
+          "flex pb-2 mb-6 border-b",
+          isDark ? "border-stone-700/50" : "border-stone-200/50"
+        )}>
           <Skeleton className="h-10 w-24 mr-4" />
           <Skeleton className="h-10 w-24" />
         </div>
@@ -152,9 +179,15 @@ export function ApiConfigSkeleton() {
           </div>
           
           {/* 表格 - 使用卡片包裹 */}
-          <div className="rounded-lg overflow-hidden dark:bg-stone-800 bg-white border dark:border-stone-700/30 border-stone-300/50">
+          <div className={cn(
+            "rounded-lg overflow-hidden border",
+            isDark ? "bg-stone-800 border-stone-700/30" : "bg-white border-stone-300/50"
+          )}>
             {/* 表头 */}
-            <div className="flex p-4 bg-stone-100/80 dark:bg-stone-800/60">
+            <div className={cn(
+              "flex p-4",
+              isDark ? "bg-stone-800/60" : "bg-stone-100/80"
+            )}>
               <Skeleton className="h-6 w-1/5 mr-4" />
               <Skeleton className="h-6 w-1/5 mr-4" />
               <Skeleton className="h-6 w-1/5 mr-4" />
@@ -164,7 +197,10 @@ export function ApiConfigSkeleton() {
             
             {/* 表行 */}
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="flex p-4 border-t dark:border-stone-700/20 border-stone-200/50">
+              <div key={index} className={cn(
+                "flex p-4 border-t",
+                isDark ? "border-stone-700/20" : "border-stone-200/50"
+              )}>
                 <Skeleton className="h-6 w-1/5 mr-4" />
                 <Skeleton className="h-6 w-1/5 mr-4" />
                 <Skeleton className="h-6 w-1/5 mr-4" />

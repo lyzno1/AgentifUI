@@ -260,7 +260,10 @@ export default function AdminPage() {
         {/* --- BEGIN COMMENT ---
         快速操作区域
         --- END COMMENT --- */}
-        <div className="mt-8 pt-8 border-t border-stone-200 dark:border-stone-700">
+        <div className={cn(
+          "mt-8 pt-8 border-t",
+          isDark ? "border-stone-700" : "border-stone-200"
+        )}>
           <h2 className={cn(
             "text-xl font-semibold mb-4",
             isDark ? "text-stone-100" : "text-stone-900"

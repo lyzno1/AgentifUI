@@ -4,6 +4,8 @@ import React from "react"
 import { FiCopy, FiRefreshCw, FiThumbsUp, FiThumbsDown, FiCheck } from "react-icons/fi"
 import { MessageActionButton } from "@components/ui/message-action-button"
 import { MessageActionsContainer } from "@components/ui/message-actions-container"
+import { useTheme } from "@lib/hooks/use-theme"
+import { cn } from "@lib/utils"
 
 interface AssistantMessageActionsProps {
   messageId: string
@@ -22,6 +24,8 @@ export const AssistantMessageActions: React.FC<AssistantMessageActionsProps> = (
   className,
   isRegenerating = false
 }) => {
+  const { isDark } = useTheme()
+  
   return (
     <MessageActionsContainer 
       align="left" 
@@ -44,7 +48,10 @@ export const AssistantMessageActions: React.FC<AssistantMessageActionsProps> = (
         className={isRegenerating ? "animate-spin" : ""}
         tooltipPosition="bottom"
       />
-      <div className="self-stretch border-r border-gray-300 dark:border-gray-700 mx-1" />
+      <div className={cn(
+        "self-stretch border-r mx-1",
+        isDark ? "border-gray-700" : "border-gray-300"
+      )} />
       <MessageActionButton
         icon={FiThumbsUp}
         label="有用"

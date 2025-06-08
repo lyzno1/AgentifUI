@@ -2,12 +2,15 @@
 
 import React from 'react';
 import { cn } from '@lib/utils';
+import { useTheme } from '@lib/hooks/use-theme';
 
 interface PageLoaderProps {
   className?: string;
 }
 
 export function PageLoader({ className }: PageLoaderProps) {
+  const { isDark } = useTheme()
+  
   return (
     <div className={cn(
       "flex flex-col items-center justify-center min-h-[50vh] w-full",
@@ -40,10 +43,16 @@ export function PageLoader({ className }: PageLoaderProps) {
         
         {/* 加载文本 */}
         <div className="text-center">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          <h3 className={cn(
+            "text-lg font-medium",
+            isDark ? "text-gray-100" : "text-gray-900"
+          )}>
             正在加载
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className={cn(
+            "mt-1 text-sm",
+            isDark ? "text-gray-400" : "text-gray-500"
+          )}>
             请稍候，正在获取数据...
           </p>
         </div>

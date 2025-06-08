@@ -133,6 +133,50 @@ html, body {
 /* --- BEGIN COMMENT ---
 🎯 全局字体规则 - 确保所有路由都使用统一的字体
 --- END COMMENT --- */
+@layer utilities {
+  /* --- BEGIN COMMENT ---
+  隐藏滚动条但保持滚动功能的工具类 - 增强版
+  --- END COMMENT --- */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+    width: 0px;
+    height: 0px;
+    background: transparent;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar-track {
+    display: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    display: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar-corner {
+    display: none;
+  }
+  
+  /* --- 强制隐藏所有滚动条的全局类 --- */
+  .hide-all-scrollbars,
+  .hide-all-scrollbars * {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  
+  .hide-all-scrollbars::-webkit-scrollbar,
+  .hide-all-scrollbars *::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+    background: transparent !important;
+  }
+}
+
 @layer base {
   /* 🔥 最强的全局字体设置 - 使用 Inter 作为默认，确保一致性 */
   html, body, * {
@@ -551,3 +595,139 @@ body.default-page {
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
   font-family: var(--font-crimson), var(--font-noto-serif), Georgia, serif !important;
 }
+
+/* --- BEGIN COMMENT ---
+Chatflow 执行进度条相关样式
+--- END COMMENT --- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--progress-width, 100%);
+  }
+}
+
+@keyframes node-status-transition {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chatflow-node-item {
+  animation: fade-in 0.3s ease-out;
+}
+
+.chatflow-node-item:hover {
+  transform: scale(1.02);
+  transition: transform 0.2s ease-out;
+}
+
+.chatflow-progress-bar {
+  animation: progress-fill 0.5s ease-out;
+}
+
+.chatflow-status-change {
+  animation: node-status-transition 0.3s ease-out;
+}
+
+/* --- BEGIN COMMENT ---
+🎯 Chatflow Iteration 层级指示样式
+紧贴bar左边缘的装饰线，与bar风格保持一致
+--- END COMMENT --- */
+
+/* 迭代节点容器 */
+.iteration-node {
+  position: relative;
+}
+
+/* 左侧装饰线 - 紧贴bar左边缘，与bar高度和圆角保持一致 */
+.iteration-node::before {
+  content: '';
+  position: absolute;
+  left: -1px; /* 紧贴bar的左边框 */
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, 
+    rgba(168, 162, 158, 0.6), /* stone-400 半透明 */
+    rgba(168, 162, 158, 0.8)  /* stone-400 更不透明 */
+  );
+  border-radius: 6px 0 0 6px; /* 左侧圆角与bar的rounded-md匹配 */
+  transition: all 0.2s ease;
+}
+
+.dark .iteration-node::before {
+  background: linear-gradient(to bottom, 
+    rgba(87, 83, 78, 0.6),  /* stone-600 半透明 */
+    rgba(87, 83, 78, 0.8)   /* stone-600 更不透明 */
+  );
+}
+
+/* 连接点 - 在装饰线中央的小指示器 */
+.iteration-node::after {
+  content: '';
+  position: absolute;
+  left: -0.5px; /* 在装饰线中央 */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 8px;
+  background: #a8a29e; /* stone-400 */
+  border-radius: 1px;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.dark .iteration-node::after {
+  background: #57534e; /* stone-600 */
+}
+
+/* --- BEGIN COMMENT ---
+🎯 悬停效果：装饰线变宽变亮，连接点也相应变化
+--- END COMMENT --- */
+.iteration-node:hover::before {
+  width: 4px;
+  left: -2px;
+  background: linear-gradient(to bottom, 
+    rgba(120, 113, 108, 0.8), /* stone-500 */
+    rgba(120, 113, 108, 1)    /* stone-500 完全不透明 */
+  );
+}
+
+.dark .iteration-node:hover::before {
+  background: linear-gradient(to bottom, 
+    rgba(120, 113, 108, 0.8), /* stone-500 */
+    rgba(120, 113, 108, 1)    /* stone-500 完全不透明 */
+  );
+}
+
+.iteration-node:hover::after {
+  width: 3px;
+  height: 10px;
+  left: -1.5px;
+  background: #78716c; /* stone-500 */
+}
+
+.dark .iteration-node:hover::after {
+  background: #78716c; /* stone-500 */
+}
+
+

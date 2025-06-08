@@ -6,6 +6,8 @@ import { Button } from '@components/ui/button';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase/client';
 import { ArrowLeft, Mail } from 'lucide-react';
+import { cn } from '@lib/utils';
+import { useTheme } from '@lib/hooks/use-theme';
 
 export function ForgotPasswordForm() {
   const router = useRouter();
@@ -13,9 +15,11 @@ export function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const { isDark } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!email.trim()) return;
     setIsLoading(true);
     setError('');
     
@@ -63,48 +67,60 @@ export function ForgotPasswordForm() {
   // --- 邮件发送成功状态的UI ---
   if (isEmailSent) {
     return (
-      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
-            <Mail className="w-8 h-8 text-stone-600 dark:text-stone-400" />
+      <div className={cn(
+        "min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8",
+        isDark ? "bg-stone-900" : "bg-stone-50"
+      )}>
+        <div className={cn(
+          "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+        )}>
+          <div className="text-center">
+            <div className={cn(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center",
+              isDark ? "bg-stone-800" : "bg-stone-100"
+            )}>
+              <Mail className={cn(
+                "w-8 h-8",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )} />
+            </div>
+            <h2 className={cn(
+              "text-xl sm:text-2xl font-bold text-stone-900 font-serif",
+              isDark ? "bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent" : ""
+            )}>
+              邮件已发送
+            </h2>
+            <p className={cn(
+              "mt-2 text-sm font-serif",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
+              我们已向 <span className={cn(
+                "font-medium font-serif",
+                isDark ? "text-stone-300" : "text-stone-700"
+              )}>{email}</span> 发送了重置密码链接
+            </p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-            邮件已发送
-          </h2>
-          <p className="mt-2 text-sm text-stone-600 dark:text-stone-400 font-serif">
-            我们已向 <span className="font-medium text-stone-700 dark:text-stone-300 font-serif">{email}</span> 发送了重置密码链接
-          </p>
-        </div>
 
-        <div className="space-y-4">
-          <div className="p-4 bg-stone-50 text-stone-700 rounded-lg text-sm border-l-4 border-stone-400 dark:bg-stone-800/50 dark:text-stone-300 dark:border-stone-600 font-serif">
-            <ul className="space-y-1">
-              <li>• 请检查您的邮箱收件箱</li>
-              <li>• 重置链接有效期为1小时</li>
-              <li>• 如未收到邮件，请检查垃圾邮件文件夹</li>
-            </ul>
+          <div className={cn(
+            "p-4 rounded-lg text-sm border-l-4 font-serif",
+            isDark ? "bg-stone-800/50 text-stone-300 border-stone-600" : "bg-stone-50 text-stone-700 border-stone-400"
+          )}>
+            <p>请检查您的邮箱（包括垃圾邮件文件夹）并点击链接重置密码。</p>
+            <p className="mt-2">如果您没有收到邮件，请检查邮箱地址是否正确或稍后重试。</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 font-serif"
-              onClick={() => {
-                setIsEmailSent(false);
-                setEmail('');
-                setError('');
-              }}
+          <div className="text-center">
+            <Link
+              href="/login"
+              className={cn(
+                "flex items-center justify-center text-sm transition-colors font-serif",
+                isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
+              )}
             >
-              重新发送
-            </Button>
-            <Button
-              type="button"
-              className="flex-1 font-serif"
-              onClick={() => router.push('/login')}
-            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
               返回登录
-            </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -113,60 +129,86 @@ export function ForgotPasswordForm() {
 
   // --- 主要的忘记密码表单UI ---
   return (
-    <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-          忘记密码
-        </h2>
-        <p className="mt-2 text-sm text-stone-600 dark:text-stone-400 font-serif">
-          输入您的邮箱地址，我们将发送重置密码的链接
-        </p>
-      </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border-l-4 border-red-500 dark:bg-red-900/30 dark:text-red-400 font-serif">
-          {error}
-        </div>
-      )}
-
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1 font-serif">
-            邮箱地址
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-            placeholder="your@email.com"
-            value={email}
-            onChange={handleEmailChange}
-          />
+    <div className={cn(
+      "min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8",
+      isDark ? "bg-stone-900" : "bg-stone-50"
+    )}>
+      <div className={cn(
+        "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+        isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+      )}>
+        <div className="text-center">
+          <h2 className={cn(
+            "text-xl sm:text-2xl font-bold text-stone-900 font-serif",
+            isDark ? "bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent" : ""
+          )}>
+            忘记密码
+          </h2>
+          <p className={cn(
+            "mt-2 text-sm font-serif",
+            isDark ? "text-stone-400" : "text-stone-600"
+          )}>
+            输入您的邮箱地址，我们将发送重置密码链接
+          </p>
         </div>
 
-        <div>
-          <Button 
-            type="submit" 
-            isLoading={isLoading}
-            className="w-full h-12 text-base font-serif"
-            variant="gradient"
+        {error && (
+          <div className={cn(
+            "p-4 rounded-lg text-sm border-l-4 font-serif",
+            isDark ? "bg-red-900/30 text-red-400 border-red-500" : "bg-red-50 text-red-700 border-red-500"
+          )}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <div>
+            <label htmlFor="email" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-stone-300" : "text-stone-700"
+            )}>
+              邮箱地址
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={handleEmailChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="your@email.com"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || !email.trim()}
+            className={cn(
+              "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-stone-700 hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-serif",
+              isDark ? "bg-stone-800 hover:bg-stone-700" : "bg-stone-500 hover:bg-stone-600"
+            )}
           >
             {isLoading ? '发送中...' : '发送重置链接'}
-          </Button>
-        </div>
-      </form>
+          </button>
+        </form>
 
-      <div className="mt-6">
-        <Link 
-          href="/login" 
-          className="flex items-center justify-center text-sm text-stone-700 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300 transition-colors font-serif"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回登录
-        </Link>
+        <div className="text-center">
+          <Link
+            href="/login"
+            className={cn(
+              "flex items-center justify-center text-sm transition-colors font-serif",
+              isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
+            )}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            返回登录
+          </Link>
+        </div>
       </div>
     </div>
   );

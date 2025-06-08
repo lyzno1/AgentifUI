@@ -244,7 +244,7 @@ export const DynamicSuggestedQuestions = ({ className, onQuestionClick }: Dynami
       {displayQuestions.length > layoutConfig.maxDisplay && (
         <div className={cn(
           "mt-3 text-center opacity-0 animate-fade-in",
-          "text-xs text-stone-500 dark:text-stone-500 font-serif"
+          "text-xs text-stone-500 font-serif"
         )}
         style={{
           animationDelay: `${questionsToShow.length * 100 + 200}ms`,

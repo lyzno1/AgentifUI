@@ -3,7 +3,7 @@
 // 实现与 Dify 聊天相关 API 的交互逻辑。
 // --- END COMMENT ---
 
-import { DifyChatRequestPayload, DifyStreamResponse, DifySseEvent, DifySseNodeStartedEvent, DifySseNodeFinishedEvent } from './types';
+import { DifyChatRequestPayload, DifyStreamResponse, DifySseEvent, DifySseNodeStartedEvent, DifySseNodeFinishedEvent, DifySseIterationStartedEvent, DifySseIterationNextEvent, DifySseIterationCompletedEvent, DifySseParallelBranchStartedEvent, DifySseParallelBranchFinishedEvent } from './types';
 import { parseSseStream } from '@lib/utils/sse-parser';
 
 // --- BEGIN COMMENT ---
@@ -30,7 +30,7 @@ export async function streamDifyChat(
   payload: DifyChatRequestPayload,
   appId: string, // 将 appId 作为参数传入
   onConversationIdReceived?: (id: string) => void,
-  onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent) => void // 新增节点事件回调
+  onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent) => void // 🎯 扩展节点事件回调类型
 ): Promise<DifyStreamResponse> {
   console.log('[Dify Service] Sending request to proxy:', payload);
   
@@ -172,6 +172,62 @@ export async function streamDifyChat(
                   onNodeEvent(event as DifySseNodeFinishedEvent);
                 } catch (callbackError) {
                   console.error('[Dify Service] Error in onNodeEvent callback (node_finished):', callbackError);
+                }
+              }
+              break;
+            // --- BEGIN COMMENT ---
+            // 🎯 新增：迭代事件处理
+            // --- END COMMENT ---
+            case 'iteration_started': // 迭代开始
+              console.log('[Dify Service] Iteration started:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (iteration_started):', callbackError);
+                }
+              }
+              break;
+            case 'iteration_next': // 迭代下一轮
+              console.log('[Dify Service] Iteration next:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (iteration_next):', callbackError);
+                }
+              }
+              break;
+            case 'iteration_completed': // 迭代完成
+              console.log('[Dify Service] Iteration completed:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (iteration_completed):', callbackError);
+                }
+              }
+              break;
+            // --- BEGIN COMMENT ---
+            // 🎯 新增：并行分支事件处理
+            // --- END COMMENT ---
+            case 'parallel_branch_started': // 并行分支开始
+              console.log('[Dify Service] Parallel branch started:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (parallel_branch_started):', callbackError);
+                }
+              }
+              break;
+            case 'parallel_branch_finished': // 并行分支结束
+              console.log('[Dify Service] Parallel branch finished:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (parallel_branch_finished):', callbackError);
                 }
               }
               break;

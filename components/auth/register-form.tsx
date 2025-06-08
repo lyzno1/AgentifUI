@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@components/ui/button';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase/client';
+import { cn } from '@lib/utils';
+import { useTheme } from '@lib/hooks/use-theme';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -18,6 +20,7 @@ export function RegisterForm() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { isDark } = useTheme();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -102,24 +105,36 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">注册账号</h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-serif">
-          加入我们，开始探索AI应用的无限可能
-        </p>
-      </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border-l-4 border-red-500 dark:bg-red-900/30 dark:text-red-400 font-serif">
-          {error}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
+      <div className={cn(
+        "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+        isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+      )}>
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">创建账户</h2>
+          <p className={cn(
+            "mt-2 text-sm font-serif",
+            isDark ? "text-gray-400" : "text-gray-600"
+          )}>
+            填写信息以创建您的新账户
+          </p>
         </div>
-      )}
 
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-5">
+        {error && (
+          <div className={cn(
+            "p-4 rounded-lg text-sm border-l-4 font-serif",
+            isDark ? "bg-red-900/30 text-red-400 border-red-500" : "bg-red-50 text-red-700 border-red-500"
+          )}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-serif">
+            <label htmlFor="name" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
               姓名
             </label>
             <input
@@ -128,15 +143,21 @@ export function RegisterForm() {
               type="text"
               autoComplete="name"
               required
-              className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-              placeholder="您的姓名"
               value={formData.name}
               onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="输入您的姓名"
             />
           </div>
           
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-serif">
+            <label htmlFor="username" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
               昵称 <span className="text-gray-500 text-xs font-serif">(可选)</span>
             </label>
             <input
@@ -144,16 +165,23 @@ export function RegisterForm() {
               name="username"
               type="text"
               autoComplete="username"
-              className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-              placeholder="您的昵称（可选）"
+              required
               value={formData.username}
               onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="选择一个用户名"
             />
           </div>
           
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-serif">
-              邮箱
+            <label htmlFor="email" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
+              邮箱地址
             </label>
             <input
               id="email"
@@ -161,15 +189,21 @@ export function RegisterForm() {
               type="email"
               autoComplete="email"
               required
-              className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-              placeholder="your@email.com"
               value={formData.email}
               onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="输入您的邮箱地址"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-serif">
+            <label htmlFor="password" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
               密码
             </label>
             <input
@@ -178,15 +212,21 @@ export function RegisterForm() {
               type="password"
               autoComplete="new-password"
               required
-              className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-              placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="创建一个安全密码"
             />
           </div>
           
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-serif">
+            <label htmlFor="confirmPassword" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
               确认密码
             </label>
             <input
@@ -195,33 +235,39 @@ export function RegisterForm() {
               type="password"
               autoComplete="new-password"
               required
-              className="block w-full px-4 py-3 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-              placeholder="••••••••"
               value={formData.confirmPassword}
               onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="再次输入密码"
             />
           </div>
-        </div>
 
-        <div>
-          <Button 
-            type="submit" 
-            isLoading={isLoading}
-            className="w-full h-12 text-base font-serif"
-            variant="gradient"
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-stone-700 hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-serif"
           >
-            注册
-          </Button>
-        </div>
-      </form>
+            {isLoading ? '创建中...' : '创建账户'}
+          </button>
+        </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400 font-serif">
-          已有账号？{' '}
-          <Link href="/login" className="font-medium text-stone-700 hover:text-stone-600 dark:text-stone-400 font-serif">
-            立即登录
-          </Link>
-        </p>
+        <div className="text-center">
+          <p className={cn(
+            "text-sm font-serif",
+            isDark ? "text-gray-400" : "text-gray-600"
+          )}>
+            已有账户？{' '}
+            <Link href="/login" className={cn(
+              "font-medium font-serif",
+              isDark ? "text-stone-400" : "text-stone-700 hover:text-stone-600"
+            )}>
+              立即登录
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

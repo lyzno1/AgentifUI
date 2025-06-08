@@ -210,10 +210,96 @@ export type DifySseEvent =
   | DifySseNodeStartedEvent
   | DifySseNodeFinishedEvent
   | DifySseWorkflowFinishedEvent
+  | DifySseIterationStartedEvent
+  | DifySseIterationNextEvent
+  | DifySseIterationCompletedEvent
+  | DifySseParallelBranchStartedEvent
+  | DifySseParallelBranchFinishedEvent
   | DifySseErrorEvent
   | DifySsePingEvent
   | DifySseAgentMessageEvent;
 
+// --- BEGIN COMMENT ---
+// 新增：迭代相关的SSE事件类型
+// --- END COMMENT ---
+
+/** event: iteration_started (迭代开始) */
+export interface DifySseIterationStartedEvent extends DifySseBaseEvent {
+  event: 'iteration_started';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    node_type: string;
+    title: string;
+    iteration_id: string;
+    iteration_index: number;
+    total_iterations?: number;
+    inputs: Record<string, any>;
+    created_at: number;
+  };
+}
+
+/** event: iteration_next (迭代下一轮) */
+export interface DifySseIterationNextEvent extends DifySseBaseEvent {
+  event: 'iteration_next';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    iteration_id: string;
+    iteration_index: number;
+    outputs?: Record<string, any>;
+    created_at: number;
+  };
+}
+
+/** event: iteration_completed (迭代完成) */
+export interface DifySseIterationCompletedEvent extends DifySseBaseEvent {
+  event: 'iteration_completed';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    iteration_id: string;
+    total_iterations: number;
+    outputs: Record<string, any>;
+    elapsed_time: number;
+    created_at: number;
+  };
+}
+
+/** event: parallel_branch_started (并行分支开始) */
+export interface DifySseParallelBranchStartedEvent extends DifySseBaseEvent {
+  event: 'parallel_branch_started';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    branch_id: string;
+    branch_index: number;
+    total_branches?: number;
+    inputs: Record<string, any>;
+    created_at: number;
+  };
+}
+
+/** event: parallel_branch_finished (并行分支结束) */
+export interface DifySseParallelBranchFinishedEvent extends DifySseBaseEvent {
+  event: 'parallel_branch_finished';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    branch_id: string;
+    branch_index: number;
+    status: 'succeeded' | 'failed' | 'stopped';
+    outputs?: Record<string, any>;
+    error?: string;
+    elapsed_time: number;
+    created_at: number;
+  };
+}
 
 // --- 服务函数返回类型 --- (供 Hook 使用)
 

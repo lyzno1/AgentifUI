@@ -11,6 +11,7 @@ import { realtimeService, SubscriptionKeys, SubscriptionConfigs } from './realti
 import { Result, success, failure } from '@lib/types/result';
 import { Message, MessageStatus } from '@lib/types/database';
 import { ChatMessage } from '@lib/stores/chat-store';
+import { extractMainContentForPreview } from '../../utils/index';
 
 export interface MessagePage {
   messages: Message[];
@@ -169,6 +170,7 @@ export class MessageService {
 
   /**
    * 保存消息到数据库
+   * 对于助手消息，同时更新对话预览（智能提取主要内容）
    */
   async saveMessage(message: {
     conversation_id: string;
@@ -187,14 +189,63 @@ export class MessageService {
       is_synced: true
     };
 
-    const result = await dataService.create<Message>('messages', messageData);
+    // --- BEGIN COMMENT ---
+    // 🎯 优化：对于助手消息，在保存的同时更新对话预览
+    // 使用事务确保数据一致性，避免额外的数据库操作
+    // --- END COMMENT ---
+    if (message.role === 'assistant') {
+      return dataService.query(async () => {
+        // 1. 保存消息
+        const { data: savedMessage, error: messageError } = await dataService['supabase']
+          .from('messages')
+          .insert(messageData)
+          .select()
+          .single();
 
-    // 清除相关缓存
-    if (result.success) {
-      cacheService.deletePattern(`conversation:messages:${message.conversation_id}:*`);
+        if (messageError) {
+          throw messageError;
+        }
+
+        // 2. 提取主要内容用于预览
+        const mainContent = extractMainContentForPreview(message.content);
+        
+        // 3. 生成预览文本（与原触发器保持一致的截断逻辑）
+        let previewText = mainContent || message.content; // 如果提取失败，使用原始内容
+        if (previewText.length > 100) {
+          previewText = previewText.substring(0, 100) + '...';
+        }
+
+        // 4. 更新对话预览（在同一个事务中）
+        const { error: conversationError } = await dataService['supabase']
+          .from('conversations')
+          .update({
+            last_message_preview: previewText,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', message.conversation_id);
+
+        if (conversationError) {
+          console.warn('[MessageService] 更新对话预览失败:', conversationError);
+          // 不抛出错误，因为消息已经保存成功
+        }
+
+        // 5. 清除相关缓存
+        cacheService.deletePattern(`conversation:messages:${message.conversation_id}:*`);
+
+        return savedMessage;
+      });
+    } else {
+      // --- BEGIN COMMENT ---
+      // 🎯 非助手消息，使用原有逻辑，不影响现有功能
+      // --- END COMMENT ---
+      const result = await dataService.create<Message>('messages', messageData);
+
+      if (result.success) {
+        cacheService.deletePattern(`conversation:messages:${message.conversation_id}:*`);
+      }
+
+      return result;
     }
-
-    return result;
   }
 
   /**

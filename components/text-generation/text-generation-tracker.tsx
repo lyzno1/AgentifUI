@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '@lib/hooks/use-theme'
 import { cn } from '@lib/utils'
 import { UnifiedStatusPanel } from '@components/workflow/workflow-tracker/unified-status-panel'
-import { Play, Clock, CheckCircle, XCircle, Square, FileText, Loader2, Copy, Download, Check } from 'lucide-react'
+import { FileText, Loader2, Copy, Download, Check } from 'lucide-react'
 import { TooltipWrapper } from '@components/ui/tooltip-wrapper'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -111,27 +111,6 @@ export function TextGenerationTracker({
     },
   }
   
-  const getOverallStatus = () => {
-    if (isExecuting || isStreaming) return 'running'
-    if (currentExecution?.status) return currentExecution.status
-    return 'idle'
-  }
-  
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'running':
-        return <Clock className="h-5 w-5 text-yellow-500 animate-pulse" />
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-stone-600" />
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      case 'stopped':
-        return <Square className="h-5 w-5 text-stone-500" />
-      default:
-        return <FileText className="h-5 w-5 text-stone-400" />
-    }
-  }
-  
   // --- 复制文本 ---
   const handleCopyText = async () => {
     if (generatedText) {
@@ -165,7 +144,7 @@ export function TextGenerationTracker({
     }
   }
   
-  const overallStatus = getOverallStatus()
+
   
   return (
     <div className="h-full flex flex-col">
@@ -222,7 +201,6 @@ export function TextGenerationTracker({
             {/* 状态标题 */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {getStatusIcon(overallStatus)}
                 <h3 className={cn(
                   "text-lg font-semibold font-serif",
                   isDark ? "text-stone-200" : "text-stone-800"

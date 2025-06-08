@@ -203,7 +203,7 @@ export default function TextGenerationPage({ params }: TextGenerationPageProps) 
       <NavBar />
       
       {/* --- 主内容区域，为 NavBar 留出空间 --- */}
-      <div className="pt-14 flex-1 min-h-0">
+      <div className="pt-12 flex-1 min-h-0">
         <TextGenerationLayout instanceId={instanceId} />
       </div>
     </div>

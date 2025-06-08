@@ -4,6 +4,7 @@ import React from "react"
 import { MoreHorizontal } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useMobile } from "@lib/hooks/use-mobile"
+import { useTheme } from "@lib/hooks/use-theme"
 
 interface MoreButtonV2Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   iconClassName?: string
@@ -24,6 +25,7 @@ export const MoreButtonV2 = React.forwardRef<HTMLButtonElement, MoreButtonV2Prop
     ...props 
   }, ref) => {
     const isMobile = useMobile()
+    const { isDark } = useTheme()
     
     // --- BEGIN COMMENT ---
     // 响应式显示逻辑：移动端永远显示，桌面端根据悬停状态显示
@@ -47,11 +49,11 @@ export const MoreButtonV2 = React.forwardRef<HTMLButtonElement, MoreButtonV2Prop
           // --- BEGIN COMMENT ---
           // 悬停效果：圆角矩形背景
           // --- END COMMENT ---
-          disableHover ? "" : "hover:bg-black/8 dark:hover:bg-white/12",
+          disableHover ? "" : isDark ? "hover:bg-white/12" : "hover:bg-black/8",
           // --- BEGIN COMMENT ---
           // 选中状态：下拉菜单打开时的背景效果
           // --- END COMMENT ---
-          isMenuOpen && "bg-black/10 dark:bg-white/15",
+          isMenuOpen && (isDark ? "bg-white/15" : "bg-black/10"),
           // --- BEGIN COMMENT ---
           // 焦点状态
           // --- END COMMENT ---

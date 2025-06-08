@@ -91,38 +91,25 @@ export function UnifiedStatusPanel({
   
   return (
     <div className={cn(
-      "px-6 py-4 border-b flex-shrink-0",
-      isDark ? "border-stone-700 bg-stone-800/30" : "border-stone-200 bg-stone-50/30"
+      "px-6 pt-2 pb-3 flex-shrink-0",
+      // 去掉分割线和背景，融入页面
     )}>
-      <div className="space-y-4">
-        {/* 主状态行 */}
-        <div className="flex items-center justify-between">
-          {/* 左侧：状态信息 */}
-          <div className="flex items-center gap-4">
-            <div className={cn("flex items-center gap-3", statusInfo.color)}>
-              {statusInfo.icon}
-              <h2 className="text-lg font-semibold font-serif">
-                {statusInfo.text}
-              </h2>
-            </div>
-            
-            {/* 执行状态指示器（仅在执行时显示） */}
-            {isExecuting && (
-              <div className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-serif",
-                isDark ? "bg-stone-700 text-stone-300" : "bg-stone-100 text-stone-700"
-              )}>
-                <div className={cn(
-                  "w-2 h-2 rounded-full animate-pulse",
-                  isDark ? "bg-stone-400" : "bg-stone-600"
-                )} />
-                <span>执行中</span>
+      <div className="space-y-3">
+        {/* 主状态行 - 只在有状态时显示 */}
+        {(isExecuting || currentExecution || error) && (
+          <div className="flex items-center justify-between">
+            {/* 左侧：状态信息 */}
+            <div className="flex items-center gap-3">
+              <div className={cn("flex items-center gap-2", statusInfo.color)}>
+                {statusInfo.icon}
+                <span className="text-base font-medium font-serif">
+                  {statusInfo.text}
+                </span>
               </div>
-            )}
-          </div>
+            </div>
           
-          {/* 右侧：主要操作按钮 */}
-          <div className="flex items-center gap-2">
+            {/* 右侧：主要操作按钮 */}
+            <div className="flex items-center gap-2">
             {/* 查看结果按钮 */}
             {showResultButton && overallStatus === 'completed' && currentExecution?.outputs && (
               <button
@@ -189,11 +176,13 @@ export function UnifiedStatusPanel({
                 重置
               </button>
             )}
+            </div>
           </div>
-        </div>
+        )}
         
         {/* 详细信息行 */}
-        <div className="flex items-center gap-6">
+        {(currentExecution?.elapsed_time || error) && (
+          <div className="flex items-center gap-6">
           
           {/* 执行时间 */}
           {currentExecution?.elapsed_time && (
@@ -216,7 +205,8 @@ export function UnifiedStatusPanel({
               <span className="truncate max-w-64">{error}</span>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

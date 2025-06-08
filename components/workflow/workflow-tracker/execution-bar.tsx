@@ -3,35 +3,48 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '@lib/hooks/use-theme'
 import { cn } from '@lib/utils'
-import { Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { 
+  Loader2, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle,
+  Zap,
+  GitBranch,
+  RotateCcw,
+  Code,
+  Search,
+  Filter
+} from 'lucide-react'
+import type { WorkflowNode, WorkflowIteration, WorkflowParallelBranch } from '@lib/stores/workflow-execution-store'
+import { useWorkflowExecutionStore } from '@lib/stores/workflow-execution-store'
 
 interface ExecutionBarProps {
-  node: {
-    id: string
-    title: string
-    status: 'pending' | 'running' | 'completed' | 'failed'
-    startTime?: number
-    endTime?: number
-    description?: string
-  }
+  node: WorkflowNode
   index: number
   delay?: number
 }
 
 /**
- * 执行条组件 - slim长方条显示节点执行信息
+ * 工作流执行条组件 - 支持迭代和并行分支的细粒度显示
  * 
  * 特点：
  * - fade-in动画进入
- * - 左侧spinner/状态图标
- * - 中间显示当前操作描述
+ * - 左侧节点类型图标
+ * - 中间显示节点信息和状态
  * - 右侧显示计时信息
- * - 现代化设计，统一stone色系
+ * - 支持迭代展开/折叠
+ * - 支持并行分支显示
+ * - 悬停效果和交互
  */
 export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   const { isDark } = useTheme()
   const [isVisible, setIsVisible] = useState(false)
   const [elapsedTime, setElapsedTime] = useState(0)
+  
+  // 🎯 使用store中的展开状态和actions
+  const { iterationExpandedStates, toggleIterationExpanded } = useWorkflowExecutionStore()
+  const isExpanded = iterationExpandedStates[node.id] || false
   
   // 延迟显示动画
   useEffect(() => {
@@ -62,33 +75,78 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   }
   
   const getStatusIcon = () => {
-    switch (node.status) {
-      case 'running':
-        return <Loader2 className={cn(
-          "h-4 w-4 animate-spin",
-          isDark ? "text-stone-400" : "text-stone-600"
-        )} />
-      case 'completed':
-        return <CheckCircle className={cn(
-          "h-4 w-4",
-          isDark ? "text-stone-400" : "text-stone-600"
-        )} />
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case 'pending':
-        return <Clock className={cn(
-          "h-4 w-4",
-          isDark ? "text-stone-500" : "text-stone-400"
-        )} />
-      default:
-        return <AlertCircle className={cn(
-          "h-4 w-4",
-          isDark ? "text-stone-500" : "text-stone-400"
-        )} />
+    // 🎯 优先显示节点类型图标，状态通过颜色体现
+    const getNodeTypeIcon = () => {
+      switch (node.type) {
+        case 'llm':
+          return <Zap className="h-4 w-4" />
+        case 'knowledge-retrieval':
+          return <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">知</span>
+        case 'question-classifier':
+          return <Filter className="h-4 w-4" />
+        case 'if-else':
+          return <GitBranch className="h-4 w-4" />
+        case 'code':
+          return <Code className="h-4 w-4" />
+        case 'iteration':
+        case 'loop':
+          return <RotateCcw className="h-4 w-4" />
+        case 'http-request':
+          return <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">HTTP</span>
+        case 'parallel':
+          return <GitBranch className="h-4 w-4" />
+        default:
+          // 如果没有类型，回退到状态图标
+          if (node.status === 'running') {
+            return <Loader2 className="h-4 w-4 animate-spin" />
+          }
+          return <Search className="h-4 w-4" />
+      }
     }
+    
+    const icon = getNodeTypeIcon()
+    
+    // 根据状态设置颜色
+    const colorClass = node.status === 'running'
+      ? isDark ? "text-stone-400" : "text-stone-600"
+      : node.status === 'completed'
+        ? isDark ? "text-stone-400" : "text-stone-600"
+        : node.status === 'failed'
+          ? "text-red-500"
+          : isDark ? "text-stone-500" : "text-stone-400"
+    
+    return <div className={cn(colorClass)}>{icon}</div>
   }
   
   const getStatusText = () => {
+    // 🎯 迭代节点显示特殊状态文本
+    if (node.isIterationNode) {
+      switch (node.status) {
+        case 'running':
+          return '正在迭代...'
+        case 'completed':
+          return '迭代完成'
+        case 'failed':
+          return '迭代失败'
+        default:
+          return '等待迭代'
+      }
+    }
+    
+    // 🎯 并行分支节点显示特殊状态文本
+    if (node.isParallelNode) {
+      switch (node.status) {
+        case 'running':
+          return '并行执行中...'
+        case 'completed':
+          return '并行完成'
+        case 'failed':
+          return '并行失败'
+        default:
+          return '等待并行执行'
+      }
+    }
+    
     switch (node.status) {
       case 'running':
         return node.description || '正在执行...'
@@ -103,10 +161,52 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
     }
   }
   
+  const getNodeTitle = () => {
+    // 根据节点类型返回友好的中文名称
+    switch (node.type) {
+      case 'start':
+        return '开始节点'
+      case 'llm':
+        return 'LLM 推理'
+      case 'knowledge-retrieval':
+        return '知识检索'
+      case 'question-classifier':
+        return '问题分类器'
+      case 'if-else':
+        return '条件分支'
+      case 'code':
+        return '代码执行'
+      case 'template-transform':
+        return '模板转换'
+      case 'variable-assigner':
+        return '变量赋值'
+      case 'variable-aggregator':
+        return '变量聚合器'
+      case 'document-extractor':
+        return '文档提取器'
+      case 'parameter-extractor':
+        return '参数提取器'
+      case 'http-request':
+        return 'HTTP 请求'
+      case 'list-operator':
+        return '列表操作'
+      case 'iteration':
+      case 'loop':
+        return '循环迭代'
+      case 'parallel':
+        return '并行分支'
+      case 'end':
+        return '结束节点'
+      default:
+        return node.title || `节点 ${index + 1}`
+    }
+  }
+  
   const getBarStyles = () => {
     const baseStyles = cn(
-      "flex items-center gap-3 px-4 py-3 rounded-lg border transition-all duration-300",
-      "transform",
+      // 🎯 应用chatflow经验：细bar样式 + 悬停效果
+      "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300",
+      "transform hover:scale-[1.02] hover:shadow-md font-serif",
       isVisible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
     )
     
@@ -150,55 +250,186 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   }
   
   return (
-    <div className={getBarStyles()}>
-      {/* 左侧：状态图标 */}
-      <div className="flex-shrink-0">
-        {getStatusIcon()}
-      </div>
-      
-      {/* 中间：节点信息 */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "font-medium font-serif text-sm",
-            isDark ? "text-stone-200" : "text-stone-800"
-          )}>
-            {node.title}
-          </span>
-          <span className={cn(
-            "text-xs px-2 py-0.5 rounded-full font-serif",
-            node.status === 'running'
-              ? isDark
-                ? "bg-stone-600/40 text-stone-200"
-                : "bg-stone-300/60 text-stone-700"
-              : node.status === 'completed'
-                ? isDark
-                  ? "bg-stone-500/40 text-stone-100"
-                  : "bg-stone-200 text-stone-800"
-                : node.status === 'failed'
+    <div className="space-y-1">
+      <div 
+        className={cn(
+          getBarStyles(),
+          // 🎯 所有bar都有悬停效果，只有迭代和并行分支节点才有cursor pointer
+          "hover:scale-[1.02] hover:shadow-md transition-all duration-200",
+          (node.isIterationNode || node.isParallelNode) && "cursor-pointer"
+        )}
+        onClick={(node.isIterationNode || node.isParallelNode) ? () => toggleIterationExpanded(node.id) : undefined}
+      >
+        {/* 左侧：状态图标 */}
+        <div className="flex-shrink-0">
+          {getStatusIcon()}
+        </div>
+        
+        {/* 中间：节点信息 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 节点标题行 */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className={cn(
+                "font-medium text-sm font-serif truncate",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                {getNodeTitle()}
+              </span>
+            </div>
+            
+            {/* 🎯 状态标签行 - 右移一些距离让"执行完成"对齐 */}
+            <div className="flex items-center gap-2 flex-shrink-0 ml-8">
+              {/* 迭代计数显示 */}
+              {node.isIterationNode && node.totalIterations && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
+                  isDark && "bg-stone-700/50 text-stone-300"
+                )}>
+                  {node.currentIteration || 0}/{node.totalIterations}
+                </span>
+              )}
+                
+              {/* 并行分支进度指示 */}
+              {node.isParallelNode && node.totalBranches && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
+                  isDark && "bg-stone-700/50 text-stone-300"
+                )}>
+                  {node.completedBranches || 0}/{node.totalBranches}
+                </span>
+              )}
+              
+              <span className={cn(
+                "text-xs px-2 py-0.5 rounded-full font-serif",
+                node.status === 'running'
                   ? isDark
-                    ? "bg-red-700/30 text-red-300"
-                    : "bg-red-100 text-red-700"
-                  : isDark
-                    ? "bg-stone-700/50 text-stone-400"
-                    : "bg-stone-200/80 text-stone-600"
-          )}>
-            {getStatusText()}
-          </span>
+                    ? "bg-stone-600/40 text-stone-200"
+                    : "bg-stone-300/60 text-stone-700"
+                  : node.status === 'completed'
+                    ? isDark
+                      ? "bg-stone-500/40 text-stone-100"
+                      : "bg-stone-200 text-stone-800"
+                    : node.status === 'failed'
+                      ? isDark
+                        ? "bg-red-700/30 text-red-200"
+                        : "bg-red-100 text-red-700"
+                      : isDark
+                        ? "bg-stone-700/50 text-stone-400"
+                        : "bg-stone-200/80 text-stone-600"
+              )}>
+                {getStatusText()}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* 右侧：计时信息 */}
+        <div className="flex-shrink-0 w-16 text-right">
+          {(node.status === 'running' || node.status === 'completed') && elapsedTime > 0 && (
+            <div className={cn(
+              "text-xs font-serif",
+              isDark ? "text-stone-400" : "text-stone-500"
+            )}>
+              {formatTime(elapsedTime)}
+            </div>
+          )}
         </div>
       </div>
       
-      {/* 右侧：计时信息 */}
-      <div className="flex-shrink-0">
-        {(node.status === 'running' || node.status === 'completed') && elapsedTime > 0 && (
-          <div className={cn(
-            "text-xs font-mono",
-            isDark ? "text-stone-400" : "text-stone-500"
-          )}>
-            {formatTime(elapsedTime)}
-          </div>
-        )}
-      </div>
+      {/* 🎯 迭代详情展开区域 */}
+      {node.isIterationNode && node.iterations && isExpanded && (
+        <div className="animate-in slide-in-from-top-2 fade-in duration-250">
+          {node.iterations.map((iteration, iterIndex) => (
+            <div
+              key={iteration.id}
+              className={cn(
+                "relative ml-6 pl-4 iteration-node",
+                isDark ? "bg-stone-800/30" : "bg-stone-50/30",
+                "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300 font-serif",
+                iteration.status === 'running'
+                  ? isDark
+                    ? "bg-stone-700/50 border-stone-600"
+                    : "bg-stone-200/50 border-stone-300"
+                  : isDark
+                    ? "bg-stone-600/30 border-stone-500"
+                    : "bg-stone-100 border-stone-300"
+              )}
+            >
+              <div className="flex-shrink-0">
+                {iteration.status === 'running' ? (
+                  <Loader2 className={cn("h-3 w-3 animate-spin", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : iteration.status === 'completed' ? (
+                  <CheckCircle className={cn("h-3 w-3", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : (
+                  <XCircle className="h-3 w-3 text-red-500" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <span className={cn("text-sm font-serif", isDark ? "text-stone-200" : "text-stone-800")}>
+                  第 {iteration.index + 1} 轮迭代
+                </span>
+              </div>
+              
+              <div className="flex-shrink-0">
+                {iteration.endTime && iteration.startTime && (
+                  <span className={cn("text-xs font-serif", isDark ? "text-stone-400" : "text-stone-500")}>
+                    {formatTime(iteration.endTime - iteration.startTime)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* 🎯 并行分支详情展开区域 */}
+      {node.isParallelNode && node.parallelBranches && isExpanded && (
+        <div className="animate-in slide-in-from-top-2 fade-in duration-250">
+          {node.parallelBranches.map((branch, branchIndex) => (
+            <div
+              key={branch.id}
+              className={cn(
+                "relative ml-6 pl-4 iteration-node",
+                isDark ? "bg-stone-800/30" : "bg-stone-50/30",
+                "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300 font-serif",
+                branch.status === 'running'
+                  ? isDark
+                    ? "bg-stone-700/50 border-stone-600"
+                    : "bg-stone-200/50 border-stone-300"
+                  : isDark
+                    ? "bg-stone-600/30 border-stone-500"
+                    : "bg-stone-100 border-stone-300"
+              )}
+            >
+              <div className="flex-shrink-0">
+                {branch.status === 'running' ? (
+                  <Loader2 className={cn("h-3 w-3 animate-spin", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : branch.status === 'completed' ? (
+                  <CheckCircle className={cn("h-3 w-3", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : (
+                  <XCircle className="h-3 w-3 text-red-500" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <span className={cn("text-sm font-serif", isDark ? "text-stone-200" : "text-stone-800")}>
+                  {branch.name}
+                </span>
+              </div>
+              
+              <div className="flex-shrink-0">
+                {branch.endTime && branch.startTime && (
+                  <span className={cn("text-xs font-serif", isDark ? "text-stone-400" : "text-stone-500")}>
+                    {formatTime(branch.endTime - branch.startTime)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 } 

@@ -73,18 +73,25 @@ export function FormField({ type, config, value, onChange, error, instanceId }: 
             value={value}
             onChange={(e) => {
               const inputValue = e.target.value
+              console.log(`[FormField-${config.variable}] 用户输入:`, inputValue, '(类型:', typeof inputValue, ')')
+              
               // 如果输入为空，传递空字符串
               if (inputValue === '') {
+                console.log(`[FormField-${config.variable}] 输入为空，传递空字符串`)
                 onChange('')
                 return
               }
               
               // 尝试转换为数字
               const numValue = parseFloat(inputValue)
+              console.log(`[FormField-${config.variable}] parseFloat结果:`, numValue, '(类型:', typeof numValue, ')')
+              
               if (!isNaN(numValue)) {
+                console.log(`[FormField-${config.variable}] 传递数字值:`, numValue)
                 onChange(numValue)
               } else {
                 // 如果转换失败，保持原始字符串（用于验证）
+                console.log(`[FormField-${config.variable}] 转换失败，保持字符串:`, inputValue)
                 onChange(inputValue)
               }
             }}

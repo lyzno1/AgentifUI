@@ -73,7 +73,7 @@ export function ExecutionItem({ execution, onClick, isMultiSelectMode, isSelecte
       onClick={onClick}
       className={cn(
         "p-3 rounded-md border cursor-pointer transition-all duration-200",
-        "hover:shadow-sm",
+        "hover:scale-[1.01] hover:shadow-md",
         // 选中状态样式
         isMultiSelectMode && isSelected && (
           isDark

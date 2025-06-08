@@ -69,94 +69,51 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   }, [isAppDetailPage, params.instanceId, apps]);
 
   // --- BEGIN COMMENT ---
-  // 获取当前对话信息 - 使用与sidebar相同的数据源，但添加备用机制
+  // 🎯 修复：直接使用与sidebar相同的数据源，移除复杂的备用机制
+  // 这样确保导航栏能正确显示打字机效果和实时标题更新
   // --- END COMMENT ---
   const currentConversation = React.useMemo(() => {
     if (!currentConversationId) return null;
     
-    // 首先尝试从Combined Conversations中找到
-    const foundInCombined = conversations.find(conv => 
+    // 直接从Combined Conversations中查找，与sidebar保持一致
+    return conversations.find(conv => 
       conv.id === currentConversationId || 
       conv.external_id === currentConversationId
-    );
-    
-    if (foundInCombined) {
-      return foundInCombined;
-    }
-    
-    // --- BEGIN COMMENT ---
-    // 如果在Combined Conversations中找不到，尝试从document.title中提取标题
-    // 这样可以避免不必要的API调用，特别是从recents页面点击进来的情况
-    // --- END COMMENT ---
-    const getTitleFromDocument = () => {
-      const docTitle = document.title;
-      const baseTitle = 'AgentifUI';
-      if (docTitle.includes(' | ') && docTitle.endsWith(` | ${baseTitle}`)) {
-        return docTitle.replace(` | ${baseTitle}`, '');
-      }
-      return '对话'; // 默认标题
-    };
-    
-    // 返回一个基础的对话对象，标题从document.title中获取
-    return {
-      id: currentConversationId,
-      title: getTitleFromDocument(),
-      external_id: currentConversationId,
-      user_id: undefined,
-      created_at: '',
-      updated_at: '',
-      isPending: false,
-      supabase_pk: undefined // 这意味着无法进行重命名和删除操作，直到获取到真实数据
-    } as CombinedConversation;
+    ) || null;
   }, [conversations, currentConversationId]);
 
   // --- BEGIN COMMENT ---
-  // 当找到的对话没有supabase_pk时，静默在后台获取完整的对话信息（不显示loading）
+  // 🎯 简化：直接使用currentConversation，与sidebar保持一致
+  // 移除复杂的后台获取逻辑，依赖useCombinedConversations提供完整数据
   // --- END COMMENT ---
-  const [fullConversationData, setFullConversationData] = React.useState<CombinedConversation | null>(null);
+  const finalConversation = currentConversation;
   
-  React.useEffect(() => {
-    if (currentConversation && !currentConversation.supabase_pk && currentConversationId) {
-      // 静默在后台获取完整的对话信息，不显示loading状态
-      const fetchFullConversation = async () => {
-        try {
-          const { getConversationByExternalId } = await import('@lib/db/conversations');
-          const result = await getConversationByExternalId(currentConversationId);
-          
-          if (result.success && result.data) {
-            const dbConversation = result.data;
-            setFullConversationData({
-              ...currentConversation,
-              title: dbConversation.title || currentConversation.title, // 保留已有标题作为备选
-              supabase_pk: dbConversation.id,
-              user_id: dbConversation.user_id,
-              created_at: dbConversation.created_at,
-              updated_at: dbConversation.updated_at,
-              org_id: dbConversation.org_id,
-              ai_config_id: dbConversation.ai_config_id,
-              summary: dbConversation.summary,
-              settings: dbConversation.settings,
-              status: dbConversation.status,
-              app_id: dbConversation.app_id,
-              last_message_preview: dbConversation.last_message_preview,
-              metadata: dbConversation.metadata
-            });
-          }
-        } catch (error) {
-          console.error('获取对话信息失败:', error);
-          // 失败时保持当前状态，不影响用户体验
-        }
-      };
+  // --- BEGIN COMMENT ---
+  // 🎯 支持打字机效果的标题显示，与sidebar逻辑保持一致
+  // --- END COMMENT ---
+  const getDisplayTitle = () => {
+    if (!finalConversation) return '新对话';
+    
+    // 检查是否需要显示打字机效果
+    if (finalConversation.isPending && finalConversation.titleTypewriterState) {
+      const typewriterState = finalConversation.titleTypewriterState;
       
-      fetchFullConversation();
-    } else {
-      setFullConversationData(null);
+      // 如果正在打字，显示当前打字进度
+      if (typewriterState.isTyping) {
+        return typewriterState.displayTitle || finalConversation.title || '新对话';
+      }
+      
+      // 如果打字完成，显示目标标题
+      if (typewriterState.targetTitle) {
+        return typewriterState.targetTitle;
+      }
     }
-  }, [currentConversation, currentConversationId]);
-
-  // 使用完整的对话数据（如果可用），否则使用基础对话数据
-  const finalConversation = fullConversationData || currentConversation;
-  const conversationTitle = finalConversation?.title || '新对话';
+    
+    // 默认显示对话标题
+    return finalConversation.title || '新对话';
+  };
+  
+  const conversationTitle = getDisplayTitle();
   
   // --- BEGIN COMMENT ---
   // 动态隐藏策略：当sidebar悬停展开时隐藏，锁定展开时不隐藏
@@ -174,9 +131,9 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   const handleRenameConfirm = async (newTitle: string) => {
     if (!currentConversationId || !finalConversation) return;
     
-    const supabasePK = finalConversation.supabase_pk;
+    const supabasePK = finalConversation?.supabase_pk;
     if (!supabasePK) {
-      alert("正在获取对话详细信息，请稍后再尝试重命名。");
+      alert("对话信息不完整，无法重命名。");
       setShowRenameDialog(false);
       return;
     }
@@ -193,13 +150,7 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
         const baseTitle = 'AgentifUI';
         document.title = `${newTitle.trim()} | ${baseTitle}`;
         
-        // 更新本地完整对话数据
-        if (fullConversationData) {
-          setFullConversationData({
-            ...fullConversationData,
-            title: newTitle.trim()
-          });
-        }
+        // 标题更新后会通过refresh()和conversationEvents.emit()自动同步
         
         // 刷新对话列表
         refresh();
@@ -231,9 +182,9 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   const handleDeleteConfirm = async () => {
     if (!currentConversationId || !finalConversation) return;
     
-    const supabasePK = finalConversation.supabase_pk;
+    const supabasePK = finalConversation?.supabase_pk;
     if (!supabasePK) {
-      alert("正在获取对话详细信息，请稍后再尝试删除。");
+      alert("对话信息不完整，无法删除。");
       setShowDeleteDialog(false);
       return;
     }

@@ -64,7 +64,7 @@ export function NodeProgress({ node, index, isLast }: NodeProgressProps) {
       "animate-in fade-in-0 slide-in-from-right-2 duration-300",
       `animation-delay-${index * 100}`
     )}>
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 hover:scale-[1.01] hover:shadow-sm transition-all duration-200">
         {/* 连接线和状态图标 */}
         <div className="flex flex-col items-center">
           {/* 状态图标 */}

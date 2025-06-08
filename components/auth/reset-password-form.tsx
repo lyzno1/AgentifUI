@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@components/ui/button';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase/client';
-import { CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { cn } from '@lib/utils';
+import { useTheme } from '@lib/hooks/use-theme';
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const { isDark } = useTheme();
 
   // --- 验证用户认证状态 ---
   useEffect(() => {
@@ -186,17 +189,29 @@ export function ResetPasswordForm() {
   // --- Token验证中的加载状态 ---
   if (isTokenValid === null) {
     return (
-      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center animate-pulse">
-            <div className="w-8 h-8 bg-stone-300 dark:bg-stone-600 rounded-full"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
+        <div className={cn(
+          "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+        )}>
+          <div className="text-center">
+            <div className={cn(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center animate-pulse",
+              isDark ? "bg-stone-800" : "bg-stone-100"
+            )}>
+              <div className={cn(
+                "w-8 h-8 rounded-full",
+                isDark ? "bg-stone-600" : "bg-stone-300"
+              )}></div>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">验证中</h2>
+            <p className={cn(
+              "mt-2 text-sm font-serif",
+              isDark ? "text-gray-400" : "text-gray-600"
+            )}>
+              正在验证重置链接...
+            </p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-            验证中...
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-serif">
-            正在验证重置链接的有效性
-          </p>
         </div>
       </div>
     );
@@ -205,41 +220,51 @@ export function ResetPasswordForm() {
   // --- Token无效状态 ---
   if (isTokenValid === false) {
     return (
-      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-stone-600 dark:text-stone-400" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
+        <div className={cn(
+          "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+        )}>
+          <div className="text-center">
+            <div className={cn(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center",
+              isDark ? "bg-stone-800" : "bg-stone-100"
+            )}>
+              <AlertCircle className={cn(
+                "w-8 h-8",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">链接无效</h2>
+            <p className={cn(
+              "mt-2 text-sm font-serif",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
+              重置密码链接已过期或无效
+            </p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-            链接无效
-          </h2>
-          <p className="mt-2 text-sm text-stone-600 dark:text-stone-400 font-serif">
-            重置链接已失效或不正确
-          </p>
-        </div>
 
-        {error && (
-          <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border-l-4 border-red-500 dark:bg-red-900/30 dark:text-red-400 font-serif">
-            {error}
+          {error && (
+            <div className={cn(
+              "p-4 rounded-lg text-sm border-l-4 font-serif",
+              isDark ? "bg-red-900/30 text-red-400 border-red-500" : "bg-red-50 text-red-700 border-red-500"
+            )}>
+              {error}
+            </div>
+          )}
+
+          <div className="text-center">
+            <Link
+              href="/forgot-password"
+              className={cn(
+                "inline-flex items-center text-sm text-stone-700 hover:text-stone-600 transition-colors font-serif",
+                isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
+              )}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              重新申请重置密码
+            </Link>
           </div>
-        )}
-
-        <div className="flex flex-col gap-3">
-          <Button
-            type="button"
-            className="w-full font-serif"
-            onClick={() => router.push('/forgot-password')}
-          >
-            重新申请重置密码
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full font-serif"
-            onClick={() => router.push('/login')}
-          >
-            返回登录
-          </Button>
         </div>
       </div>
     );
@@ -248,31 +273,49 @@ export function ResetPasswordForm() {
   // --- 重置成功状态 ---
   if (isSuccess) {
     return (
-      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-stone-600 dark:text-stone-400" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
+        <div className={cn(
+          "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+        )}>
+          <div className="text-center">
+            <div className={cn(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center",
+              isDark ? "bg-stone-800" : "bg-stone-100"
+            )}>
+              <CheckCircle className={cn(
+                "w-8 h-8",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">密码重置成功</h2>
+            <p className={cn(
+              "mt-2 text-sm font-serif",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
+              您的密码已成功重置
+            </p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-            重置成功
-          </h2>
-          <p className="mt-2 text-sm text-stone-600 dark:text-stone-400 font-serif">
-            密码已成功更新，正在跳转至登录页面...
-          </p>
-        </div>
 
-        <div className="space-y-4">
-          <div className="p-4 bg-stone-50 text-stone-700 rounded-lg text-sm border-l-4 border-stone-400 dark:bg-stone-800/50 dark:text-stone-300 dark:border-stone-600 font-serif">
-            请使用新密码登录您的账户
+          <div className={cn(
+            "p-4 rounded-lg text-sm border-l-4 font-serif",
+            isDark ? "bg-stone-800/50 text-stone-300 border-stone-600" : "bg-stone-50 text-stone-700 border-stone-400"
+          )}>
+            <p>您现在可以使用新密码登录您的账户。</p>
           </div>
 
-          <Button
-            type="button"
-            className="w-full font-serif"
-            onClick={() => router.push('/login')}
-          >
-            立即登录
-          </Button>
+          <div className="text-center">
+            <Link
+              href="/login"
+              className={cn(
+                "inline-flex items-center text-sm text-stone-700 hover:text-stone-600 transition-colors font-serif",
+                isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
+              )}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              前往登录
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -280,109 +323,105 @@ export function ResetPasswordForm() {
 
   // --- 主要的重置密码表单 ---
   return (
-    <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-stone-50 rounded-xl shadow-lg border border-stone-200 dark:bg-stone-900 dark:border-stone-800 transition-all font-serif">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">
-          重置密码
-        </h2>
-        <p className="mt-2 text-sm text-stone-600 dark:text-stone-400 font-serif">
-          请输入您的新密码
-        </p>
-      </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border-l-4 border-red-500 dark:bg-red-900/30 dark:text-red-400 font-serif">
-          {error}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
+      <div className={cn(
+        "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+        isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+      )}>
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">重置密码</h2>
+          <p className={cn(
+            "mt-2 text-sm font-serif",
+            isDark ? "text-stone-400" : "text-stone-600"
+          )}>
+            请输入您的新密码
+          </p>
         </div>
-      )}
 
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-5">
-          {/* --- 新密码输入 --- */}
+        {error && (
+          <div className={cn(
+            "p-4 rounded-lg text-sm border-l-4 font-serif",
+            isDark ? "bg-red-900/30 text-red-400 border-red-500" : "bg-red-50 text-red-700 border-red-500"
+          )}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1 font-serif">
+            <label htmlFor="password" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-stone-300" : "text-stone-700"
+            )}>
               新密码
             </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                className="block w-full px-4 py-3 pr-10 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-stone-400" />
-                ) : (
-                  <Eye className="h-5 w-5 text-stone-400" />
-                )}
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400 font-serif">
-              密码长度至少6位
-            </p>
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="输入新密码"
+            />
+            {formData.password && (
+              <p className={cn(
+                "mt-1 text-xs font-serif",
+                isDark ? "text-stone-400" : "text-stone-500"
+              )}>
+                密码需包含大小写字母、数字，至少8位
+              </p>
+            )}
           </div>
 
-          {/* --- 确认新密码输入 --- */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1 font-serif">
-              确认新密码
+            <label htmlFor="confirmPassword" className={cn(
+              "block text-sm font-medium mb-1 font-serif",
+              isDark ? "text-stone-300" : "text-stone-700"
+            )}>
+              确认密码
             </label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                className="block w-full px-4 py-3 pr-10 bg-white border border-stone-300 rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all dark:bg-stone-800 dark:border-stone-700 dark:text-white font-serif"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5 text-stone-400" />
-                ) : (
-                  <Eye className="h-5 w-5 text-stone-400" />
-                )}
-              </button>
-            </div>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className={cn(
+                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
+              )}
+              placeholder="再次输入新密码"
+            />
           </div>
-        </div>
 
-        <div>
-          <Button 
-            type="submit" 
-            isLoading={isLoading}
-            className="w-full h-12 text-base font-serif"
-            variant="gradient"
+          <button
+            type="submit"
+            disabled={isLoading || !formData.password || !formData.confirmPassword || !!error}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-stone-700 hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-serif"
           >
-            {isLoading ? '更新中...' : '更新密码'}
-          </Button>
-        </div>
-      </form>
+            {isLoading ? '重置中...' : '重置密码'}
+          </button>
+        </form>
 
-      <div className="mt-6 text-center">
-        <Link 
-          href="/login" 
-          className="text-sm text-stone-700 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300 transition-colors font-serif"
-        >
-          返回登录
-        </Link>
+        <div className="text-center">
+          <Link
+            href="/login"
+            className={cn(
+              "text-sm transition-colors font-serif",
+              isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
+            )}
+          >
+            返回登录
+          </Link>
+        </div>
       </div>
     </div>
   );

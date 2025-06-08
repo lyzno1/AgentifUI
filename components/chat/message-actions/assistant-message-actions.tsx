@@ -2,6 +2,8 @@
 
 import React from "react"
 import { MessageActionsContainer } from "@components/ui/message-actions-container"
+import { useTheme } from "@lib/hooks/use-theme"
+import { cn } from "@lib/utils"
 import { CopyButton } from "./buttons/copy-button"
 import { RegenerateButton } from "./buttons/regenerate-button"
 import { FeedbackButton } from "./buttons/feedback-button"
@@ -33,6 +35,8 @@ export const AssistantMessageActions: React.FC<AssistantMessageActionsProps> = (
   isRegenerating = false,
   className
 }) => {
+  const { isDark } = useTheme()
+  
   // 使用反馈管理hook，实现排他性
   const { selectedFeedback, handleFeedback, shouldShowButton } = useFeedbackManager(onFeedback);
   
@@ -56,7 +60,10 @@ export const AssistantMessageActions: React.FC<AssistantMessageActionsProps> = (
       />
       
       {/* 分隔线 - 使用更深的颜色，在深色模式下不那么显眼 */}
-      <div className="self-stretch border-r border-gray-200/50 dark:border-gray-800/50 mx-1" />
+      <div className={cn(
+        "self-stretch border-r mx-1",
+        isDark ? "border-gray-800/50" : "border-gray-200/50"
+      )} />
       
       {/* 反馈按钮 - 实现排他性，点击一个时另一个消失 */}
       {shouldShowButton(true) && (

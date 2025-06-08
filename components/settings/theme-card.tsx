@@ -15,6 +15,7 @@ interface ThemeCardProps {
 
 export function ThemeCard({ title, theme, currentTheme, onClick }: ThemeCardProps) {
   const isActive = currentTheme === theme
+  const isDark = theme === "dark"
   
   // 根据主题类型渲染不同的预览内容
   const renderPreview = () => {
@@ -44,11 +45,14 @@ export function ThemeCard({ title, theme, currentTheme, onClick }: ThemeCardProp
     <div
       onClick={onClick}
       className={cn(
-        "rounded-lg border p-4 cursor-pointer transition-all",
-        "hover:shadow-md hover:-translate-y-1 duration-200",
+        "relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
         isActive
-          ? "border-primary ring-2 ring-primary/20 dark:border-primary dark:ring-primary/20"
-          : "border-stone-200 dark:border-stone-700"
+          ? isDark 
+            ? "border-primary ring-2 ring-primary/20"
+            : "border-primary ring-2 ring-primary/20"
+          : isDark
+            ? "border-stone-700"
+            : "border-stone-200"
       )}
     >
       {renderPreview()}

@@ -66,54 +66,89 @@ const extractThinkContent = (rawContent: string): {
   }
   
   // --- BEGIN COMMENT ---
-  // 支持两种标签：<think> 和 <details>
+  // 🎯 修复：支持两种标签：<think> 和 <details>
   // 优先检查 <think> 标签，如果没有则检查 <details> 标签
+  // 新增：允许标签前有少量空白字符或很短的内容（如空字符串、换行符等）
   // --- END COMMENT ---
+  
+  // 预处理：去除开头的空白字符，但保留原始内容用于后续处理
+  const trimmedContent = rawContent.trim();
   
   // 检查 <think> 标签
   const thinkStartTag = '<think>';
   const thinkEndTag = '</think>';
   
-  if (rawContent.startsWith(thinkStartTag)) {
-    const endTagIndex = rawContent.indexOf(thinkEndTag);
-    if (endTagIndex !== -1) {
-      const thinkContent = rawContent.substring(thinkStartTag.length, endTagIndex);
-      const mainContent = rawContent.substring(endTagIndex + thinkEndTag.length);
-      return { hasThinkBlock: true, thinkContent, mainContent, thinkClosed: true };
+  // --- BEGIN COMMENT ---
+  // 🎯 新逻辑：检查think标签是否在开头或接近开头位置
+  // 允许前面有少量空白字符或很短的非重要内容
+  // --- END COMMENT ---
+  const thinkStartIndex = rawContent.indexOf(thinkStartTag);
+  if (thinkStartIndex !== -1) {
+    // 检查think标签前的内容是否可以忽略（空白字符或很短的内容）
+    const contentBeforeThink = rawContent.substring(0, thinkStartIndex).trim();
+    const isThinkAtEffectiveStart = thinkStartIndex === 0 || 
+                                   contentBeforeThink.length === 0 || 
+                                   contentBeforeThink.length <= 10; // 允许前面有最多10个字符的内容
+    
+    if (isThinkAtEffectiveStart) {
+      const thinkContentStart = thinkStartIndex + thinkStartTag.length;
+      const endTagIndex = rawContent.indexOf(thinkEndTag, thinkContentStart);
+      
+      if (endTagIndex !== -1) {
+        const thinkContent = rawContent.substring(thinkContentStart, endTagIndex);
+        const mainContent = rawContent.substring(endTagIndex + thinkEndTag.length);
+        return { hasThinkBlock: true, thinkContent, mainContent, thinkClosed: true };
+      }
+      
+      // 未闭合的think标签
+      const thinkContent = rawContent.substring(thinkContentStart);
+      return { hasThinkBlock: true, thinkContent, mainContent: '', thinkClosed: false };
     }
-    const thinkContent = rawContent.substring(thinkStartTag.length);
-    return { hasThinkBlock: true, thinkContent, mainContent: '', thinkClosed: false };
   }
   
   // 检查 <details> 标签
   const detailsStartRegex = /<details(?:\s[^>]*)?>/i;
   const detailsMatch = rawContent.match(detailsStartRegex);
   
-  if (detailsMatch && rawContent.indexOf(detailsMatch[0]) === 0) {
-    const detailsStartTag = detailsMatch[0];
-    const detailsEndTag = '</details>';
-    const endTagIndex = rawContent.indexOf(detailsEndTag);
+  if (detailsMatch) {
+    const detailsStartIndex = rawContent.indexOf(detailsMatch[0]);
     
-    if (endTagIndex !== -1) {
-      // 提取details内容，移除summary部分
-      let detailsContent = rawContent.substring(detailsStartTag.length, endTagIndex);
+    // --- BEGIN COMMENT ---
+    // 🎯 新逻辑：检查details标签是否在开头或接近开头位置
+    // 允许前面有少量空白字符或很短的非重要内容
+    // --- END COMMENT ---
+    const contentBeforeDetails = rawContent.substring(0, detailsStartIndex).trim();
+    const isDetailsAtEffectiveStart = detailsStartIndex === 0 || 
+                                     contentBeforeDetails.length === 0 || 
+                                     contentBeforeDetails.length <= 10; // 允许前面有最多10个字符的内容
+    
+    if (isDetailsAtEffectiveStart) {
+      const detailsStartTag = detailsMatch[0];
+      const detailsEndTag = '</details>';
+      const detailsContentStart = detailsStartIndex + detailsStartTag.length;
+      const endTagIndex = rawContent.indexOf(detailsEndTag, detailsContentStart);
       
-      // 移除 <summary>...</summary> 部分，只保留实际内容
+      if (endTagIndex !== -1) {
+        // 提取details内容，移除summary部分
+        let detailsContent = rawContent.substring(detailsContentStart, endTagIndex);
+        
+        // 移除 <summary>...</summary> 部分，只保留实际内容
+        const summaryRegex = /<summary[^>]*>[\s\S]*?<\/summary>/i;
+        detailsContent = detailsContent.replace(summaryRegex, '').trim();
+        
+        const mainContent = rawContent.substring(endTagIndex + detailsEndTag.length);
+        return { hasThinkBlock: true, thinkContent: detailsContent, mainContent, thinkClosed: true };
+      }
+      
+      // 未闭合的details标签
+      let detailsContent = rawContent.substring(detailsContentStart);
+      
+      // 移除 <summary>...</summary> 部分（如果存在）
       const summaryRegex = /<summary[^>]*>[\s\S]*?<\/summary>/i;
       detailsContent = detailsContent.replace(summaryRegex, '').trim();
       
-      const mainContent = rawContent.substring(endTagIndex + detailsEndTag.length);
-      return { hasThinkBlock: true, thinkContent: detailsContent, mainContent, thinkClosed: true };
+      return { hasThinkBlock: true, thinkContent: detailsContent, mainContent: '', thinkClosed: false };
     }
-    
-    // 未闭合的details标签
-    let detailsContent = rawContent.substring(detailsStartTag.length);
-    
-    // 移除 <summary>...</summary> 部分（如果存在）
-    const summaryRegex = /<summary[^>]*>[\s\S]*?<\/summary>/i;
-    detailsContent = detailsContent.replace(summaryRegex, '').trim();
-    
-    return { hasThinkBlock: true, thinkContent: detailsContent, mainContent: '', thinkClosed: false };
   }
   
   return { hasThinkBlock: false, thinkContent: '', mainContent: rawContent, thinkClosed: false };

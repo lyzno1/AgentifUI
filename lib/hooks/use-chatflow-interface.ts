@@ -78,9 +78,74 @@ export function useChatflowInterface() {
     }
   }, [chatInterface.isWaitingForResponse, startExecution])
 
+  /**
+   * 重写停止处理方法，同时处理聊天停止和细粒度节点状态
+   */
+  const handleStopProcessing = useCallback(async () => {
+    console.log('[useChatflowInterface] 开始停止处理：聊天 + 细粒度节点')
+    
+    try {
+      // 1. 先调用原始的聊天停止方法
+      await chatInterface.handleStopProcessing()
+      console.log('[useChatflowInterface] 聊天停止完成')
+      
+      // 2. 处理细粒度节点状态停止
+      const { stopExecution, nodes, updateNode, updateIteration, updateParallelBranch } = useChatflowExecutionStore.getState()
+      
+      // 停止所有运行中的节点
+      nodes.forEach(node => {
+                 if (node.status === 'running') {
+           console.log('[useChatflowInterface] 停止运行中的节点:', node.id)
+           updateNode(node.id, {
+             status: 'failed',
+             endTime: Date.now(),
+             description: node.title + ' (已停止)'
+           })
+         }
+        
+        // 处理迭代中的运行节点
+        if (node.iterations) {
+          node.iterations.forEach(iteration => {
+            if (iteration.status === 'running') {
+              console.log('[useChatflowInterface] 停止迭代中的节点:', node.id, iteration.id)
+              updateIteration(node.id, iteration.id, {
+                status: 'failed',
+                endTime: Date.now()
+              })
+            }
+          })
+        }
+        
+        // 处理并行分支中的运行节点
+        if (node.parallelBranches) {
+          node.parallelBranches.forEach(branch => {
+            if (branch.status === 'running') {
+              console.log('[useChatflowInterface] 停止并行分支中的节点:', node.id, branch.id)
+              updateParallelBranch(node.id, branch.id, {
+                status: 'failed',
+                endTime: Date.now()
+              })
+            }
+          })
+        }
+      })
+      
+      // 3. 停止执行状态
+      stopExecution()
+      console.log('[useChatflowInterface] 细粒度节点状态停止完成')
+      
+    } catch (error) {
+      console.error('[useChatflowInterface] 停止处理失败:', error)
+      // 即使出错也要尝试停止执行状态
+      useChatflowExecutionStore.getState().stopExecution()
+      throw error
+    }
+  }, [chatInterface])
+
   // 返回扩展的接口
   return {
     ...chatInterface,
+    handleStopProcessing, // 使用重写的停止方法
     handleChatflowSubmit,
     // 暴露节点跟踪相关的状态和方法
     nodeTracker: {

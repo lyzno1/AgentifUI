@@ -9,6 +9,7 @@ import { TextGenerationTracker } from './text-generation-tracker'
 import { TextGenerationResultViewer } from './text-generation-result-viewer'
 import { ExecutionHistory } from '@components/workflow/execution-history'
 import { MobileTabSwitcher } from '@components/workflow/mobile-tab-switcher'
+import { ResizableSplitPane } from '@components/ui/resizable-split-pane'
 import { useWorkflowHistoryStore } from '@lib/stores/workflow-history-store'
 import { useTextGenerationExecution } from '@lib/hooks/use-text-generation-execution'
 import { AlertCircle, RefreshCw, X, FileText } from 'lucide-react'
@@ -252,7 +253,7 @@ export function TextGenerationLayout({ instanceId }: TextGenerationLayoutProps) 
 
   // --- 桌面端布局 ---
   return (
-    <div className="h-[calc(100vh-2.5rem)] flex flex-col relative">
+    <div className="h-full flex flex-col relative overflow-hidden">
       {/* 全局错误提示 */}
       {error && (
         <ErrorBanner
@@ -263,44 +264,51 @@ export function TextGenerationLayout({ instanceId }: TextGenerationLayoutProps) 
         />
       )}
       
-      {/* 主内容区域 */}
-      <div className="flex-1 flex relative">
-        {/* 左侧：输入表单 */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 主内容区域 */}
         <div className={cn(
-          "flex-1 min-w-0 border-r transition-all duration-300",
-          isDark ? "border-stone-700" : "border-stone-200",
-          showHistory ? "lg:w-1/3" : "lg:w-1/2"
+          "flex-1 relative transition-all duration-300 overflow-hidden",
+          showHistory ? "lg:w-2/3" : "w-full"
         )}>
-          <div className="h-full px-8 py-6 overflow-y-auto">
-            <WorkflowInputForm
-              instanceId={instanceId}
-              onExecute={handleExecuteTextGeneration}
-              isExecuting={isExecuting}
-              ref={formResetRef}
-            />
-          </div>
-        </div>
-        
-        {/* 右侧：文本生成跟踪器 */}
-        <div className={cn(
-          "flex-1 min-w-0 transition-all duration-300",
-          showHistory ? "lg:w-1/3" : "lg:w-1/2"
-        )}>
-          <TextGenerationTracker
-            isExecuting={isExecuting}
-            isStreaming={isStreaming}
-            generatedText={generatedText}
-            currentExecution={currentExecution}
-            onStop={handleStopExecution}
-            onRetry={handleRetryExecution}
-            onReset={handleCompleteReset}
+          <ResizableSplitPane
+            storageKey="text-generation-split-pane"
+            defaultLeftWidth={50}
+            minLeftWidth={25}
+            maxLeftWidth={75}
+            left={
+              <div className="h-full flex flex-col overflow-hidden hide-all-scrollbars">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden px-8 pt-4 pb-12 no-scrollbar">
+                  <WorkflowInputForm
+                    instanceId={instanceId}
+                    onExecute={handleExecuteTextGeneration}
+                    isExecuting={isExecuting}
+                    ref={formResetRef}
+                  />
+                </div>
+              </div>
+            }
+            right={
+              <div className="h-full flex flex-col overflow-hidden hide-all-scrollbars">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+                  <TextGenerationTracker
+                    isExecuting={isExecuting}
+                    isStreaming={isStreaming}
+                    generatedText={generatedText}
+                    currentExecution={currentExecution}
+                    onStop={handleStopExecution}
+                    onRetry={handleRetryExecution}
+                    onReset={handleCompleteReset}
+                  />
+                </div>
+              </div>
+            }
           />
         </div>
         
         {/* 历史记录侧边栏 */}
         {showHistory && (
           <div className={cn(
-            "w-80 min-w-72 border-l",
+            "w-80 min-w-72 border-l overflow-hidden",
             "transition-all duration-300 ease-in-out",
             "transform-gpu", // 使用GPU加速
             isDark ? "border-stone-700" : "border-stone-200"

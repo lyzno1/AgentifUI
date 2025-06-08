@@ -30,6 +30,36 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
   const isExecuting = useChatflowExecutionStore(state => state.isExecuting)
   const executionProgress = useChatflowExecutionStore(state => state.executionProgress)
   const error = useChatflowExecutionStore(state => state.error)
+  const iterationExpandedStates = useChatflowExecutionStore(state => state.iterationExpandedStates)
+  
+  // 🎯 过滤和分组节点：根据展开状态控制迭代中的节点显示
+  const getVisibleNodes = () => {
+    const visibleNodes = []
+    
+    for (const node of nodes) {
+      // 非迭代中的节点总是显示
+      if (!node.isInIteration) {
+        visibleNodes.push(node)
+      } else {
+        // 迭代中的节点：需要找到对应的迭代容器节点
+        const iterationNode = nodes.find(n => 
+          n.isIterationNode && 
+          n.id !== node.id && 
+          // 简单的判断：如果迭代节点在当前节点之前，则认为是其容器
+          nodes.indexOf(n) < nodes.indexOf(node)
+        )
+        
+        // 如果找到迭代容器节点且已展开，则显示此迭代中的节点
+        if (iterationNode && iterationExpandedStates[iterationNode.id]) {
+          visibleNodes.push(node)
+        }
+      }
+    }
+    
+    return visibleNodes
+  }
+  
+  const visibleNodes = getVisibleNodes()
   
   // 如果不可见，不显示
   if (!isVisible) {
@@ -49,7 +79,10 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
           : "bg-white/80 border-stone-200 backdrop-blur-sm"
       )}>
         {/* 标题栏 */}
-        <div className="flex items-center gap-2 pb-2 border-b border-stone-200/50 dark:border-stone-700/50">
+        <div className={cn(
+          "flex items-center gap-2 pb-2 border-b",
+          isDark ? "border-stone-700/50" : "border-stone-200/50"
+        )}>
           <Workflow className={cn(
             "h-4 w-4",
             isDark ? "text-stone-400" : "text-stone-600"
@@ -63,7 +96,7 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
         </div>
         
         {/* 节点列表 */}
-        <div className="space-y-2">
+        <div className="space-y-2 relative"> {/* 🎯 添加relative用于竖线定位 */}
           {nodes.length === 0 ? (
             // 没有节点数据时的显示
             <div className={cn(
@@ -97,8 +130,8 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
               </div>
             </div>
           ) : (
-            // 显示节点列表
-            nodes.map((node, index) => (
+            // 🎯 显示过滤后的节点列表
+            visibleNodes.map((node, index) => (
               <ChatflowExecutionBar
                 key={node.id}
                 node={node}

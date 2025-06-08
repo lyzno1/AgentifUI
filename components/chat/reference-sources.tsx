@@ -118,7 +118,10 @@ export function ReferenceSources({
             ? "bg-stone-800/50 border-stone-700/50 backdrop-blur-sm" 
             : "bg-stone-100/60 border-stone-300/60 backdrop-blur-sm"
         )}>
-          <div className="divide-y divide-stone-200/30 dark:divide-stone-700/30">
+          <div className={cn(
+            "divide-y",
+            isDark ? "divide-stone-700/30" : "divide-stone-200/30"
+          )}>
             {retrieverResources.map((resource, index) => (
               <div
                 key={`${resource.dataset_id}-${resource.segment_id}-${index}`}

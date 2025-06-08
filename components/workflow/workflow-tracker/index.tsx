@@ -6,7 +6,7 @@ import { cn } from '@lib/utils'
 import { ExecutionBar } from './execution-bar'
 import { UnifiedStatusPanel } from './unified-status-panel'
 import { ResultViewer } from './result-viewer'
-import { Play, Clock, CheckCircle, XCircle, Square, Loader2 } from 'lucide-react'
+import { Play, Loader2 } from 'lucide-react'
 // --- 集成真实的节点状态 ---
 import { useWorkflowExecutionStore } from '@lib/stores/workflow-execution-store'
 
@@ -68,35 +68,12 @@ export function WorkflowTracker({
     }
   }, [isExecuting, currentExecution?.status, currentExecution?.id, currentExecution?.task_id, executionResult])
   
-  const getOverallStatus = () => {
-    if (isExecuting) return 'running'
-    if (currentExecution?.status === 'completed') return 'completed'
-    if (currentExecution?.status === 'failed') return 'failed'
-    if (currentExecution?.status === 'stopped') return 'stopped'
-    return 'idle'
-  }
   
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'running':
-        return <Clock className="h-5 w-5 text-yellow-500 animate-pulse" />
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-stone-600" />
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      case 'stopped':
-        return <Square className="h-5 w-5 text-stone-500" />
-      default:
-        return <Play className="h-5 w-5 text-stone-400" />
-    }
-  }
-  
-  const overallStatus = getOverallStatus()
   
   return (
     <div className="h-full flex flex-col">
       {/* --- 统一状态面板 --- */}
-      {(onStop || onRetry || onReset) && (
+      {(onStop || onRetry || onReset) && (isExecuting || currentExecution || error) && (
         <UnifiedStatusPanel
           isExecuting={isExecuting}
           progress={progress}
@@ -111,7 +88,7 @@ export function WorkflowTracker({
       )}
       
       {/* --- 节点列表 --- */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+<div className="flex-1 overflow-y-auto px-6 pt-2 pb-4">
         {!isExecuting && !currentExecution && nodes.length === 0 ? (
           // 空状态
           <div className="h-full flex items-center justify-center">
@@ -145,14 +122,12 @@ export function WorkflowTracker({
           // 节点进度列表
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
-              {getStatusIcon(overallStatus)}
               <h3 className={cn(
                 "text-lg font-semibold font-serif",
                 isDark ? "text-stone-200" : "text-stone-800"
               )}>
                 执行进度
               </h3>
-              
             </div>
             
             {/* 如果没有真实节点数据，显示一个简单的占位 */}

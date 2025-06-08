@@ -251,8 +251,8 @@ export const WorkflowInputForm = React.forwardRef<WorkflowInputFormRef, Workflow
     return (
       <div className="h-full flex flex-col">
         {/* --- 表单内容 --- */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-          <div className="flex-1 space-y-6 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 hide-all-scrollbars">
+          <div className="flex-1 space-y-6 overflow-y-auto overflow-x-visible px-2 no-scrollbar">
             {userInputForm.map((formItem: DifyUserInputFormItem, index: number) => {
               const fieldType = Object.keys(formItem)[0]
               const fieldConfig = formItem[fieldType as keyof typeof formItem]
@@ -291,9 +291,11 @@ export const WorkflowInputForm = React.forwardRef<WorkflowInputFormRef, Workflow
           
           {/* --- 表单操作按钮 --- */}
           <div className={cn(
-          "flex-shrink-0 pt-6 border-t",
-          isDark ? "border-stone-700" : "border-stone-200"
-        )}>
+            "flex-shrink-0 pt-6 mt-4 border-t bg-gradient-to-t",
+            isDark 
+              ? "border-stone-700" 
+              : "border-stone-200"
+          )}>
             <div className="flex gap-3">
               {/* 重置按钮 */}
               <button

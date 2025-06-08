@@ -33,7 +33,7 @@ export function PageLoadingSpinner({ isLoading }: PageLoadingSpinnerProps) {
       "fixed inset-0 z-50 flex items-center justify-center",
       "transition-opacity duration-300",
       colors.mainBackground.tailwind,
-      "bg-opacity-80 dark:bg-opacity-80",
+      "bg-opacity-80",
       "backdrop-blur-sm"
     )}>
       <SpinnerIcon size={40} />
@@ -46,9 +46,14 @@ interface SpinnerIconProps {
 }
 
 function SpinnerIcon({ size = 24 }: SpinnerIconProps) {
+  const { isDark } = useThemeColors()
+  
   return (
     <svg 
-      className="animate-spin text-stone-600 dark:text-stone-300"
+      className={cn(
+        "animate-spin",
+        isDark ? "text-stone-300" : "text-stone-600"
+      )}
       width={size} 
       height={size} 
       xmlns="http://www.w3.org/2000/svg"

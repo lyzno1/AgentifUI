@@ -23,7 +23,7 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
-  const { colors } = useSettingsColors();
+  const { colors, isDark } = useSettingsColors();
   const [formData, setFormData] = useState({
     full_name: profile.full_name || "",
     username: profile.username || "",
@@ -116,8 +116,12 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
           className={cn(
             "p-4 rounded-lg mb-6 flex items-center",
             message.type === "success"
-              ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
-              : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+              ? isDark
+                ? "bg-green-900/20 text-green-300 border border-green-800"
+                : "bg-green-50 text-green-700 border border-green-200"
+              : isDark
+                ? "bg-red-900/20 text-red-300 border border-red-800"
+                : "bg-red-50 text-red-700 border border-red-200"
           )}
         >
           {message.type === "success" ? (

@@ -257,55 +257,31 @@ export function useWorkflowExecution(instanceId: string) {
       // --- 步骤6: 处理SSE事件流并收集所有数据 ---
       console.log('[工作流执行] 开始处理SSE事件流')
       
-      // 处理进度事件并收集节点数据
+      // 🎯 处理进度事件并收集所有数据 - 使用增强的事件处理器
       for await (const event of streamResponse.progressStream) {
         if (abortControllerRef.current?.signal.aborted) {
           console.log('[工作流执行] 执行被中断')
           break
         }
         
-        if (event.event === 'node_started') {
-          const { node_id, node_type, title } = event.data
-          getActions().onNodeStarted(
-            node_id, 
-            title || node_type, 
-            `正在执行${title || node_type}...`
-          )
-          
-          // 收集节点开始数据
-          const existingNodeIndex = nodeExecutionData.findIndex(n => n.node_id === node_id)
-          if (existingNodeIndex >= 0) {
-            // 更新现有节点数据
-            nodeExecutionData[existingNodeIndex] = {
-              ...nodeExecutionData[existingNodeIndex],
-              ...event.data,
-              status: 'running'
-            }
-          } else {
-            // 添加新节点数据
-            nodeExecutionData.push({
-              ...event.data,
-              status: 'running'
-            })
+        // 🎯 使用新的统一事件处理器，支持迭代和并行分支
+        getActions().handleNodeEvent(event)
+        
+        // 收集节点数据用于数据库保存
+        const existingNodeIndex = nodeExecutionData.findIndex(n => n.node_id === event.data.node_id)
+        if (existingNodeIndex >= 0) {
+          // 更新现有节点数据
+          nodeExecutionData[existingNodeIndex] = {
+            ...nodeExecutionData[existingNodeIndex],
+            ...event.data,
+            event_type: event.event
           }
-          
-        } else if (event.event === 'node_finished') {
-          const { node_id, status, error } = event.data
-          const success = status === 'succeeded'
-          getActions().onNodeFinished(node_id, success, error)
-          
-          // 收集节点完成数据
-          const existingNodeIndex = nodeExecutionData.findIndex(n => n.node_id === node_id)
-          if (existingNodeIndex >= 0) {
-            // 更新现有节点数据
-            nodeExecutionData[existingNodeIndex] = {
-              ...nodeExecutionData[existingNodeIndex],
-              ...event.data
-            }
-          } else {
-            // 添加新节点数据
-            nodeExecutionData.push(event.data)
-          }
+        } else {
+          // 添加新节点数据
+          nodeExecutionData.push({
+            ...event.data,
+            event_type: event.event
+          })
         }
       }
       
