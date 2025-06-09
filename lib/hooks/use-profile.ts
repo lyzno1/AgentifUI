@@ -3,6 +3,7 @@ import { getCurrentUserProfile, getUserProfileById, getUserOrganization } from '
 import { useSupabaseAuth } from '@lib/supabase/hooks';
 import { useLoadingStore, PageKey } from '../stores/loading-store';
 import type { UserRole } from '@lib/types/database';
+import { createClient } from '@lib/supabase/client';
 
 // 定义资料类型
 export interface Profile {
@@ -13,7 +14,9 @@ export interface Profile {
   role: UserRole;
   updated_at: string | null;
   created_at: string | null;
-  // 企业信息
+  // --- BEGIN COMMENT ---
+  // 企业组织信息：包含企业基本信息、用户在组织中的角色和部门信息
+  // --- END COMMENT ---
   organization?: {
     id: string;
     name: string;
@@ -21,6 +24,12 @@ export interface Profile {
     created_at: string;
   } | null;
   organization_role?: string | null;
+  department?: string | null;
+  job_title?: string | null;
+  // --- BEGIN COMMENT ---
+  // auth.users表的信息：用于settings页面显示
+  // --- END COMMENT ---
+  auth_last_sign_in_at?: string | null;
 }
 
 // localStorage缓存相关常量
@@ -144,58 +153,83 @@ export function useProfile(userId?: string): UseProfileResult {
         setPageLoading('profile', true);
       }
       
-      // 使用新的数据服务获取用户资料
-      // 根据是否指定用户ID调用不同的函数
-      let result;
-      if (userId) {
-        // 获取指定用户的资料
-        result = await getUserProfileById(targetUserId);
-      } else {
-        // 获取当前用户的资料
-        result = await getCurrentUserProfile();
+      // --- BEGIN COMMENT ---
+      // 使用和管理界面相同的查询方式：从profiles表开始，关联查询组织信息
+      // 这样可以确保获取到完整的用户信息和组织信息
+      // --- END COMMENT ---
+      const supabase = createClient();
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          org_members (
+            role,
+            department,
+            job_title,
+            organizations (
+              id,
+              name,
+              logo_url,
+              created_at
+            )
+          )
+        `)
+        .eq('id', targetUserId)
+        .maybeSingle();
+      
+      if (profileError) {
+        throw new Error(profileError.message || '获取用户资料失败');
       }
       
-      if (result.success && result.data) {
-        let newProfile = result.data as Profile;
-        
-        // 同时获取用户的企业信息
-        try {
-          const orgResult = await getUserOrganization(targetUserId);
-          if (orgResult.success && orgResult.data) {
-            newProfile = {
-              ...newProfile,
-              organization: orgResult.data.organization,
-              organization_role: orgResult.data.role
-            };
-          } else {
-            // 用户没有关联企业
-            newProfile = {
-              ...newProfile,
-              organization: null,
-              organization_role: null
-            };
-          }
-        } catch (orgError) {
-          console.warn('获取企业信息失败，将忽略此错误:', orgError);
-          // 企业信息获取失败不影响主流程，设置为null
-          newProfile = {
-            ...newProfile,
-            organization: null,
-            organization_role: null
-          };
-        }
-        
-        // 更新状态和缓存
-        setProfile(newProfile);
-        setProfileToCache(newProfile, targetUserId);
-      } else if (result.success && !result.data) {
-        // 用户资料不存在
+      if (!profileData) {
         setProfile(null);
         setError(new Error('用户资料不存在'));
-      } else {
-        // 获取失败
-        throw new Error(result.error?.message || '获取用户资料失败');
+        return;
       }
+      
+      // --- BEGIN COMMENT ---
+      // 处理组织信息：和管理界面使用相同的逻辑
+      // --- END COMMENT ---
+      const orgMember = profileData.org_members?.[0]; // 取第一个组织
+      const organization = orgMember?.organizations;
+      
+      // --- BEGIN COMMENT ---
+      // 获取auth.users中的last_sign_in_at信息
+      // --- END COMMENT ---
+      let authLastSignInAt: string | null = null;
+      if (session?.user) {
+        authLastSignInAt = session.user.last_sign_in_at || null;
+      }
+
+      const newProfile: Profile = {
+        id: profileData.id,
+        full_name: profileData.full_name,
+        username: profileData.username,
+        avatar_url: profileData.avatar_url,
+        role: profileData.role,
+        created_at: profileData.created_at,
+        updated_at: profileData.updated_at,
+        // --- BEGIN COMMENT ---
+        // 组织信息：使用和管理界面相同的处理逻辑
+        // --- END COMMENT ---
+        organization: organization ? {
+          id: organization.id,
+          name: organization.name,
+          logo_url: organization.logo_url,
+          created_at: organization.created_at
+        } : null,
+        organization_role: orgMember?.role || null,
+        department: orgMember?.department || null,
+        job_title: orgMember?.job_title || null,
+        // --- BEGIN COMMENT ---
+        // 添加auth信息用于settings页面显示
+        // --- END COMMENT ---
+        auth_last_sign_in_at: authLastSignInAt
+      };
+      
+      // 更新状态和缓存
+      setProfile(newProfile);
+      setProfileToCache(newProfile, targetUserId);
       
     } catch (err) {
       console.error('加载用户资料失败:', err);

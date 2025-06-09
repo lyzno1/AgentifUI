@@ -247,13 +247,18 @@ export async function isUserAdminLegacy(userId: string): Promise<boolean> {
  * @param userId 用户ID
  * @returns 用户所属企业的信息Result，如果未关联企业则返回null
  */
-export async function getUserOrganization(userId: string): Promise<Result<{ organization: any; role: string } | null>> {
+export async function getUserOrganization(userId: string): Promise<Result<{ organization: any; role: string; department: string | null; job_title: string | null } | null>> {
   try {
+    // --- BEGIN COMMENT ---
     // 查询用户在org_members表中的记录，同时联查organizations表
+    // 新增：获取部门和职位信息
+    // --- END COMMENT ---
     const { data, error } = await supabase
       .from('org_members')
       .select(`
         role,
+        department,
+        job_title,
         organizations (
           id,
           name,
@@ -277,7 +282,9 @@ export async function getUserOrganization(userId: string): Promise<Result<{ orga
     
     return success({
       organization: data.organizations,
-      role: data.role
+      role: data.role,
+      department: data.department,
+      job_title: data.job_title
     });
   } catch (err) {
     // 静默处理异常，不影响用户资料的获取
@@ -290,7 +297,7 @@ export async function getUserOrganization(userId: string): Promise<Result<{ orga
  * 获取用户的企业信息（兼容版本）
  * @deprecated 请使用 getUserOrganization() 并处理Result类型
  */
-export async function getUserOrganizationLegacy(userId: string): Promise<{ organization: any; role: string } | null> {
+export async function getUserOrganizationLegacy(userId: string): Promise<{ organization: any; role: string; department: string | null; job_title: string | null } | null> {
   const result = await getUserOrganization(userId);
   return result.success ? result.data : null;
 }

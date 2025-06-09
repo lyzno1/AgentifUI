@@ -60,6 +60,8 @@ export interface OrgMember {
   org_id: string;
   user_id: string;
   role: OrgMemberRole;
+  department: string | null;
+  job_title: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +69,6 @@ export interface OrgMember {
 // 聊天和消息
 export interface Conversation {
   id: string;
-  org_id: string | null;
   user_id: string;
   ai_config_id: string | null;
   title: string;

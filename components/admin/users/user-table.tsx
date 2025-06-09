@@ -292,6 +292,18 @@ export const UserTable: React.FC<UserTableProps> = ({
                 "px-4 py-4 text-left text-sm font-semibold font-serif",
                 isDark ? "text-stone-300" : "text-stone-700"
               )}>
+                联系方式
+              </th>
+              <th className={cn(
+                "px-4 py-4 text-left text-sm font-semibold font-serif",
+                isDark ? "text-stone-300" : "text-stone-700"
+              )}>
+                组织信息
+              </th>
+              <th className={cn(
+                "px-4 py-4 text-left text-sm font-semibold font-serif",
+                isDark ? "text-stone-300" : "text-stone-700"
+              )}>
                 角色权限
               </th>
               <th className={cn(
@@ -357,7 +369,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </td>
                   
                   {/* --- BEGIN COMMENT ---
-                  用户信息列 - 包含头像、姓名、邮箱
+                  用户信息列 - 包含头像、姓名、用户名
                   --- END COMMENT --- */}
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -379,7 +391,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                         )}
                       </div>
                       
-                      {/* --- 用户名称和邮箱 --- */}
+                      {/* --- 用户名称和用户名 --- */}
                       <div className="min-w-0 flex-1">
                         <p className={cn(
                           "font-medium font-serif truncate",
@@ -387,13 +399,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                         )}>
                           {user.full_name || user.username || '未设置姓名'}
                         </p>
-                        <p className={cn(
-                          "text-sm font-serif truncate",
-                          isDark ? "text-stone-400" : "text-stone-600"
-                        )}>
-                          {user.email || '未设置邮箱'}
-                        </p>
-                        {user.username && user.username !== user.full_name && (
+                        {user.username && (
                           <p className={cn(
                             "text-xs font-serif truncate",
                             isDark ? "text-stone-500" : "text-stone-500"
@@ -403,6 +409,73 @@ export const UserTable: React.FC<UserTableProps> = ({
                         )}
                       </div>
                     </div>
+                  </td>
+                  
+                  {/* --- BEGIN COMMENT ---
+                  联系方式列 - 包含邮箱和手机号
+                  --- END COMMENT --- */}
+                  <td className="px-4 py-4">
+                    <div className="space-y-1">
+                      <p className={cn(
+                        "text-sm font-serif truncate",
+                        isDark ? "text-stone-300" : "text-stone-700"
+                      )}>
+                        📧 {user.email || '未设置邮箱'}
+                      </p>
+                      <p className={cn(
+                        "text-sm font-serif truncate",
+                        isDark ? "text-stone-400" : "text-stone-600"
+                      )}>
+                        📱 {user.phone || '未设置手机'}
+                      </p>
+                    </div>
+                  </td>
+                  
+                  {/* --- BEGIN COMMENT ---
+                  组织信息列 - 包含组织、部门、职位
+                  --- END COMMENT --- */}
+                  <td className="px-4 py-4">
+                    {user.organization_name ? (
+                      <div className="space-y-1">
+                        <p className={cn(
+                          "text-sm font-medium font-serif truncate",
+                          isDark ? "text-stone-200" : "text-stone-800"
+                        )}>
+                          🏢 {user.organization_name}
+                        </p>
+                        {user.organization_role && (
+                          <p className={cn(
+                            "text-xs font-serif truncate",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
+                            👔 {user.organization_role}
+                          </p>
+                        )}
+                        {user.department && (
+                          <p className={cn(
+                            "text-xs font-serif truncate",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
+                            🏛️ {user.department}
+                          </p>
+                        )}
+                        {user.job_title && (
+                          <p className={cn(
+                            "text-xs font-serif truncate",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
+                            💼 {user.job_title}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className={cn(
+                        "text-sm font-serif text-center",
+                        isDark ? "text-stone-500" : "text-stone-500"
+                      )}>
+                        未加入组织
+                      </p>
+                    )}
                   </td>
                   
                   {/* --- BEGIN COMMENT ---

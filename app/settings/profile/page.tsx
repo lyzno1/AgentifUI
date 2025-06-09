@@ -5,10 +5,8 @@ import { motion } from 'framer-motion';
 import { cn } from '@lib/utils';
 import { useSettingsColors } from '@lib/hooks/use-settings-colors';
 import { ProfileForm } from '@components/settings/profile-form';
-import { getCurrentUserProfile } from '@lib/db/profiles';
+import { useProfile } from '@lib/hooks/use-profile';
 import { Profile } from '@lib/types/database';
-import { createClient } from '@lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 import { useTheme } from '@lib/hooks/use-theme';
 
@@ -53,62 +51,18 @@ const getAvatarBgColor = (name: string) => {
 export default function ProfileSettingsPage() {
   const { colors } = useSettingsColors();
   const { isDark } = useTheme();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
   
   // --- BEGIN COMMENT ---
-  // 加载用户资料数据
+  // 使用useProfile hook获取包含组织信息的完整用户资料
   // --- END COMMENT ---
-  useEffect(() => {
-    async function loadUserProfile() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // 检查用户是否已登录
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push('/login');
-          return;
-        }
-        
-        // 获取用户资料
-        const result = await getCurrentUserProfile();
-        if (result.success && result.data) {
-          // --- BEGIN COMMENT ---
-          // 将 auth 用户的上次登录时间添加到资料中
-          // --- END COMMENT ---
-          const enhancedProfile = {
-            ...result.data,
-            auth_last_sign_in_at: user.last_sign_in_at
-          };
-          
-          setProfile(enhancedProfile);
-        } else if (result.success && !result.data) {
-          throw new Error('用户资料不存在');
-        } else {
-          throw new Error(result.error?.message || '无法获取用户资料');
-        }
-      } catch (err) {
-        console.error('加载用户资料失败:', err);
-        setError(err instanceof Error ? err : new Error('加载用户资料失败'));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    loadUserProfile();
-  }, [router, supabase.auth]);
+  const { profile, isLoading, error } = useProfile();
   
   // --- BEGIN COMMENT ---
   // 处理资料更新成功
   // --- END COMMENT ---
   const handleProfileUpdateSuccess = () => {
     // 刷新页面数据
-    router.refresh();
+    window.location.reload();
   };
   
   // 处理错误情况
@@ -290,7 +244,7 @@ export default function ProfileSettingsPage() {
           
           {/* 个人资料表单 */}
           <ProfileForm 
-            profile={profile} 
+            profile={profile as any} 
             onSuccess={handleProfileUpdateSuccess}
           />
         </div>

@@ -175,7 +175,12 @@ export function DesktopUserAvatar() {
 
     const isLoggedIn = !!profile;
     const userName = profile?.full_name || profile?.username || "用户";
-    const userCompany = profile?.organization?.name || "无企业关联";
+    // --- BEGIN COMMENT ---
+    // 格式B显示：企业名称 (部门)，如果没有部门则只显示企业名称
+    // --- END COMMENT ---
+    const userCompany = profile?.organization?.name 
+        ? `${profile.organization.name}${profile?.department ? ` (${profile.department})` : ''}`
+        : "无企业关联";
     const avatarUrl = profile?.avatar_url;
 
     // 使用当前主题状态而不是hook，避免闪烁

@@ -158,6 +158,14 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
               </p>
               <p className={cn("font-serif", colors.textColor.tailwind)}>
                 {profile.organization?.name || "无企业关联"}
+                {/* --- BEGIN COMMENT --- */}
+                {/* 显示部门信息，格式B：用户名 (部门) */}
+                {/* --- END COMMENT --- */}
+                {profile.department && (
+                  <span className={cn("text-sm ml-2", colors.secondaryTextColor.tailwind)}>
+                    ({profile.department})
+                  </span>
+                )}
               </p>
             </div>
           </div>

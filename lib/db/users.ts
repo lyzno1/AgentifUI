@@ -37,6 +37,13 @@ export interface EnhancedUser {
   profile_created_at: string;
   profile_updated_at: string;
   last_login?: string;
+  // --- BEGIN COMMENT ---
+  // 组织信息：用户所属的企业、部门和职位
+  // --- END COMMENT ---
+  organization_name?: string | null;
+  organization_role?: string | null;
+  department?: string | null;
+  job_title?: string | null;
 }
 
 // 用户统计信息
@@ -59,6 +66,8 @@ export interface UserFilters {
   status?: AccountStatus;
   auth_source?: string;
   search?: string; // 搜索邮箱、用户名、全名
+  department?: string; // 按部门筛选
+  organization?: string; // 按企业筛选
   sortBy?: 'created_at' | 'last_sign_in_at' | 'email' | 'full_name';
   sortOrder?: 'asc' | 'desc';
   page?: number;
@@ -90,12 +99,24 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
     } = filters;
 
     // --- BEGIN COMMENT ---
-    // 临时回退到使用视图，确保功能正常
-    // TODO: 迁移到安全函数后删除此代码
+    // 获取用户信息，包含auth.users表的邮箱和手机号信息
+    // 同时关联查询组织信息
     // --- END COMMENT ---
     let query = supabase
-      .from('admin_user_management_view')
-      .select('*', { count: 'exact' });
+      .from('profiles')
+      .select(`
+        *,
+        org_members (
+          role,
+          department,
+          job_title,
+          organizations (
+            id,
+            name,
+            logo_url
+          )
+        )
+      `, { count: 'exact' });
 
     // 应用筛选条件
     if (role) {
@@ -108,7 +129,7 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
       query = query.eq('auth_source', auth_source);
     }
     if (search) {
-      query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%,email.ilike.%${search}%`);
+      query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`);
     }
 
     // 应用排序
@@ -119,37 +140,81 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
     const to = from + pageSize - 1;
     query = query.range(from, to);
 
-    const { data: users, error: usersError, count } = await query;
+    const { data: profiles, error: profilesError, count } = await query;
 
-    if (usersError) {
-      console.error('获取用户列表失败:', usersError);
-      return failure(new Error(`获取用户列表失败: ${usersError.message}`));
+    if (profilesError) {
+      console.error('获取用户列表失败:', profilesError);
+      return failure(new Error(`获取用户列表失败: ${profilesError.message}`));
+    }
+
+    // --- BEGIN COMMENT ---
+    // 获取auth.users表中的邮箱和手机号信息
+    // 对于管理员，显示完整的联系信息
+    // --- END COMMENT ---
+    const userIds = (profiles || []).map(p => p.id);
+    let authUsers: any[] = [];
+    
+    if (userIds.length > 0) {
+      // 通过RPC函数获取auth.users信息（需要管理员权限）
+      const { data: authData, error: authError } = await supabase
+        .rpc('get_admin_users', { user_ids: userIds });
+      
+      if (authError) {
+        console.error('获取auth.users信息失败:', {
+          error: authError,
+          userIdsCount: userIds.length,
+          errorCode: authError.code,
+          errorMessage: authError.message,
+          errorDetails: authError.details
+        });
+        // 如果RPC调用失败，仍然继续处理，但记录错误
+      } else if (authData) {
+        console.log('成功获取auth数据，用户数量:', authData.length);
+        authUsers = authData;
+      } else {
+        console.warn('RPC调用成功但返回空数据');
+      }
     }
 
     const total = count || 0;
     const totalPages = Math.ceil(total / pageSize);
 
-    // 转换数据格式 - 现在包含真实的完整信息
-    const enhancedUsers: EnhancedUser[] = (users || []).map((user: any) => ({
-      id: user.id,
-      email: user.email, // 真实邮箱
-      phone: user.phone, // 真实手机号
-      email_confirmed_at: user.email_confirmed_at,
-      phone_confirmed_at: user.phone_confirmed_at,
-      created_at: user.created_at,
-      updated_at: user.updated_at,
-      last_sign_in_at: user.last_sign_in_at, // 真实最后登录时间
-      full_name: user.full_name,
-      username: user.username,
-      avatar_url: user.avatar_url,
-      role: user.role,
-      status: user.status,
-      auth_source: user.auth_source,
-      sso_provider_id: user.sso_provider_id,
-      profile_created_at: user.created_at,
-      profile_updated_at: user.updated_at,
-      last_login: user.last_login,
-    }));
+    // --- BEGIN COMMENT ---
+    // 合并profiles和auth.users数据，包含组织信息
+    // --- END COMMENT ---
+    const enhancedUsers: EnhancedUser[] = (profiles || []).map((profile: any) => {
+      const authUser = authUsers.find(au => au.id === profile.id);
+      const orgMember = profile.org_members?.[0]; // 取第一个组织
+      const organization = orgMember?.organizations;
+      
+      return {
+        id: profile.id,
+        email: authUser?.email || '未设置',
+        phone: authUser?.phone || '未设置',
+        email_confirmed_at: authUser?.email_confirmed_at,
+        phone_confirmed_at: authUser?.phone_confirmed_at,
+        created_at: authUser?.created_at || profile.created_at,
+        updated_at: authUser?.updated_at || profile.updated_at,
+        last_sign_in_at: authUser?.last_sign_in_at,
+        full_name: profile.full_name,
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+        role: profile.role,
+        status: profile.status,
+        auth_source: profile.auth_source,
+        sso_provider_id: profile.sso_provider_id,
+        profile_created_at: profile.created_at,
+        profile_updated_at: profile.updated_at,
+        last_login: profile.last_login,
+        // --- BEGIN COMMENT ---
+        // 组织信息字段
+        // --- END COMMENT ---
+        organization_name: organization?.name || null,
+        organization_role: orgMember?.role || null,
+        department: orgMember?.department || null,
+        job_title: orgMember?.job_title || null,
+      };
+    });
 
     return success({
       users: enhancedUsers,
