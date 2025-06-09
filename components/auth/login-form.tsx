@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '../../lib/supabase/client';
 import { useTheme } from '@lib/hooks/use-theme';
 import { cn } from '@lib/utils';
+import { SocialAuthButtons } from './social-auth-buttons';
 
 export function LoginForm() {
   const router = useRouter();
@@ -77,7 +78,32 @@ export function LoginForm() {
         </div>
       )}
 
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      {/* --- BEGIN COMMENT --- */}
+      {/* 社交登录区域 */}
+      {/* --- END COMMENT --- */}
+      <SocialAuthButtons type="login" redirectTo="/chat" />
+
+      {/* --- BEGIN COMMENT --- */}
+      {/* 分割线 */}
+      {/* --- END COMMENT --- */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className={cn(
+            "w-full border-t",
+            isDark ? "border-stone-700" : "border-stone-300"
+          )} />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className={cn(
+            "px-2 font-serif",
+            isDark ? "bg-stone-900 text-gray-400" : "bg-stone-50 text-gray-500"
+          )}>
+            或使用邮箱密码
+          </span>
+        </div>
+      </div>
+
+      <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-5">
           <div>
             <label htmlFor="email" className={cn(

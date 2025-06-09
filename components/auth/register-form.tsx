@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '../../lib/supabase/client';
 import { cn } from '@lib/utils';
 import { useTheme } from '@lib/hooks/use-theme';
+import { SocialAuthButtons } from './social-auth-buttons';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -105,20 +106,19 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 px-4 sm:px-6 lg:px-8">
-      <div className={cn(
-        "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
-        isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
-      )}>
-        <div className="text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif">创建账户</h2>
-          <p className={cn(
-            "mt-2 text-sm font-serif",
-            isDark ? "text-gray-400" : "text-gray-600"
-          )}>
-            填写信息以创建您的新账户
-          </p>
-        </div>
+    <div className={cn(
+      "w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 rounded-xl shadow-lg border transition-all font-serif",
+      isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+    )}>
+      <div className="text-center">
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-stone-700 to-stone-500 bg-clip-text text-transparent font-serif">注册</h2>
+        <p className={cn(
+          "mt-2 text-sm font-serif",
+          isDark ? "text-gray-400" : "text-gray-600"
+        )}>
+          加入 AgentifUI，开启 AI 教育之旅
+        </p>
+      </div>
 
         {error && (
           <div className={cn(
@@ -129,145 +129,173 @@ export function RegisterForm() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          <div>
-            <label htmlFor="name" className={cn(
-              "block text-sm font-medium mb-1 font-serif",
-              isDark ? "text-gray-300" : "text-gray-700"
-            )}>
-              姓名
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className={cn(
-                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
-                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
-              )}
-              placeholder="输入您的姓名"
-            />
+        {/* --- BEGIN COMMENT --- */}
+        {/* 社交登录区域 */}
+        {/* --- END COMMENT --- */}
+        <SocialAuthButtons type="register" redirectTo="/chat" />
+
+        {/* --- BEGIN COMMENT --- */}
+        {/* 分割线 */}
+        {/* --- END COMMENT --- */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className={cn(
+              "w-full border-t",
+              isDark ? "border-stone-700" : "border-stone-300"
+            )} />
           </div>
-          
-          <div>
-            <label htmlFor="username" className={cn(
-              "block text-sm font-medium mb-1 font-serif",
-              isDark ? "text-gray-300" : "text-gray-700"
+          <div className="relative flex justify-center text-sm">
+            <span className={cn(
+              "px-2 font-serif",
+              isDark ? "bg-stone-900 text-gray-400" : "bg-stone-50 text-gray-500"
             )}>
-              昵称 <span className="text-gray-500 text-xs font-serif">(可选)</span>
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              required
-              value={formData.username}
-              onChange={handleChange}
-              className={cn(
-                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
-                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
-              )}
-              placeholder="选择一个用户名"
-            />
+              或使用邮箱密码
+            </span>
           </div>
-          
-          <div>
-            <label htmlFor="email" className={cn(
-              "block text-sm font-medium mb-1 font-serif",
-              isDark ? "text-gray-300" : "text-gray-700"
-            )}>
-              邮箱地址
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className={cn(
-                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
-                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
-              )}
-              placeholder="输入您的邮箱地址"
-            />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-5">
+            <div>
+              <label htmlFor="name" className={cn(
+                "block text-sm font-medium mb-1 font-serif",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                姓名
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className={cn(
+                  "block w-full px-4 py-3 border rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                  isDark ? "bg-stone-800 border-stone-700 text-white" : "bg-white border-stone-300"
+                )}
+                placeholder="输入您的姓名"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="username" className={cn(
+                "block text-sm font-medium mb-1 font-serif",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                昵称 <span className="text-gray-500 text-xs font-serif">(可选)</span>
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={formData.username}
+                onChange={handleChange}
+                className={cn(
+                  "block w-full px-4 py-3 border rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                  isDark ? "bg-stone-800 border-stone-700 text-white" : "bg-white border-stone-300"
+                )}
+                placeholder="选择一个用户名"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="email" className={cn(
+                "block text-sm font-medium mb-1 font-serif",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                邮箱
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className={cn(
+                  "block w-full px-4 py-3 border rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                  isDark ? "bg-stone-800 border-stone-700 text-white" : "bg-white border-stone-300"
+                )}
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className={cn(
+                "block text-sm font-medium mb-1 font-serif",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                密码
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className={cn(
+                  "block w-full px-4 py-3 border rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                  isDark ? "bg-stone-800 border-stone-700 text-white" : "bg-white border-stone-300"
+                )}
+                placeholder="••••••••"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="confirmPassword" className={cn(
+                "block text-sm font-medium mb-1 font-serif",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                确认密码
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={cn(
+                  "block w-full px-4 py-3 border rounded-lg shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
+                  isDark ? "bg-stone-800 border-stone-700 text-white" : "bg-white border-stone-300"
+                )}
+                placeholder="••••••••"
+              />
+            </div>
           </div>
 
           <div>
-            <label htmlFor="password" className={cn(
-              "block text-sm font-medium mb-1 font-serif",
-              isDark ? "text-gray-300" : "text-gray-700"
-            )}>
-              密码
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className={cn(
-                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
-                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
-              )}
-              placeholder="创建一个安全密码"
-            />
+            <Button 
+              type="submit" 
+              isLoading={isLoading}
+              className="w-full h-12 text-base font-serif"
+              variant="gradient"
+            >
+              创建账户
+            </Button>
           </div>
-          
-          <div>
-            <label htmlFor="confirmPassword" className={cn(
-              "block text-sm font-medium mb-1 font-serif",
-              isDark ? "text-gray-300" : "text-gray-700"
-            )}>
-              确认密码
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={cn(
-                "appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all font-serif",
-                isDark ? "bg-stone-800 border-stone-700 text-white" : "border-gray-300 text-gray-900"
-              )}
-              placeholder="再次输入密码"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-stone-700 hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-serif"
-          >
-            {isLoading ? '创建中...' : '创建账户'}
-          </button>
         </form>
 
-        <div className="text-center">
-          <p className={cn(
-            "text-sm font-serif",
-            isDark ? "text-gray-400" : "text-gray-600"
+      <div className="text-center">
+        <p className={cn(
+          "text-sm font-serif",
+          isDark ? "text-gray-400" : "text-gray-600"
+        )}>
+          已有账户？{' '}
+          <Link href="/login" className={cn(
+            "font-medium font-serif",
+            isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-700 hover:text-stone-600"
           )}>
-            已有账户？{' '}
-            <Link href="/login" className={cn(
-              "font-medium font-serif",
-              isDark ? "text-stone-400" : "text-stone-700 hover:text-stone-600"
-            )}>
-              立即登录
-            </Link>
-          </p>
-        </div>
+            立即登录
+          </Link>
+        </p>
       </div>
     </div>
   );

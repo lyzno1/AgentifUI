@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import { LoginForm } from '@components/auth/login-form';
 import { useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@lib/hooks/use-theme';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const resetSuccess = searchParams.get('reset');
+  const oauthError = searchParams.get('error');
   const { isDark } = useTheme();
   const [mounted, setMounted] = useState(false);
   
@@ -28,7 +29,11 @@ export default function LoginPage() {
         alertBg: 'bg-stone-800/50',
         alertBorder: 'border-stone-600',
         alertText: 'text-stone-300',
-        iconColor: 'text-stone-400'
+        iconColor: 'text-stone-400',
+        errorAlertBg: 'bg-red-900/30',
+        errorAlertBorder: 'border-red-500',
+        errorAlertText: 'text-red-400',
+        errorIconColor: 'text-red-400'
       };
     } else {
       return {
@@ -36,7 +41,11 @@ export default function LoginPage() {
         alertBg: 'bg-stone-50',
         alertBorder: 'border-stone-300',
         alertText: 'text-stone-700',
-        iconColor: 'text-stone-600'
+        iconColor: 'text-stone-600',
+        errorAlertBg: 'bg-red-50',
+        errorAlertBorder: 'border-red-500',
+        errorAlertText: 'text-red-700',
+        errorIconColor: 'text-red-500'
       };
     }
   };
@@ -46,7 +55,21 @@ export default function LoginPage() {
     alertBg: '',
     alertBorder: '',
     alertText: '',
-    iconColor: ''
+    iconColor: '',
+    errorAlertBg: '',
+    errorAlertBorder: '',
+    errorAlertText: '',
+    errorIconColor: ''
+  };
+
+  // 获取错误消息
+  const getErrorMessage = (error: string) => {
+    switch (error) {
+      case 'oauth_failed':
+        return 'OAuth登录失败，请重试或使用其他登录方式';
+      default:
+        return '登录过程中出现错误，请稍后重试';
+    }
   };
 
   return (
@@ -75,6 +98,20 @@ export default function LoginPage() {
             <CheckCircle className={`h-4 w-4 ${colors.iconColor}`} />
             <AlertDescription className={`${colors.alertText} font-serif`}>
               密码重置成功！请使用新密码登录。
+            </AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+      {oauthError && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Alert className={`max-w-md border-l-4 ${colors.errorAlertBg} ${colors.errorAlertBorder}`}>
+            <AlertTriangle className={`h-4 w-4 ${colors.errorIconColor}`} />
+            <AlertDescription className={`${colors.errorAlertText} font-serif`}>
+              {getErrorMessage(oauthError)}
             </AlertDescription>
           </Alert>
         </motion.div>
