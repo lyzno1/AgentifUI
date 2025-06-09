@@ -120,40 +120,47 @@ export const useFavoriteAppsStore = create<FavoriteAppsState>()(
         if (state.favoriteApps.length === 0) return
         
         // --- BEGIN COMMENT ---
-        // 🎯 简单的后台同步：根据应用列表更新常用应用信息
-        // 只更新显示名称、描述和图标，不影响其他数据
+        // 🎯 增强同步：既更新应用信息，也清理已删除的应用
         // --- END COMMENT ---
-        const updatedFavoriteApps = state.favoriteApps.map(favoriteApp => {
+        const validFavoriteApps: FavoriteApp[] = []
+        let hasRemovedApps = false
+        
+        state.favoriteApps.forEach(favoriteApp => {
           // --- BEGIN COMMENT ---
           // 🎯 修复：使用instance_id进行匹配，因为favoriteApp.instanceId存储的是instance_id
           // --- END COMMENT ---
           const matchedApp = apps.find(app => app.instance_id === favoriteApp.instanceId)
           
           if (matchedApp) {
+            // 应用仍然存在，更新信息
             const appMetadata = matchedApp.config?.app_metadata
-            return {
+            validFavoriteApps.push({
               ...favoriteApp,
               displayName: matchedApp.display_name || matchedApp.name || favoriteApp.displayName,
               description: matchedApp.description || appMetadata?.brief_description || favoriteApp.description,
               iconUrl: appMetadata?.icon_url || favoriteApp.iconUrl,
-              dify_apptype: appMetadata?.dify_app_type || favoriteApp.dify_apptype || 'chatflow'
-            }
+              dify_apptype: appMetadata?.dify_apptype || favoriteApp.dify_apptype
+            })
+          } else {
+            // 应用已被删除，不添加到新列表中
+            hasRemovedApps = true
+            console.log(`[FavoriteApps] 清理已删除的应用: ${favoriteApp.displayName} (${favoriteApp.instanceId})`)
           }
-          
-          return favoriteApp
         })
         
-        // 只有在有变化时才更新
-        const hasChanges = updatedFavoriteApps.some((updated, index) => {
-          const original = state.favoriteApps[index]
-          return updated.displayName !== original.displayName || 
-                 updated.description !== original.description || 
-                 updated.iconUrl !== original.iconUrl
-        })
+        // 检查是否有变化（信息更新或应用删除）
+        const hasInfoChanges = validFavoriteApps.length !== state.favoriteApps.length || 
+          validFavoriteApps.some((updated, index) => {
+            const original = state.favoriteApps[index]
+            return !original || 
+                   updated.displayName !== original.displayName || 
+                   updated.description !== original.description || 
+                   updated.iconUrl !== original.iconUrl
+          })
         
-        if (hasChanges) {
-          console.log('[FavoriteApps] 后台同步更新常用应用信息')
-          set({ favoriteApps: updatedFavoriteApps })
+        if (hasRemovedApps || hasInfoChanges) {
+          console.log(`[FavoriteApps] 同步完成 - 更新信息: ${hasInfoChanges}, 清理应用: ${hasRemovedApps}`)
+          set({ favoriteApps: validFavoriteApps })
         }
       }
     }),

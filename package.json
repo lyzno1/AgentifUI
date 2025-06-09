@@ -11,6 +11,12 @@
     "migrate-dify": "ts-node scripts/migrate-dify-config.ts",
     "init-dify": "node init-scripts/init-dify-config.js"
   },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "bufferutil",
+      "utf-8-validate"
+    ]
+  },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-popover": "^1.1.11",
@@ -18,6 +24,7 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
     "@types/prismjs": "^1.26.5",
+    "bufferutil": "^4.0.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
@@ -40,6 +47,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "tailwind-merge": "^2.2.1",
+    "utf-8-validate": "^6.0.5",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
