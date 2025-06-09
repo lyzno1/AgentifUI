@@ -190,7 +190,19 @@ export function LoginForm() {
         </div>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-6 text-center space-y-3">
+        {/* --- BEGIN COMMENT --- */}
+        {/* 手机号登录链接 */}
+        {/* --- END COMMENT --- */}
+        <div>
+          <Link href="/phone-login" className={cn(
+            "text-sm font-medium font-serif hover:underline",
+            isDark ? "text-stone-400 hover:text-stone-300" : "text-stone-600 hover:text-stone-700"
+          )}>
+            📱 使用手机号验证码登录
+          </Link>
+        </div>
+        
         <p className={cn(
           "text-sm font-serif",
           isDark ? "text-gray-400" : "text-gray-600"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Crimson_Pro, Playfair_Display, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { TooltipContainer } from "@components/ui/tooltip";
 import { Toaster } from 'react-hot-toast';
+import { Toaster as SonnerToaster } from 'sonner';
 import "./globals.css";
 import "../styles/markdown-variables.css";
 import "../styles/markdown.css";
@@ -109,6 +110,12 @@ export default function RootLayout({
                   },
                 },
               }}
+            />
+            <SonnerToaster 
+              position="top-center"
+              richColors
+              theme="system"
+              className="font-serif"
             />
           </ClientLayout>
         </Providers>

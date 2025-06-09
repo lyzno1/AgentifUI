@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = pathname.startsWith('/admin')
   const isPublicRoute = pathname === '/' || 
                          pathname === '/login' || 
+                         pathname === '/phone-login' || 
                          pathname === '/about' || 
                          pathname.startsWith('/register') ||
                          pathname === '/forgot-password' ||
