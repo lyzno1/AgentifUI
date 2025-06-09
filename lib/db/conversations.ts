@@ -301,7 +301,6 @@ export async function createEmptyConversation(
     ai_config_id: null,
     app_id: appId,
     external_id: null,
-    org_id: null,
     settings: {},
     status: 'active',
     last_message_preview: null

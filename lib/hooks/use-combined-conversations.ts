@@ -124,7 +124,6 @@ export function useCombinedConversations() {
       const now = new Date().toISOString();
       finalConversations.push({
         // Inherited from Partial<Conversation> - provide defaults or map from pending
-        org_id: null,
         ai_config_id: null,
         summary: null,
         settings: {},

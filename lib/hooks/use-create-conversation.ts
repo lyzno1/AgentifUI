@@ -194,7 +194,6 @@ export function useCreateConversation(): UseCreateConversationReturn {
                     app_id: appId, 
                     external_id: difyConvId,
                     title: convTitle,
-                    org_id: null, 
                     ai_config_id: null,
                     summary: null,
                     settings: {},
