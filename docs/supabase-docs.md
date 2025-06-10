@@ -1,6 +1,18 @@
 # Supabase 数据库文档
 
-本文档记录了项目中的数据库结构、功能和使用方法。
+本文档记录了AgentifUI项目中的数据库结构、功能和使用方法。本文档与当前数据库状态完全同步。
+
+**文档更新日期**: 2025-06-12  
+**数据库版本**: 包含至 20250610180000_fix_organization_select_for_users.sql 的所有迁移
+
+## 当前系统状态
+
+- ✅ **组织权限管理**: 完整的部门级应用权限控制系统
+- ✅ **多部门支持**: 用户可在同组织多个部门任职
+- ✅ **RLS安全策略**: 修复了所有权限问题，普通用户可正常查看组织信息
+- ✅ **用户管理**: 使用函数方式替代了过时的管理员视图
+- ✅ **中间件权限**: 前端路由级别的管理员权限验证
+- ✅ **应用访问控制**: 基于权限的应用可见性管理
 
 ## 数据库概述
 
@@ -21,34 +33,19 @@
 
 ### 用户管理系统
 
-#### 管理员专用视图
+#### 管理员用户管理
 
-**`admin_user_management_view`** - 为管理员提供安全的用户管理视图：
+**用户数据访问机制** - 管理员通过函数安全访问用户数据：
 
-```sql
--- 视图包含完整的用户信息，包括来自 auth.users 表的敏感数据
-SELECT 
-  p.id, p.full_name, p.username, p.avatar_url, p.role, p.status,
-  p.created_at, p.updated_at, p.last_login, p.auth_source, p.sso_provider_id,
-  au.email,                    -- 真实邮箱地址
-  au.phone,                    -- 真实手机号
-  au.email_confirmed_at,       -- 邮箱确认时间
-  au.phone_confirmed_at,       -- 手机确认时间
-  au.last_sign_in_at          -- 最后登录时间
-FROM profiles p
-LEFT JOIN auth.users au ON p.id = au.id
-WHERE EXISTS (
-  SELECT 1 FROM profiles admin_check 
-  WHERE admin_check.id = auth.uid() 
-  AND admin_check.role = 'admin'
-);
-```
+- **数据访问**: 管理员通过 `lib/db/users.ts` 中的 `getUserList` 函数获取用户数据
+- **权限控制**: 使用 RLS 策略控制数据访问，管理员可以访问敏感信息
+- **安全保障**: 所有操作都需要管理员权限验证
 
-**安全特性：**
-- 使用 `SECURITY DEFINER` 模式访问 `auth.users` 表
-- 视图级别的权限检查，非管理员查询返回空结果
-- 解决了 Supabase 安全警告同时保留完整功能
-- 管理员可以看到真实的邮箱地址和最后登录时间
+**支持的管理功能：**
+- 查看所有用户的基本信息（姓名、用户名、头像等）
+- 查看用户的邮箱地址和手机号码
+- 查看用户的登录状态和最后登录时间
+- 管理用户角色和账号状态
 
 #### 权限保护机制
 
@@ -462,12 +459,12 @@ if (!isAdmin) return <AccessDenied />;
 
 #### 视图级安全
 
-`admin_user_management_view` 视图通过以下机制确保安全：
+用户管理系统通过以下机制确保安全：
 
-1. **权限检查**：视图内置管理员权限验证
-2. **数据隔离**：非管理员查询返回空结果
-3. **敏感数据访问**：使用 SECURITY DEFINER 模式安全访问 auth.users 表
-4. **权限撤销**：明确撤销匿名用户和普通用户的直接访问权限
+1. **权限检查**：所有管理函数都内置管理员权限验证
+2. **数据隔离**：通过RLS策略实现行级数据隔离
+3. **敏感数据访问**：使用专用函数安全访问 auth.users 表
+4. **前端验证**：通过中间件验证管理员身份
 
 #### 最佳实践
 
@@ -602,11 +599,28 @@ if (!isAdmin) return <AccessDenied />;
 - `/supabase/migrations/20250530000000_fix_role_constraint.sql`: 修复角色约束，支持 manager 角色，转换为枚举类型
 - `/supabase/migrations/20250530010000_add_role_update_protection.sql`: 添加角色更新保护机制和用户删除保护
 
-### 最新用户管理安全机制 (2025-06-01)
+### 最新组织权限管理系统 (2025-06-10)
+- `/supabase/migrations/20250610120000_add_org_app_permissions.sql`: 初始组织级权限系统
+- `/supabase/migrations/20250610120001_redesign_department_permissions.sql`: 重新设计的部门级权限系统
+- `/supabase/migrations/20250610130000_add_department_permission_management.sql`: 添加部门权限管理函数
+- `/supabase/migrations/20250610133559_simplify_department_permissions.sql`: 简化部门权限表结构
+- `/supabase/migrations/20250610140000_clean_virtual_department_permissions.sql`: 清理虚拟权限数据
+- `/supabase/migrations/20250610160000_fix_organization_creation_policy.sql`: 修复组织创建RLS策略
+- `/supabase/migrations/20250610161000_fix_org_members_policy.sql`: 修复成员表RLS策略
+- `/supabase/migrations/20250610162000_fix_infinite_recursion_policy.sql`: 修复策略递归问题
+- `/supabase/migrations/20250610163000_completely_fix_recursion.sql`: 完全修复递归问题
+- `/supabase/migrations/20250610164000_complete_rls_reset.sql`: 完整RLS策略重置
+- `/supabase/migrations/20250610165000_final_cleanup_all_policies.sql`: 最终策略清理
+- `/supabase/migrations/20250610165100_cleanup_remaining_policy.sql`: 清理剩余策略
+- `/supabase/migrations/20250610170000_enable_multi_department_membership.sql`: 启用多部门成员支持
+- `/supabase/migrations/20250610180000_fix_organization_select_for_users.sql`: 修复普通用户组织查看权限
+
+### 用户管理安全机制 (2025-06-01)
 - `/supabase/migrations/20250601000100_fix_user_view_security.sql`: 修复用户管理视图安全问题，删除不安全的视图，创建安全的管理函数
 - `/supabase/migrations/20250601000200_fix_user_functions_quick.sql`: 快速修复用户管理函数结构问题
 - `/supabase/migrations/20250601000500_restore_admin_user_view.sql`: 重新创建安全的管理员用户视图（使用 security_invoker）
 - `/supabase/migrations/20250601000600_fix_view_permissions.sql`: 修复视图权限问题，改回 SECURITY DEFINER 模式
+- `/supabase/migrations/20250609214200_remove_deprecated_admin_views.sql`: 最终移除过时的管理员视图
 
 ### API 密钥管理
 - `/supabase/migrations/20250508165500_api_key_management.sql`: API 密钥管理
@@ -649,12 +663,12 @@ if (!isAdmin) return <AccessDenied />;
 
 ### 最终安全方案
 
-最终的 `admin_user_management_view` 视图采用以下安全机制：
+用户管理系统采用以下安全机制：
 
-- **SECURITY DEFINER 模式**：允许访问 auth.users 表
-- **视图级权限检查**：只有管理员能看到数据
-- **明确的权限控制**：撤销匿名用户和普通用户权限
-- **完整功能保留**：管理员可以看到真实邮箱和登录时间
+- **函数级权限验证**：所有管理函数都包含权限检查
+- **RLS策略保护**：数据库级别的行级安全控制
+- **中间件验证**：前端路由级别的管理员身份验证
+- **完整功能保留**：管理员可以安全访问用户数据和敏感信息
 
 ### 权限保护机制
 

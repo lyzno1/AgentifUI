@@ -121,6 +121,9 @@ export default function AppsPage() {
     }
   }, [userStateLoaded, currentUser, isAdmin, fetchApps, fetchUserAccessibleApps, fetchAllApps])
 
+  // 🔧 修复loading闪烁问题：只有当用户状态未加载或应用数据为空且正在加载时才显示loading
+  const shouldShowLoading = !userStateLoaded || (isLoading && rawApps.length === 0)
+
   // 🎯 在组件挂载时获取应用列表并清除sidebar选中状态
   useEffect(() => {
     // 清除sidebar选中状态，因为在应用市场页面不应该有选中的应用
@@ -416,9 +419,8 @@ export default function AppsPage() {
     }
   }
 
-  // 🎯 加载状态显示 - 修复权限泄露问题
-  // 🔧 关键修复：用户状态未加载完成或应用正在加载时都显示loading
-  if (!userStateLoaded || isLoading) {
+  // 🎯 加载状态显示 - 修复权限泄露和闪烁问题
+  if (shouldShowLoading) {
     return <AppLoading />
   }
 

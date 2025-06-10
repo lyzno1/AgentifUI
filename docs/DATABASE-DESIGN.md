@@ -1,6 +1,9 @@
-# LLM EduHub 数据库设计文档
+# AgentifUI 数据库设计文档
 
-本文档详细描述了 LLM EduHub 平台的数据库设计，包括表结构、关系、安全机制和特性。
+本文档详细描述了 AgentifUI 平台的数据库设计，包括表结构、关系、安全机制和特性。本文档与当前数据库状态完全同步，包含所有已应用的迁移文件。
+
+**文档更新日期**: 2025-06-12  
+**数据库版本**: 包含至 20250610180000_fix_organization_select_for_users.sql 的所有迁移
 
 ## 目录
 
@@ -80,7 +83,7 @@
 
 #### org_members
 
-存储组织成员关系。
+存储组织成员关系，支持用户在同一组织的多个部门任职。
 
 | 字段名 | 类型 | 描述 | 约束 |
 |--------|------|------|------|
@@ -92,7 +95,13 @@
 | job_title | TEXT | 职位名称 | |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
-| | | | UNIQUE(org_id, user_id) |
+| | | | UNIQUE(org_id, user_id, department) |
+
+**多部门支持特性**：
+- 用户可以在同一组织的多个部门任职
+- 每个用户在同一组织的每个部门只能有一条记录
+- 权限检查时取用户的第一个部门记录
+- 支持灵活的组织架构管理
 
 **枚举类型定义：**
 - `org_member_role`: ENUM ('owner', 'admin', 'member')
@@ -134,6 +143,12 @@
 - `public`: 所有用户可见，无需权限检查
 - `org_only`: 只有在department_app_permissions表中有启用权限记录的部门成员可见
 - `private`: 私有应用（预留功能）
+
+**最新迁移更新 (2025-06-10)**：
+- **多部门支持**: 用户可以在同一组织的多个部门任职
+- **权限精确控制**: 基于三元组(org_id + department + service_instance_id)的权限管理
+- **RLS策略修复**: 修复了普通用户无法查看组织信息的问题
+- **管理员视图清理**: 移除了过时的admin_user_management_view，改用函数方式
 
 **索引优化：**
 - `idx_dept_app_permissions_org_dept`: (org_id, department)
@@ -337,17 +352,22 @@
    - 用户只能查看、更新和删除自己的对话
    - 用户只能查看自己对话中的消息
 
-4. **API密钥和配置**
+4. **组织和成员数据**
+   - **org_members表**：管理员查看所有，普通用户查看自己的记录
+   - **organizations表**：管理员查看所有组织，普通用户查看自己所属的组织
+   - 修复了普通用户无法查看组织信息的问题
+
+5. **API密钥和配置**
    - 管理员可以进行所有操作（增删改查）
    - 服务端（未认证请求）和已认证用户可以读取配置信息
    - 这种设计支持API路由访问Dify配置，同时保持安全控制
 
-5. **SSO配置**
+6. **SSO配置**
    - 只有管理员可以访问和管理SSO提供商配置
    - 只有管理员可以访问和管理域名映射
    - 只有管理员可以访问和管理认证设置
 
-6. **部门应用权限**
+7. **部门应用权限**
    - 用户只能查看自己部门的应用权限
    - 组织管理员可以管理所有部门的应用权限
    - 权限检查基于用户所属组织和部门
@@ -414,52 +434,20 @@ API密钥使用AES-256-GCM加密算法存储，格式为"iv:authTag:encryptedDat
 
 ### 管理员视图
 
-#### admin_user_management_view
+#### 用户数据访问
 
-为管理员提供安全的用户管理视图，包含完整的用户信息（包括来自 `auth.users` 表的敏感数据）。
+管理员功能通过以下方式实现用户数据访问：
 
-**视图结构：**
-```sql
-CREATE OR REPLACE VIEW public.admin_user_management_view AS
-SELECT 
-  p.id,
-  p.full_name,
-  p.username,
-  p.avatar_url,
-  p.role,
-  p.status,
-  p.created_at,
-  p.updated_at,
-  p.last_login,
-  p.auth_source,
-  p.sso_provider_id,
-  au.email,                    -- 真实邮箱地址
-  au.phone,                    -- 真实手机号
-  au.email_confirmed_at,       -- 邮箱确认时间
-  au.phone_confirmed_at,       -- 手机确认时间
-  au.last_sign_in_at          -- 最后登录时间
-FROM profiles p
-LEFT JOIN auth.users au ON p.id = au.id
--- 视图级别的权限控制：只有管理员能看到数据
-WHERE EXISTS (
-  SELECT 1 FROM profiles admin_check 
-  WHERE admin_check.id = auth.uid() 
-  AND admin_check.role = 'admin'
-);
-```
+**管理员功能实现：**
+- 管理员通过 `lib/db/users.ts` 中的 `getUserList` 函数获取用户数据
+- 使用 RLS 策略控制数据访问权限
+- 管理员可以访问包括 `auth.users` 表中的邮箱、手机号等敏感信息
+- 普通用户只能访问自己的数据
 
-**安全特性：**
-- 使用 `SECURITY DEFINER` 模式访问 `auth.users` 表
-- 视图级别的权限检查，非管理员查询返回空结果
-- 包含真实的邮箱地址和最后登录时间
-- 解决了 Supabase 安全警告同时保留完整功能
-
-**权限设置：**
-```sql
-REVOKE ALL ON public.admin_user_management_view FROM anon;
-REVOKE ALL ON public.admin_user_management_view FROM authenticated;
-GRANT SELECT ON public.admin_user_management_view TO authenticated;
-```
+**安全控制：**
+- 所有管理员操作都需要进行权限验证
+- 使用数据库函数封装敏感操作
+- 前端通过中间件验证管理员身份
 
 ### 权限保护机制
 
@@ -651,6 +639,85 @@ VALUES
 INSERT INTO auth_settings (id)
 VALUES ('00000000-0000-0000-0000-000000000001');
 ```
+
+## 最新迁移文件记录
+
+以下是包含在当前数据库版本中的所有迁移文件（按时间顺序）：
+
+### 2025-06-10 重大更新 - 组织权限管理系统
+- `20250610120000_add_org_app_permissions.sql`: 初始组织级权限系统
+- `20250610120001_redesign_department_permissions.sql`: 重新设计的部门级权限系统
+- `20250610130000_add_department_permission_management.sql`: 添加部门权限管理函数
+- `20250610133559_simplify_department_permissions.sql`: 简化部门权限表结构
+- `20250610140000_clean_virtual_department_permissions.sql`: 清理虚拟权限数据
+- `20250610160000_fix_organization_creation_policy.sql`: 修复组织创建RLS策略
+- `20250610161000_fix_org_members_policy.sql`: 修复成员表RLS策略
+- `20250610162000_fix_infinite_recursion_policy.sql`: 修复策略递归问题
+- `20250610163000_completely_fix_recursion.sql`: 完全修复递归问题
+- `20250610164000_complete_rls_reset.sql`: 完整RLS策略重置
+- `20250610165000_final_cleanup_all_policies.sql`: 最终策略清理
+- `20250610165100_cleanup_remaining_policy.sql`: 清理剩余策略
+- `20250610170000_enable_multi_department_membership.sql`: 启用多部门成员支持
+- `20250610180000_fix_organization_select_for_users.sql`: 修复普通用户组织查看权限
+
+### 历史迁移文件
+- `20250501000000_init.sql`: 初始化基础表结构
+- `20250502000000_sso_config.sql`: SSO认证配置
+- `20250508134000_create_profile_trigger.sql`: 用户资料触发器
+- `20250508140000_fix_profiles_schema.sql`: 修复用户资料表
+- `20250508141000_profiles_schema.sql`: 用户资料表调整
+- `20250508165500_api_key_management.sql`: API密钥管理
+- `20250508174000_add_admin_role.sql`: 管理员角色
+- `20250508181700_fix_api_keys_schema.sql`: 修复API密钥表
+- `20250508182400_fix_api_key_encryption.sql`: API密钥加密
+- `20250508183400_extend_service_instances.sql`: 扩展服务实例表
+- `20250513104549_extend_conversations_messages.sql`: 扩展对话消息表
+- `20250515132500_add_metadata_to_conversations.sql`: 对话元数据
+- `20250521125100_add_message_trigger.sql`: 消息触发器
+- `20250522193000_update_message_preview_format.sql`: 消息预览格式
+- `20250524193208_fix_username_sync.sql`: 用户名同步
+- `20250524194000_improve_cascade_deletion.sql`: 改进级联删除
+- `20250524195000_fix_profiles_foreign_key.sql`: 修复外键约束
+- `20250524200000_fix_user_deletion_trigger.sql`: 用户删除触发器
+- `20250524230000_fix_dify_config_rls.sql`: Dify配置RLS
+- `20250527180000_fix_org_members_rls_recursion.sql`: 修复成员RLS递归
+- `20250529151826_ensure_default_service_instance_constraint.sql`: 默认服务实例约束
+- `20250529151827_add_set_default_service_instance_function.sql`: 设置默认服务实例函数
+- `20250529153000_add_user_management_views.sql`: 用户管理视图
+- `20250529154000_update_profiles_table.sql`: 更新用户资料表
+- `20250529170443_fix_user_list_function.sql`: 修复用户列表函数
+- `20250529170559_simplify_user_list_function.sql`: 简化用户列表函数
+- `20250529171148_cleanup_unused_functions.sql`: 清理未使用函数
+- `20250530000000_fix_role_constraint.sql`: 修复角色约束
+- `20250530010000_add_role_update_protection.sql`: 角色更新保护
+- `20250601000100_fix_user_view_security.sql`: 修复用户视图安全
+- `20250601000200_fix_user_functions_quick.sql`: 快速修复用户函数
+- `20250601000500_restore_admin_user_view.sql`: 恢复管理员视图
+- `20250601000600_fix_view_permissions.sql`: 修复视图权限
+- `20250601000700_remove_name_field_from_service_instances.sql`: 移除服务实例name字段
+- `20250601000800_fix_sso_provider_id_type_conversion.sql`: 修复SSO提供商ID类型
+- `20250601124105_add_app_executions_table.sql`: 应用执行记录表
+- `20250601125239_add_missing_indexes.sql`: 添加缺失索引
+- `20250601130228_secure_admin_view_completely.sql`: 完全安全的管理员视图
+- `20250601130708_fix_function_compatibility.sql`: 修复函数兼容性
+- `20250601130929_restore_admin_view_temporarily.sql`: 临时恢复管理员视图
+- `20250607215513_add_deleted_status.sql`: 添加删除状态
+- `20250608155950_remove_message_preview_trigger.sql`: 移除消息预览触发器
+- `20250609151944_oauth_support_enhancement.sql`: OAuth支持增强
+- `20250609160000_fix_phone_auth_trigger.sql`: 修复手机认证触发器
+- `20250609161000_implement_phone_auth_trigger.sql`: 实现手机认证触发器
+- `20250609162000_verify_and_fix_enum.sql`: 验证修复枚举
+- `20250609163000_final_handle_new_user_fix.sql`: 最终用户处理修复
+- `20250609173820_clean_auth_support.sql`: 清理认证支持
+- `20250609174230_fix_enum_reference.sql`: 修复枚举引用
+- `20250609214000_add_admin_user_functions.sql`: 添加管理员用户函数
+- `20250609214100_fix_org_members_foreign_key.sql`: 修复组织成员外键
+- `20250609214200_remove_deprecated_admin_views.sql`: 移除过时管理员视图
+- `20250609214300_fix_admin_users_function_types.sql`: 修复管理员用户函数类型
+- `20250609214400_fix_phone_column_type.sql`: 修复手机号列类型
+- `20250609213759_activate_organization_features.sql`: 激活组织功能
+- `20250610000000_add_safe_user_deletion.sql`: 添加安全用户删除
+- `20250610113034_add_auth_source_realtime_sync.sql`: 添加认证源实时同步
 
 ## 设计特点
 

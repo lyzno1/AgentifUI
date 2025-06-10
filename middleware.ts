@@ -73,6 +73,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // 管理员路由权限检查
+  if (session && isAdminRoute) {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile || profile.role !== 'admin') {
+        console.log(`[Middleware] Non-admin user attempting to access admin route ${pathname}, redirecting to /`)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+      console.log(`[Middleware] Admin user accessing ${pathname}`)
+    } catch (error) {
+      console.error(`[Middleware] Error checking admin permissions:`, error)
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
+
   if (session && isAuthRoute) {
     console.log(`[Middleware] User logged in, redirecting auth route ${pathname} to /`)
     return NextResponse.redirect(new URL('/', request.url))

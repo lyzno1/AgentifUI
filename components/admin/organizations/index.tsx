@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTheme } from '@lib/hooks/use-theme'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
@@ -88,6 +89,15 @@ interface OrgStats {
 
 export default function OrganizationsManagement() {
   const { isDark } = useTheme()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // --- BEGIN COMMENT ---
+  // 🔧 URL查询参数控制tab切换
+  // --- END COMMENT ---
+  const [activeTab, setActiveTab] = useState(() => {
+    return searchParams.get('tab') || 'organizations'
+  })
   
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
@@ -457,6 +467,24 @@ export default function OrganizationsManagement() {
       setOperationLoading(false)
     }
   }
+
+  // --- BEGIN COMMENT ---
+  // 🔧 Tab切换和URL同步
+  // --- END COMMENT ---
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }
+
+  // --- BEGIN COMMENT ---
+  // 🔧 监听URL变化同步tab状态
+  // --- END COMMENT ---
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'organizations'
+    setActiveTab(tab)
+  }, [searchParams])
 
   // --- 初始化数据 ---
   useEffect(() => {
@@ -1046,7 +1074,7 @@ export default function OrganizationsManagement() {
         </div>
       </div>
 
-      <Tabs defaultValue="organizations" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className={cn(
           "grid w-full grid-cols-3",
           isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
