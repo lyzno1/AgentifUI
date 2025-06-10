@@ -33,35 +33,32 @@ interface AppListState {
   error: string | null;
   lastFetchTime: number;
 
-  // 🎯 新增：应用参数相关状态
+  // 🎯 应用参数相关状态
   parametersCache: AppParametersCache;
   isLoadingParameters: boolean;
   parametersError: string | null;
   lastParametersFetchTime: number;
   
-  // 🎯 添加请求锁，防止同一应用的并发请求
-  fetchingApps: Set<string>; // 正在请求中的应用ID集合
+  // 🎯 请求锁，防止同一应用的并发请求
+  fetchingApps: Set<string>;
 
-  // 🎯 新增：权限相关状态
-  usePermissionFilter: boolean; // 是否启用权限过滤
-  currentUserId: string | null; // 当前用户ID
+  // 🎯 用户状态（自动管理）
+  currentUserId: string | null;
 
+  // 🎯 核心方法
   fetchApps: () => Promise<void>;
-  // 🎯 新增：获取用户可访问的应用（带权限过滤）
-  fetchUserAccessibleApps: (userId: string) => Promise<void>;
   clearCache: () => void;
   
-  // 🎯 新增：应用参数相关方法
+  // 🎯 应用参数相关方法
   fetchAllAppParameters: () => Promise<void>;
   fetchAppParameters: (appId: string) => Promise<void>;
   getAppParameters: (appId: string) => DifyAppParametersResponse | null;
   clearParametersCache: () => void;
 
-  // 🎯 新增：权限相关方法
-  setPermissionFilter: (enabled: boolean, userId?: string) => void;
+  // 🎯 权限检查方法
   checkAppPermission: (appInstanceId: string) => Promise<boolean>;
 
-  // 🎯 新增：获取所有应用（管理员用）
+  // 🎯 管理员专用方法（管理界面使用）
   fetchAllApps: () => Promise<void>;
 }
 
@@ -82,8 +79,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
   // 🎯 添加请求锁，防止同一应用的并发请求
   fetchingApps: new Set(),
 
-  // 🎯 新增：权限相关状态初始化
-  usePermissionFilter: false,
+  // 🎯 用户状态初始化
   currentUserId: null,
 
   fetchApps: async () => {
@@ -99,27 +95,60 @@ export const useAppListStore = create<AppListState>((set, get) => ({
   
     try {
       // --- BEGIN COMMENT ---
-      // 🎯 根据当前上下文选择获取方法
-      // 这个方法主要用于未登录用户或需要公开应用的场景
+      // 🎯 统一使用权限管理API，支持组织权限
+      // middleware保证用户已登录，直接获取用户可访问的应用（public + org_only）
       // --- END COMMENT ---
-      const { getPublicDifyApps } = await import('@lib/services/dify/app-service');
-      const rawApps = await getPublicDifyApps();
+      const { createClient } = await import('@lib/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('用户未登录'); // 理论上不会发生，middleware会拦截
+      }
+
+      // 🎯 使用权限管理API获取用户可访问的应用
+      const { getUserAccessibleApps } = await import('@lib/db/department-app-permissions');
+      const result = await getUserAccessibleApps(user.id);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       
       // --- BEGIN COMMENT ---
-      // 🎯 为公开应用列表添加visibility信息
+      // 🎯 转换UserAccessibleApp到AppInfo格式，使用去重逻辑
       // --- END COMMENT ---
-      const apps: AppInfo[] = rawApps.map(app => ({
-        ...app,
-        visibility: app.visibility as AppVisibility || 'public'
-      }));
+      const appMap = new Map<string, AppInfo>();
+      
+      result.data.forEach((userApp: UserAccessibleApp) => {
+        const appInfo: AppInfo = {
+          id: userApp.service_instance_id,
+          name: userApp.display_name || userApp.instance_id,
+          instance_id: userApp.instance_id,
+          display_name: userApp.display_name || undefined,
+          description: userApp.description || undefined,
+          config: userApp.config,
+          usage_quota: userApp.usage_quota,
+          used_count: userApp.used_count,
+          quota_remaining: userApp.quota_remaining,
+          visibility: userApp.visibility
+        };
+        
+        // 🔧 使用service_instance_id作为唯一键去重
+        if (!appMap.has(userApp.service_instance_id)) {
+          appMap.set(userApp.service_instance_id, appInfo);
+        }
+      });
+      
+      const apps: AppInfo[] = Array.from(appMap.values());
       
       set({ 
         apps, 
         isLoading: false, 
-        lastFetchTime: now 
+        lastFetchTime: now,
+        currentUserId: user.id
       });
       
-      console.log(`[AppListStore] 成功获取 ${apps.length} 个公开应用`);
+      console.log(`[AppListStore] 成功获取 ${apps.length} 个用户可访问应用（包含组织权限）`);
       
       // 🎯 后台同步：更新常用应用信息
       try {
@@ -129,6 +158,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
         console.warn('[AppListStore] 同步常用应用信息失败:', error);
       }
     } catch (error: any) {
+      console.error('[AppListStore] 获取应用列表失败:', error);
       set({ 
         error: error.message, 
         isLoading: false 
@@ -242,7 +272,6 @@ export const useAppListStore = create<AppListState>((set, get) => ({
         apps, 
         isLoading: false, 
         lastFetchTime: now,
-        usePermissionFilter: true,
         currentUserId: userId
       });
       
@@ -257,29 +286,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     }
   },
 
-  // 🎯 设置权限过滤模式
-  setPermissionFilter: (enabled: boolean, userId?: string) => {
-    const state = get();
-    
-    // 如果启用权限过滤但没有提供用户ID，从当前状态获取
-    if (enabled && !userId && !state.currentUserId) {
-      console.warn('[AppListStore] 启用权限过滤但未提供用户ID');
-      return;
-    }
-    
-    set({ 
-      usePermissionFilter: enabled,
-      currentUserId: userId || state.currentUserId
-    });
-    
-    // 如果切换模式，清除缓存以强制重新获取
-    if (enabled !== state.usePermissionFilter) {
-      set({ 
-        apps: [], 
-        lastFetchTime: 0 
-      });
-    }
-  },
+
 
   // 🎯 检查用户对特定应用的访问权限
   checkAppPermission: async (appInstanceId: string) => {
@@ -321,12 +328,8 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     if (state.apps.length === 0) {
       console.log('[AppListStore] 应用列表为空，先获取应用列表');
       
-      // 🎯 根据权限过滤模式选择获取方法
-      if (state.usePermissionFilter && state.currentUserId) {
-        await get().fetchUserAccessibleApps(state.currentUserId);
-      } else {
-        await get().fetchApps();
-      }
+      // 🎯 直接使用fetchApps获取应用列表
+      await get().fetchApps();
     }
     
     const currentApps = get().apps;
@@ -468,8 +471,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       apps: [], 
       lastFetchTime: 0,
       error: null,
-      // 🎯 清理权限相关缓存
-      usePermissionFilter: false,
+      // 🎯 清理用户状态
       currentUserId: null,
       // 清理参数缓存
       parametersCache: {},
