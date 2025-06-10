@@ -12,12 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
 import { Textarea } from '@components/ui/textarea'
-import { 
-  Building2, 
-  Users, 
-  Settings, 
-  UserPlus, 
-  Trash2, 
+import {
+  Building2,
+  Users,
+  Settings,
+  UserPlus,
+  Trash2,
   UserMinus,
   Plus,
   Search,
@@ -91,41 +91,41 @@ export default function OrganizationsManagement() {
   const { isDark } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // --- BEGIN COMMENT ---
   // 🔧 URL查询参数控制tab切换
   // --- END COMMENT ---
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || 'organizations'
   })
-  
+
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
   const [orgStats, setOrgStats] = useState<OrgStats | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   // --- 对话框状态 ---
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false)
   const [isEditOrgOpen, setIsEditOrgOpen] = useState(false)
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
-  
+
   // --- Loading状态 ---
   const [operationLoading, setOperationLoading] = useState(false)
-  
+
   // --- 表单状态 ---
   const [newOrgForm, setNewOrgForm] = useState({
     name: '',
     description: '',
     type: 'company'
   })
-  
+
   const [editOrgForm, setEditOrgForm] = useState({
     id: '',
     name: '',
     description: '',
     type: 'company'
   })
-  
+
   const [addUserForm, setAddUserForm] = useState({
     userId: '',
     orgId: '',
@@ -168,7 +168,7 @@ export default function OrganizationsManagement() {
       }
       return acc
     }, {} as Record<string, OrgDepartmentInfo>)
-    
+
     return Object.values(departmentGroups)
   }
 
@@ -177,22 +177,22 @@ export default function OrganizationsManagement() {
     const totalOrganizations = organizations.length
     const totalMembers = orgMembers.length
     const departmentInfo = getDepartmentInfo()
-    
+
     const totalDepartments = departmentInfo.length
     const organizationsWithPermissions = 0 // 暂时设为0，实际需要根据权限数据计算
     const avgMembersPerOrg = totalOrganizations > 0 ? Math.round(totalMembers / totalOrganizations) : 0
-    
+
     // 计算热门部门
     const deptCounts = departmentInfo.reduce((acc, dept) => {
       acc[dept.department] = (acc[dept.department] || 0) + dept.member_count
       return acc
     }, {} as Record<string, number>)
-    
+
     const topDepartments = Object.entries(deptCounts)
-      .sort(([,a], [,b]) => (b as number) - (a as number))
+      .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 5)
       .map(([department, count]) => ({ department, count: count as number }))
-    
+
     return {
       totalOrganizations,
       totalMembers,
@@ -258,7 +258,7 @@ export default function OrganizationsManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newOrgForm.name,
-          settings: { 
+          settings: {
             description: newOrgForm.description,
             type: newOrgForm.type
           }
@@ -381,11 +381,11 @@ export default function OrganizationsManagement() {
   const handleUserSearch = (searchTerm: string) => {
     setUserSearchTerm(searchTerm)
     setSelectedUser(null)
-    
+
     if (!searchTerm.trim()) {
       setFilteredUsers(allUsers.slice(0, 20))
     } else {
-      const filtered = allUsers.filter(user => 
+      const filtered = allUsers.filter(user =>
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.username?.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -396,7 +396,7 @@ export default function OrganizationsManagement() {
   const toggleUserDropdown = () => {
     const newOpen = !isUserDropdownOpen
     setIsUserDropdownOpen(newOpen)
-    
+
     if (newOpen && !userSearchTerm) {
       initializeUserList()
     }
@@ -542,9 +542,10 @@ export default function OrganizationsManagement() {
 
   return (
     <div className={cn(
-      "space-y-6 p-6",
-      isDark ? "bg-stone-950" : "bg-stone-50"
+      "min-h-screen w-full",
+      isDark ? "bg-stone-950" : "bg-stone-100"
     )}>
+      <div className="space-y-6 p-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
@@ -561,7 +562,7 @@ export default function OrganizationsManagement() {
             管理组织结构和成员关系
           </p>
         </div>
-        
+
         <div className="flex gap-3">
           <Dialog open={isCreateOrgOpen} onOpenChange={setIsCreateOrgOpen}>
             <DialogTrigger asChild>
@@ -575,7 +576,7 @@ export default function OrganizationsManagement() {
             </DialogTrigger>
             <DialogContent className={cn(
               "max-w-md",
-              isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
             )}>
               <DialogHeader>
                 <DialogTitle className={cn(
@@ -605,7 +606,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入组织名称"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -622,7 +623,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入描述（可选）"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -639,7 +640,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入组织类型（如：公司、团队、部门等）"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -670,7 +671,7 @@ export default function OrganizationsManagement() {
           <Dialog open={isEditOrgOpen} onOpenChange={setIsEditOrgOpen}>
             <DialogContent className={cn(
               "max-w-md",
-              isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
             )}>
               <DialogHeader>
                 <DialogTitle className={cn(
@@ -700,7 +701,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入组织名称"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -717,7 +718,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入组织描述（可选）"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -734,7 +735,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入组织类型（如：公司、团队、部门等）"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -770,7 +771,7 @@ export default function OrganizationsManagement() {
             <DialogTrigger asChild>
               <Button variant="outline" className={cn(
                 "font-serif",
-                isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-100"
               )}>
                 <UserPlus className="w-4 h-4 mr-2" />
                 添加成员
@@ -778,7 +779,7 @@ export default function OrganizationsManagement() {
             </DialogTrigger>
             <DialogContent className={cn(
               "max-w-md",
-              isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
             )}>
               <DialogHeader>
                 <DialogTitle className={cn(
@@ -802,7 +803,7 @@ export default function OrganizationsManagement() {
                   )}>
                     选择用户
                   </Label>
-                  
+
                   {/* 选择器容器 */}
                   <div className="relative mt-1">
                     {/* 主输入框/显示框 */}
@@ -811,9 +812,9 @@ export default function OrganizationsManagement() {
                         "relative flex items-center min-h-[40px] w-full rounded-md border px-3 py-2 cursor-pointer",
                         "transition-colors font-serif",
                         isUserDropdownOpen && "ring-2 ring-stone-400/20",
-                                                   isDark 
-                             ? "bg-stone-800 border-stone-700 text-stone-100 hover:bg-stone-800/80"
-                             : "bg-white border-stone-300 text-stone-900 hover:bg-stone-50"
+                        isDark
+                          ? "bg-stone-800 border-stone-700 text-stone-100 hover:bg-stone-800/80"
+                          : "bg-stone-100 border-stone-300 text-stone-900 hover:bg-stone-100"
                       )}
                       onClick={toggleUserDropdown}
                     >
@@ -826,7 +827,10 @@ export default function OrganizationsManagement() {
                             selectedUser.role === 'manager' && (isDark ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800"),
                             selectedUser.role === 'user' && (isDark ? "bg-stone-700 text-stone-300" : "bg-stone-200 text-stone-700")
                           )}>
-                            <UserIcon className="w-4 h-4" />
+                            <UserIcon className={cn(
+                              "w-4 h-4",
+                              isDark ? "text-stone-400" : "text-stone-500"
+                            )} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">
@@ -846,8 +850,9 @@ export default function OrganizationsManagement() {
                               resetUserSelection()
                             }}
                             className={cn(
-                              "ml-2 p-1 rounded-full hover:bg-stone-200 dark:hover:bg-stone-600 transition-colors",
-                              "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
+                              "ml-2 p-1 rounded-full transition-colors",
+                              "text-stone-400 hover:text-stone-600",
+                              isDark ? "hover:bg-stone-600 hover:text-stone-300" : "hover:bg-stone-200"
                             )}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -866,21 +871,24 @@ export default function OrganizationsManagement() {
                           </span>
                         </div>
                       )}
-                      
+
                       {/* 下拉箭头 */}
                       <ChevronDown className={cn(
                         "w-4 h-4 ml-2 transition-transform text-stone-400",
                         isUserDropdownOpen && "rotate-180"
                       )} />
                     </div>
-                    
+
                     {/* 搜索输入框（下拉打开时显示） */}
                     {isUserDropdownOpen && (
                       <div className={cn(
                         "absolute z-50 w-full mt-1 border rounded-md shadow-lg",
-                        isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"
+                        isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
                       )}>
-                        <div className="p-2 border-b border-stone-200 dark:border-stone-700">
+                        <div className={cn(
+                          "p-2 border-b",
+                          isDark ? "border-stone-700" : "border-stone-200"
+                        )}>
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-stone-400" />
                             <Input
@@ -889,13 +897,13 @@ export default function OrganizationsManagement() {
                               placeholder="搜索用户姓名或用户名..."
                               className={cn(
                                 "pl-10 font-serif border-0 focus:ring-0",
-                                isDark ? "bg-stone-900 text-stone-100" : "bg-stone-50 text-stone-900"
+                                isDark ? "bg-stone-900 text-stone-100" : "bg-stone-100 text-stone-900"
                               )}
                               autoFocus
                             />
                           </div>
                         </div>
-                        
+
                         {/* 用户列表 */}
                         <div className="max-h-60 overflow-auto">
                           {filteredUsers.length > 0 ? (
@@ -906,7 +914,7 @@ export default function OrganizationsManagement() {
                                   onClick={() => selectUser(user)}
                                   className={cn(
                                     "px-3 py-3 cursor-pointer transition-colors",
-                                    "hover:bg-stone-100 dark:hover:bg-stone-700",
+                                    isDark ? "hover:bg-stone-700" : "hover:bg-stone-100",
                                     "flex items-center justify-between"
                                   )}
                                 >
@@ -917,34 +925,43 @@ export default function OrganizationsManagement() {
                                       user.role === 'manager' && (isDark ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800"),
                                       user.role === 'user' && (isDark ? "bg-stone-700 text-stone-300" : "bg-stone-200 text-stone-700")
                                     )}>
-                                      <UserIcon className="w-4 h-4" />
+                                      <UserIcon className={cn(
+                                        "w-4 h-4",
+                                        isDark ? "text-stone-400" : "text-stone-500"
+                                      )} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="font-medium font-serif text-stone-900 dark:text-stone-100 truncate">
+                                      <p className={cn(
+                                        "font-medium font-serif truncate",
+                                        isDark ? "text-stone-100" : "text-stone-900"
+                                      )}>
                                         {user.full_name || user.username}
                                       </p>
-                                      <p className="text-sm text-stone-600 dark:text-stone-400 font-serif truncate">
+                                      <p className={cn(
+                                        "text-sm font-serif truncate",
+                                        isDark ? "text-stone-400" : "text-stone-600"
+                                      )}>
                                         @{user.username}
                                       </p>
                                     </div>
                                   </div>
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className="text-xs font-serif ml-2 flex-shrink-0"
                                   >
                                     {user.role}
                                   </Badge>
                                 </div>
                               ))}
-                              
+
                               {/* 统计信息 */}
                               {allUsers.length > 20 && (
                                 <div className={cn(
                                   "px-3 py-2 text-xs border-t",
-                                                                     isDark ? "text-stone-400 border-stone-700 bg-stone-900/50" : "text-stone-500 border-stone-200 bg-stone-50"
+                                  isDark ? "text-stone-400 border-stone-700 bg-stone-900/50" : "text-stone-500 border-stone-200 bg-stone-100"
                                 )}>
-                                  {userSearchTerm 
-                                    ? `显示 ${filteredUsers.length} 个搜索结果` 
+                                  {userSearchTerm
+                                    ? `显示 ${filteredUsers.length} 个搜索结果`
                                     : `显示前 20 个用户，共 ${allUsers.length} 个`
                                   }
                                 </div>
@@ -953,7 +970,10 @@ export default function OrganizationsManagement() {
                           ) : (
                             <div className="px-3 py-6 text-center">
                               <UserIcon className="w-12 h-12 text-stone-400 mx-auto mb-2" />
-                              <p className="text-sm text-stone-500 dark:text-stone-400 font-serif">
+                              <p className={cn(
+                                "text-sm font-serif",
+                                isDark ? "text-stone-400" : "text-stone-500"
+                              )}>
                                 {userSearchTerm ? '未找到匹配的用户' : '暂无用户数据'}
                               </p>
                             </div>
@@ -976,11 +996,11 @@ export default function OrganizationsManagement() {
                   >
                     <SelectTrigger className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}>
                       <SelectValue placeholder="选择组织" />
                     </SelectTrigger>
-                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"}>
+                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"}>
                       {organizations.map((org) => (
                         <SelectItem key={org.id} value={org.id} className="font-serif">
                           {org.name}
@@ -1002,7 +1022,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入部门名称"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -1019,7 +1039,7 @@ export default function OrganizationsManagement() {
                     placeholder="输入职位（可选）"
                     className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}
                   />
                 </div>
@@ -1032,17 +1052,17 @@ export default function OrganizationsManagement() {
                   </Label>
                   <Select
                     value={addUserForm.role}
-                    onValueChange={(value: 'owner' | 'admin' | 'member') => 
+                    onValueChange={(value: 'owner' | 'admin' | 'member') =>
                       setAddUserForm(prev => ({ ...prev, role: value }))
                     }
                   >
                     <SelectTrigger className={cn(
                       "font-serif mt-1",
-                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-stone-100 border-stone-300"
                     )}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"}>
+                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"}>
                       <SelectItem value="member" className="font-serif">成员</SelectItem>
                       <SelectItem value="admin" className="font-serif">管理员</SelectItem>
                       <SelectItem value="owner" className="font-serif">所有者</SelectItem>
@@ -1079,35 +1099,35 @@ export default function OrganizationsManagement() {
           "grid w-full grid-cols-3",
           isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
         )}>
-          <TabsTrigger 
-            value="organizations" 
+          <TabsTrigger
+            value="organizations"
             className={cn(
               "font-serif",
-              isDark 
-                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100" 
-                : "data-[state=active]:bg-white data-[state=active]:text-stone-900"
+              isDark
+                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100"
+                : "data-[state=active]:bg-stone-100 data-[state=active]:text-stone-900"
             )}
           >
             组织列表
           </TabsTrigger>
-          <TabsTrigger 
-            value="departments" 
+          <TabsTrigger
+            value="departments"
             className={cn(
               "font-serif",
-              isDark 
-                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100" 
-                : "data-[state=active]:bg-white data-[state=active]:text-stone-900"
+              isDark
+                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100"
+                : "data-[state=active]:bg-stone-100 data-[state=active]:text-stone-900"
             )}
           >
             部门管理
           </TabsTrigger>
-          <TabsTrigger 
-            value="permissions" 
+          <TabsTrigger
+            value="permissions"
             className={cn(
               "font-serif",
-              isDark 
-                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100" 
-                : "data-[state=active]:bg-white data-[state=active]:text-stone-900"
+              isDark
+                ? "data-[state=active]:bg-stone-700 data-[state=active]:text-stone-100"
+                : "data-[state=active]:bg-stone-100 data-[state=active]:text-stone-900"
             )}
           >
             权限配置
@@ -1120,11 +1140,11 @@ export default function OrganizationsManagement() {
             {organizations.map((org) => {
               const orgMemberCount = orgMembers.filter(m => m.org_id === org.id).length
               const orgDepartments = getDepartmentInfo().filter(d => d.org_id === org.id)
-              
+
               return (
                 <Card key={org.id} className={cn(
                   "border shadow-sm",
-                  isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+                  isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
                 )}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1133,17 +1153,29 @@ export default function OrganizationsManagement() {
                           "w-10 h-10 rounded-lg flex items-center justify-center",
                           isDark ? "bg-stone-800" : "bg-stone-100"
                         )}>
-                          <Building2 className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+                          <Building2 className={cn(
+                            "w-5 h-5",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )} />
                         </div>
                         <div>
-                          <CardTitle className="font-serif text-lg text-stone-900 dark:text-stone-100">
+                          <CardTitle className={cn(
+                            "font-serif text-lg",
+                            isDark ? "text-stone-100" : "text-stone-900"
+                          )}>
                             {org.name}
                           </CardTitle>
-                          <CardDescription className="font-serif text-stone-600 dark:text-stone-400">
+                          <CardDescription className={cn(
+                            "font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
                             {org.settings?.description || '暂无描述'}
                           </CardDescription>
                           {org.settings?.type && (
-                            <Badge variant="outline" className="text-xs font-serif mt-1">
+                            <Badge variant="outline" className={cn(
+                              "text-xs font-serif mt-1",
+                              isDark ? "text-stone-400 border-stone-600" : "text-stone-600 border-stone-300"
+                            )}>
                               {org.settings.type}
                             </Badge>
                           )}
@@ -1156,8 +1188,8 @@ export default function OrganizationsManagement() {
                           onClick={() => openEditDialog(org)}
                           disabled={operationLoading}
                           className={cn(
-                            "text-stone-600 border-stone-200 hover:bg-stone-50 disabled:opacity-50",
-                            "dark:text-stone-400 dark:border-stone-700 dark:hover:bg-stone-800"
+                            "disabled:opacity-50",
+                            isDark ? "text-stone-400 border-stone-700 hover:bg-stone-800" : "text-stone-600 border-stone-300 hover:bg-stone-100"
                           )}
                         >
                           <Edit className="w-4 h-4" />
@@ -1168,8 +1200,8 @@ export default function OrganizationsManagement() {
                           onClick={() => handleDeleteOrganization(org.id, org.name)}
                           disabled={operationLoading}
                           className={cn(
-                            "text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 disabled:opacity-50",
-                            "dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                            "disabled:opacity-50",
+                            isDark ? "text-red-400 border-red-800 hover:bg-red-900/20" : "text-red-600 border-red-300 hover:bg-red-100 hover:border-red-400"
                           )}
                         >
                           {operationLoading ? (
@@ -1185,22 +1217,37 @@ export default function OrganizationsManagement() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4 text-stone-500" />
-                          <span className="text-sm font-serif text-stone-600 dark:text-stone-400">
+                          <Users className={cn(
+                            "w-4 h-4",
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
+                          <span className={cn(
+                            "text-sm font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
                             {orgMemberCount} 成员
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Layers className="w-4 h-4 text-stone-500" />
-                          <span className="text-sm font-serif text-stone-600 dark:text-stone-400">
+                          <Layers className={cn(
+                            "w-4 h-4", 
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
+                          <span className={cn(
+                            "text-sm font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
                             {orgDepartments.length} 部门
                           </span>
                         </div>
                       </div>
-                      
+
                       {orgDepartments.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-stone-700 dark:text-stone-300 font-serif mb-2">
+                          <p className={cn(
+                            "text-xs font-medium font-serif mb-2",
+                            isDark ? "text-stone-300" : "text-stone-700"
+                          )}>
                             部门：
                           </p>
                           <div className="flex flex-wrap gap-1">
@@ -1223,19 +1270,25 @@ export default function OrganizationsManagement() {
               )
             })}
           </div>
-          
+
           {organizations.length === 0 && (
             <Card className={cn(
               "border-0 shadow-lg",
-              isDark ? "bg-stone-800/50" : "bg-white/50"
+              isDark ? "bg-stone-800/50" : "bg-stone-100/50"
             )}>
               <CardContent className="py-12">
                 <div className="text-center">
                   <Building2 className="w-16 h-16 text-stone-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium font-serif text-stone-700 dark:text-stone-300 mb-2">
+                  <h3 className={cn(
+                    "text-lg font-medium font-serif",
+                    isDark ? "text-stone-300" : "text-stone-700"
+                  )}>
                     暂无组织
                   </h3>
-                  <p className="text-stone-600 dark:text-stone-400 font-serif mb-4">
+                  <p className={cn(
+                    "text-stone-600 font-serif mb-4",
+                    isDark ? "text-stone-400" : "text-stone-600"
+                  )}>
                     点击上方按钮创建第一个组织
                   </p>
                   <Button
@@ -1259,10 +1312,16 @@ export default function OrganizationsManagement() {
           {/* --- 部门管理头部操作区 --- */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium font-serif text-stone-900 dark:text-stone-100">
+              <h3 className={cn(
+                "text-lg font-medium font-serif",
+                isDark ? "text-stone-100" : "text-stone-900"
+              )}>
                 部门管理
               </h3>
-              <p className="text-sm text-stone-600 dark:text-stone-400 font-serif">
+              <p className={cn(
+                "text-sm font-serif",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )}>
                 管理各组织的部门结构
               </p>
             </div>
@@ -1273,11 +1332,11 @@ export default function OrganizationsManagement() {
               const deptMembers = orgMembers.filter(
                 m => m.org_id === dept.org_id && m.department === dept.department
               )
-              
+
               return (
                 <Card key={`${dept.org_id}-${dept.department}`} className={cn(
                   "border shadow-sm",
-                  isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+                  isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
                 )}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1286,62 +1345,77 @@ export default function OrganizationsManagement() {
                           "w-10 h-10 rounded-lg flex items-center justify-center",
                           isDark ? "bg-stone-800" : "bg-stone-100"
                         )}>
-                          <Layers className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+                          <Layers className={cn(
+                            "w-4 h-4", 
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
                         </div>
                         <div>
-                          <CardTitle className="font-serif text-lg text-stone-900 dark:text-stone-100">
+                          <CardTitle className={cn(
+                            "font-serif text-lg",
+                            isDark ? "text-stone-100" : "text-stone-900"
+                          )}>
                             {dept.org_name} - {dept.department}
                           </CardTitle>
-                          <CardDescription className="font-serif text-stone-600 dark:text-stone-400">
+                          <CardDescription className={cn(
+                            "font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
                             {dept.member_count} 名成员
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge 
-                        variant={dept.has_permissions ? "default" : "outline"} 
+                      <Badge
+                        variant={dept.has_permissions ? "default" : "outline"}
                         className="font-serif"
                       >
                         {dept.has_permissions ? '已配权限' : '未配权限'}
                       </Badge>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent>
                     {deptMembers.length > 0 ? (
                       <div className="space-y-2">
                         {deptMembers.map((member) => (
-                          <div 
+                          <div
                             key={member.id}
                             className={cn(
                               "flex items-center justify-between p-3 rounded-lg border",
-                              isDark ? "bg-stone-800 border-stone-700" : "bg-stone-50 border-stone-200"
+                              isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-300"
                             )}
                           >
                             <div className="flex items-center space-x-3">
                               <div className={cn(
                                 "w-8 h-8 rounded-full flex items-center justify-center",
-                                member.role === 'owner' && "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-                                member.role === 'admin' && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-                                member.role === 'member' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                member.role === 'owner' && (isDark ? "bg-amber-900 text-amber-200" : "bg-amber-100 text-amber-800"),
+                                member.role === 'admin' && (isDark ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"),
+                                member.role === 'member' && (isDark ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800")
                               )}>
                                 {member.role === 'owner' && <Crown className="w-4 h-4" />}
                                 {member.role === 'admin' && <Shield className="w-4 h-4" />}
                                 {member.role === 'member' && <UserIcon className="w-4 h-4" />}
                               </div>
                               <div>
-                                <p className="font-medium font-serif text-stone-900 dark:text-stone-100">
+                                <p className={cn(
+                                  "font-medium font-serif",
+                                  isDark ? "text-stone-100" : "text-stone-900"
+                                )}>
                                   {member.user?.full_name || member.user?.username || '未知用户'}
                                 </p>
-                                <p className="text-sm text-stone-600 dark:text-stone-400 font-serif">
+                                <p className={cn(
+                                  "text-sm font-serif",
+                                  isDark ? "text-stone-400" : "text-stone-600"
+                                )}>
                                   {member.job_title || '暂无职位'}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge 
+                              <Badge
                                 variant={
                                   member.role === 'owner' ? 'default' :
-                                  member.role === 'admin' ? 'secondary' : 'outline'
+                                    member.role === 'admin' ? 'secondary' : 'outline'
                                 }
                                 className="font-serif text-xs"
                               >
@@ -1354,7 +1428,10 @@ export default function OrganizationsManagement() {
                                 variant="outline"
                                 onClick={() => handleRemoveUserFromOrg(member.id, member.user?.full_name || member.user?.username || '未知用户')}
                                 disabled={operationLoading}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                                className={cn(
+                                  "text-red-500 hover:text-red-700 disabled:opacity-50",
+                                  isDark ? "hover:bg-red-900/20" : "hover:bg-red-50"
+                                )}
                               >
                                 {operationLoading ? (
                                   <RefreshCw className="w-3 h-3 animate-spin" />
@@ -1369,7 +1446,10 @@ export default function OrganizationsManagement() {
                     ) : (
                       <div className="text-center py-6">
                         <Users className="w-12 h-12 text-stone-400 mx-auto mb-3" />
-                        <p className="text-stone-600 dark:text-stone-400 font-serif">
+                        <p className={cn(
+                          "font-serif",
+                          isDark ? "text-stone-400" : "text-stone-600"
+                        )}>
                           该部门暂无成员
                         </p>
                       </div>
@@ -1379,18 +1459,24 @@ export default function OrganizationsManagement() {
               )
             })}
           </div>
-          
+
           {getDepartmentInfo().length === 0 && (
             <Card className={cn(
               "border shadow-sm",
-              isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
             )}>
               <CardContent className="text-center py-12">
                 <Layers className="w-16 h-16 text-stone-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium font-serif text-stone-900 dark:text-stone-100 mb-2">
+                <h3 className={cn(
+                  "text-lg font-medium font-serif mb-2",
+                  isDark ? "text-stone-100" : "text-stone-900"
+                )}>
                   暂无部门
                 </h3>
-                <p className="text-stone-600 dark:text-stone-400 font-serif mb-6">
+                <p className={cn(
+                  "font-serif mb-6",
+                  isDark ? "text-stone-400" : "text-stone-600"
+                )}>
                   添加成员到组织后会自动创建部门
                 </p>
                 <Button
@@ -1413,6 +1499,7 @@ export default function OrganizationsManagement() {
           <AppPermissionsManagement />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 } 

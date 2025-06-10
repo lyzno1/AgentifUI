@@ -411,27 +411,39 @@ export default function AppPermissionsManagement() {
     switch (visibility) {
       case 'public':
         return {
-          icon: <Globe className="w-3 h-3" />,
+          icon: <Globe className={cn(
+            "w-4 h-4",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />,
           label: '公开',
-          color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+          color: isDark ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
         }
       case 'org_only':
         return {
-          icon: <Building2 className="w-3 h-3" />,
+          icon: <Building2 className={cn(
+            "w-4 h-4",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />,
           label: '组织',
-          color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+          color: isDark ? 'bg-amber-900 text-amber-200' : 'bg-amber-100 text-amber-800'
         }
       case 'private':
         return {
-          icon: <Lock className="w-3 h-3" />,
+          icon: <Lock className={cn(
+            "w-4 h-4",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />,
           label: '私有',
-          color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          color: isDark ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-800'
         }
       default:
         return {
-          icon: <Shield className="w-3 h-3" />,
+          icon: <Shield className={cn(
+            "w-4 h-4",
+            isDark ? "text-stone-400" : "text-stone-500"
+          )} />,
           label: '未知',
-          color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+          color: isDark ? 'bg-gray-900 text-gray-200' : 'bg-gray-100 text-gray-800'
         }
     }
   }
@@ -454,7 +466,10 @@ export default function AppPermissionsManagement() {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="w-5 h-5 animate-spin text-stone-600 mr-2" />
-        <span className="text-stone-600 dark:text-stone-400 font-serif">加载中...</span>
+        <span className={cn(
+          "font-serif",
+          isDark ? "text-stone-400" : "text-stone-600"
+        )}>加载中...</span>
       </div>
     )
   }
@@ -487,7 +502,7 @@ export default function AppPermissionsManagement() {
           return (
             <Card key={app.id} className={cn(
               "border shadow-sm",
-              isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
             )}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -496,7 +511,10 @@ export default function AppPermissionsManagement() {
                       "w-10 h-10 rounded-lg flex items-center justify-center",
                       isDark ? "bg-stone-800" : "bg-stone-100"
                     )}>
-                      <Settings className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+                      <Settings className={cn(
+                        "w-5 h-5",
+                        isDark ? "text-stone-400" : "text-stone-600"
+                      )} />
                     </div>
                     <div>
                       <CardTitle className={cn(
@@ -530,7 +548,7 @@ export default function AppPermissionsManagement() {
                       }}
                       className={cn(
                         "font-serif",
-                        isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                        isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-100"
                       )}
                     >
                       <Edit className="w-4 h-4 mr-2" />
@@ -545,14 +563,26 @@ export default function AppPermissionsManagement() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
-                        <Globe className="w-4 h-4 text-stone-500" />
-                        <span className="text-sm font-serif text-stone-600 dark:text-stone-400">
+                        <Globe className={cn(
+                          "w-4 h-4",
+                          isDark ? "text-stone-400" : "text-stone-500"
+                        )} />
+                        <span className={cn(
+                          "text-sm font-serif",
+                          isDark ? "text-stone-400" : "text-stone-600"
+                        )}>
                           可见性: {visibilityConfig.label}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Shield className="w-4 h-4 text-stone-500" />
-                        <span className="text-sm font-serif text-stone-600 dark:text-stone-400">
+                        <Shield className={cn(
+                          "w-4 h-4",
+                          isDark ? "text-stone-400" : "text-stone-500"
+                        )} />
+                        <span className={cn(
+                          "text-sm font-serif",
+                          isDark ? "text-stone-400" : "text-stone-600"
+                        )}>
                           已授权部门: {authorizedDepts}
                         </span>
                       </div>
@@ -560,7 +590,10 @@ export default function AppPermissionsManagement() {
                   </div>
                   
                   {app.description && (
-                    <p className="text-sm text-stone-600 dark:text-stone-400 font-serif">
+                    <p className={cn(
+                      "text-sm font-serif",
+                      isDark ? "text-stone-400" : "text-stone-600"
+                    )}>
                       {app.description}
                     </p>
                   )}
@@ -574,14 +607,20 @@ export default function AppPermissionsManagement() {
       {serviceInstances.length === 0 && (
         <Card className={cn(
           "border shadow-sm",
-          isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
         )}>
           <CardContent className="text-center py-12">
             <Settings className="w-16 h-16 text-stone-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-100 font-serif mb-2">
+            <h3 className={cn(
+              "text-lg font-medium font-serif mb-2",
+              isDark ? "text-stone-100" : "text-stone-900"
+            )}>
               暂无应用
             </h3>
-            <p className="text-stone-600 dark:text-stone-400 font-serif">
+            <p className={cn(
+              "font-serif",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
               系统中还没有配置任何应用实例
             </p>
           </CardContent>
@@ -604,7 +643,7 @@ export default function AppPermissionsManagement() {
       >
         <DialogContent className={cn(
           "max-w-2xl max-h-[80vh] overflow-y-auto",
-          isDark ? "bg-stone-900 border-stone-800" : "bg-white border-stone-200"
+          isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
         )}>
           {selectedApp && (
             <>
@@ -644,14 +683,17 @@ export default function AppPermissionsManagement() {
                   >
                     <SelectTrigger className={cn(
                       "font-serif",
-                      isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-300"
+                      isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-300"
                     )}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"}>
+                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"}>
                       <SelectItem value="public" className="font-serif">
                         <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-green-600" />
+                          <Globe className={cn(
+                            "w-4 h-4",
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
                           <div>
                             <div className="font-medium">公开</div>
                             <div className="text-xs text-stone-500">所有用户可见</div>
@@ -660,7 +702,10 @@ export default function AppPermissionsManagement() {
                       </SelectItem>
                       <SelectItem value="org_only" className="font-serif">
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-amber-600" />
+                          <Building2 className={cn(
+                            "w-4 h-4",
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
                           <div>
                             <div className="font-medium">组织限定</div>
                             <div className="text-xs text-stone-500">仅组织成员可见</div>
@@ -669,7 +714,10 @@ export default function AppPermissionsManagement() {
                       </SelectItem>
                       <SelectItem value="private" className="font-serif">
                         <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4 text-red-600" />
+                          <Lock className={cn(
+                            "w-4 h-4",
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )} />
                           <div>
                             <div className="font-medium">私有</div>
                             <div className="text-xs text-stone-500">仅管理员可见</div>
@@ -710,7 +758,7 @@ export default function AppPermissionsManagement() {
                             key={`${dept.org_id}-${dept.department}`}
                             className={cn(
                               "flex items-center justify-between p-3 rounded-lg border",
-                              isDark ? "bg-stone-800 border-stone-700" : "bg-stone-50 border-stone-200"
+                              isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
                             )}
                           >
                             <div className="flex items-center space-x-3">
@@ -718,13 +766,22 @@ export default function AppPermissionsManagement() {
                                 "w-8 h-8 rounded-lg flex items-center justify-center",
                                 isDark ? "bg-stone-700" : "bg-stone-100"
                               )}>
-                                <Building2 className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                                <Building2 className={cn(
+                                  "w-4 h-4",
+                                  isDark ? "text-stone-400" : "text-stone-500"
+                                )} />
                               </div>
                               <div>
-                                <p className="font-medium font-serif text-stone-900 dark:text-stone-100">
+                                <p className={cn(
+                                  "font-medium font-serif",
+                                  isDark ? "text-stone-100" : "text-stone-900"
+                                )}>
                                   {dept.org_name} - {dept.department}
                                 </p>
-                                <p className="text-sm text-stone-600 dark:text-stone-400 font-serif">
+                                <p className={cn(
+                                  "text-sm font-serif",
+                                  isDark ? "text-stone-400" : "text-stone-600"
+                                )}>
                                   {dept.member_count} 名成员
                                 </p>
                               </div>
@@ -733,10 +790,16 @@ export default function AppPermissionsManagement() {
                             <div className="flex items-center space-x-3">
                               {currentState.is_enabled && (
                                 <div className="text-right">
-                                  <p className="text-xs text-stone-600 dark:text-stone-400 font-serif">
+                                  <p className={cn(
+                                    "text-xs font-serif",
+                                    isDark ? "text-stone-400" : "text-stone-600"
+                                  )}>
                                     配额: {currentState.usage_quota || '无限制'}
                                   </p>
-                                  <p className="text-xs text-stone-600 dark:text-stone-400 font-serif">
+                                  <p className={cn(
+                                    "text-xs font-serif",
+                                    isDark ? "text-stone-400" : "text-stone-600"
+                                  )}>
                                     已用: {originalPermission?.used_count || 0}
                                   </p>
                                 </div>
@@ -755,10 +818,16 @@ export default function AppPermissionsManagement() {
                       {orgDepartments.length === 0 && (
                         <div className="text-center py-6">
                           <Users className="w-12 h-12 text-stone-400 mx-auto mb-3" />
-                          <p className="text-stone-600 dark:text-stone-400 font-serif">
+                          <p className={cn(
+                            "font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
                             暂无组织部门
                           </p>
-                          <p className="text-xs text-stone-500 dark:text-stone-500 font-serif mt-2">
+                          <p className={cn(
+                            "text-xs font-serif mt-2",
+                            isDark ? "text-stone-500" : "text-stone-500"
+                          )}>
                             请先在组织管理中添加成员到部门
                           </p>
                         </div>
@@ -771,7 +840,10 @@ export default function AppPermissionsManagement() {
               <DialogFooter className="gap-2">
                 {/* 显示待保存更改数量 */}
                 {getTotalChanges() > 0 && (
-                  <div className="text-sm text-amber-600 dark:text-amber-400 font-serif mr-auto">
+                  <div className={cn(
+                    "text-sm font-serif mr-auto",
+                    isDark ? "text-amber-400" : "text-amber-600"
+                  )}>
                     有 {getTotalChanges()} 个待保存的更改
                   </div>
                 )}
@@ -784,7 +856,7 @@ export default function AppPermissionsManagement() {
                     disabled={isSaving}
                     className={cn(
                       "font-serif",
-                      isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                      isDark ? "border-stone-700 text-stone-300 hover:bg-stone-800" : "border-stone-300 text-stone-700 hover:bg-stone-100"
                     )}
                   >
                     重置
