@@ -88,9 +88,57 @@
 | org_id | UUID | 组织ID | 引用 organizations(id)，NOT NULL |
 | user_id | UUID | 用户ID | 引用 auth.users(id)，NOT NULL |
 | role | org_member_role | 成员角色 | DEFAULT 'member' |
+| department | TEXT | 部门名称 | |
+| job_title | TEXT | 职位名称 | |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
 | | | | UNIQUE(org_id, user_id) |
+
+**枚举类型定义：**
+- `org_member_role`: ENUM ('owner', 'admin', 'member')
+
+### 部门应用权限管理
+
+#### department_app_permissions
+
+存储部门级应用访问权限，实现精确的权限控制。**重要：此表不包含任何自动生成的虚拟数据，所有权限记录都必须通过管理界面手动配置。**
+
+| 字段名 | 类型 | 描述 | 约束 |
+|--------|------|------|------|
+| id | UUID | 权限ID | 主键 |
+| org_id | UUID | 组织ID | 引用 organizations(id)，NOT NULL |
+| department | TEXT | 部门名称 | NOT NULL |
+| service_instance_id | UUID | 服务实例ID | 引用 service_instances(id)，NOT NULL |
+| is_enabled | BOOLEAN | 是否启用 | DEFAULT TRUE |
+| permission_level | TEXT | 权限级别 | DEFAULT 'full'，CHECK IN ('full', 'read_only', 'restricted') |
+| usage_quota | INTEGER | 月度使用配额 | NULL表示无限制 |
+| used_count | INTEGER | 当月已使用次数 | DEFAULT 0 |
+| quota_reset_date | DATE | 配额重置日期 | DEFAULT CURRENT_DATE |
+| settings | JSONB | 扩展配置 | DEFAULT '{}' |
+| created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
+| | | | UNIQUE(org_id, department, service_instance_id) |
+
+**权限级别说明：**
+- `full`: 完全访问权限
+- `read_only`: 只读权限
+- `restricted`: 受限权限
+
+**权限配置原则：**
+- **手动配置**: 所有权限记录必须通过管理界面手动创建
+- **无虚拟数据**: 系统不会自动为组织×部门×应用的组合创建权限记录
+- **默认拒绝**: 如果部门没有权限记录，则无法访问org_only类型的应用
+- **精确控制**: 管理员可以精确控制哪些部门可以访问哪些应用
+
+**应用可见性控制：**
+- `public`: 所有用户可见，无需权限检查
+- `org_only`: 只有在department_app_permissions表中有启用权限记录的部门成员可见
+- `private`: 私有应用（预留功能）
+
+**索引优化：**
+- `idx_dept_app_permissions_org_dept`: (org_id, department)
+- `idx_dept_app_permissions_service_instance_id`: (service_instance_id)
+- `idx_dept_app_permissions_enabled`: (org_id, department, is_enabled)
 
 ### 聊天和消息
 
@@ -156,11 +204,17 @@
 | instance_id | TEXT | 实例标识符 | NOT NULL |
 | api_path | TEXT | API路径 | DEFAULT '' |
 | is_default | BOOLEAN | 是否默认 | DEFAULT FALSE |
+| visibility | TEXT | 应用可见性 | DEFAULT 'public'，CHECK IN ('public', 'org_only', 'private') |
 | config | JSONB | 配置参数 | DEFAULT '{}' |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT NOW() |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT NOW() |
 | | | | UNIQUE(provider_id, instance_id) |
 | | | | UNIQUE INDEX: 每个提供商最多一个默认应用 |
+
+**应用可见性说明：**
+- `public`: 公开应用，所有用户可见
+- `org_only`: 组织应用，只有被授权的部门成员可见
+- `private`: 私有应用，预留给未来扩展
 
 #### api_keys
 
@@ -293,6 +347,11 @@
    - 只有管理员可以访问和管理域名映射
    - 只有管理员可以访问和管理认证设置
 
+6. **部门应用权限**
+   - 用户只能查看自己部门的应用权限
+   - 组织管理员可以管理所有部门的应用权限
+   - 权限检查基于用户所属组织和部门
+
 #### 加密存储
 
 API密钥使用AES-256-GCM加密算法存储，格式为"iv:authTag:encryptedData"，确保即使数据库被泄露，密钥也不会被直接获取。
@@ -344,6 +403,12 @@ API密钥使用AES-256-GCM加密算法存储，格式为"iv:authTag:encryptedDat
 
 6. **服务实例管理函数**
    - `set_default_service_instance(target_instance_id uuid, target_provider_id uuid)`: 原子性地设置默认服务实例，确保同一提供商只有一个默认实例。该函数在事务中执行两个操作：首先将同一提供商的所有实例设为非默认，然后将指定实例设为默认，防止并发操作导致的数据不一致问题。
+
+7. **部门权限管理函数**
+   - `get_user_accessible_apps(user_id UUID)`: 获取用户可访问的应用列表，基于部门权限和应用可见性
+   - `check_user_app_permission(user_id UUID, app_instance_id TEXT)`: 检查用户对特定应用的访问权限
+   - `increment_app_usage(user_id UUID, app_instance_id TEXT)`: 增加应用使用计数，支持配额管理
+   - `reset_monthly_quotas()`: 重置所有部门的月度使用配额
 
 ## 用户管理系统
 
@@ -609,6 +674,16 @@ VALUES ('00000000-0000-0000-0000-000000000001');
 - 组织内用户可以共享资源
 - 数据隔离通过RLS实现
 
+### 部门级权限控制
+
+实现了精确的部门级应用权限管理：
+
+- **三元组权限控制**：基于 `(org_id + department + service_instance_id)` 的精确权限控制
+- **应用可见性管理**：支持公开、组织内、私有三种可见性级别
+- **配额管理**：支持部门级使用配额限制和自动重置
+- **权限级别**：支持完全访问、只读、受限三种权限级别
+- **智能权限创建**：只为有真实组织和部门数据的情况创建权限记录
+
 ### 灵活的API密钥管理
 
 API密钥管理系统设计灵活，支持多种场景：
@@ -644,9 +719,27 @@ SSO认证系统支持多种认证方式：
 | id            |<---+  | id             |<------| org_id        |
 | full_name     |    |  | name           |       | user_id       |
 | username      |    |  | logo_url       |       | role          |
-| avatar_url    |    |  | settings       |       | created_at    |
-| role          |    |  | created_at     |       | updated_at    |
-| status        |    |  | updated_at     |       +---------------+
+| avatar_url    |    |  | settings       |       | department    |
+| role          |    |  | created_at     |       | job_title     |
+| status        |    |  | updated_at     |       | created_at    |
+| created_at    |    |  |                |       | updated_at    |
+| updated_at    |    |  |                |       +---------------+
+| last_login    |    |  |                |       |               |
+| auth_source   |    |  |                |       | department_app_permissions |
+| sso_provider_id|    |  |                |       +---------------+
++---------------+    |  |                |       | id            |
+                     |  |                |<------| org_id        |
+                     |  |                |       | department    |
+                     |  |                |       | service_instance_id |
+                     |  |                |       | is_enabled    |
+                     |  |                |       | permission_level |
+                     |  |                |       | usage_quota   |
+                     |  |                |       | used_count    |
+                     |  |                |       | quota_reset_date |
+                     |  |                |       | settings      |
+                     |  |                |       | created_at    |
+                     |  |                |       | updated_at    |
+                     |  |                |       +---------------+
 | created_at    |    |  |                |       |               |
 | updated_at    |    |  |                |       | ai_configs    |
 | last_login    |    |  |                |       | id            |

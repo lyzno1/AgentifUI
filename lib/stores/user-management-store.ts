@@ -17,6 +17,9 @@ import {
   deleteUser,
   batchUpdateUserStatus,
   batchUpdateUserRole,
+  getOrganizationOptions,
+  getDepartmentOptions,
+  getDepartmentOptionsByOrganization,
   type EnhancedUser,
   type UserStats,
   type UserFilters
@@ -33,6 +36,12 @@ interface LoadingState {
   batchOperating: boolean;
 }
 
+// 筛选选项类型
+interface FilterOptions {
+  organizations: Array<{ value: string; label: string }>;
+  departments: Array<{ value: string; label: string }>;
+}
+
 // 用户管理状态接口
 interface UserManagementState {
   // 数据状态
@@ -40,6 +49,9 @@ interface UserManagementState {
   stats: UserStats | null;
   selectedUser: EnhancedUser | null;
   selectedUserIds: string[];
+  
+  // 筛选选项数据
+  filterOptions: FilterOptions;
   
   // 分页和筛选
   filters: UserFilters;
@@ -62,6 +74,8 @@ interface UserManagementState {
   loadUsers: () => Promise<void>;
   loadStats: () => Promise<void>;
   loadUserDetail: (userId: string) => Promise<void>;
+  loadFilterOptions: () => Promise<void>;
+  loadDepartmentsByOrganization: (organizationName: string) => Promise<void>;
   updateFilters: (filters: Partial<UserFilters>) => void;
   setPage: (page: number) => void;
   setPageSize: (pageSize: number) => void;
@@ -95,6 +109,10 @@ const initialState = {
   stats: null,
   selectedUser: null,
   selectedUserIds: [],
+  filterOptions: {
+    organizations: [],
+    departments: []
+  },
   filters: {
     page: 1,
     pageSize: 20,
@@ -216,6 +234,41 @@ export const useUserManagementStore = create<UserManagementState>()(
             error: error instanceof Error ? error.message : '加载用户详情失败',
             loading: { ...state.loading, userDetail: false }
           }));
+        }
+      },
+      
+      // 加载筛选选项
+      loadFilterOptions: async () => {
+        try {
+          const [orgResult, deptResult] = await Promise.all([
+            getOrganizationOptions(),
+            getDepartmentOptions()
+          ]);
+          
+          set((state) => ({
+            filterOptions: {
+              organizations: orgResult.success ? orgResult.data : [],
+              departments: deptResult.success ? deptResult.data : []
+            }
+          }));
+        } catch (error) {
+          console.error('加载筛选选项失败:', error);
+        }
+      },
+      
+      // 根据组织加载部门选项
+      loadDepartmentsByOrganization: async (organizationName: string) => {
+        try {
+          const result = await getDepartmentOptionsByOrganization(organizationName);
+          
+          set((state) => ({
+            filterOptions: {
+              ...state.filterOptions,
+              departments: result.success ? result.data : []
+            }
+          }));
+        } catch (error) {
+          console.error('加载组织部门选项失败:', error);
         }
       },
       

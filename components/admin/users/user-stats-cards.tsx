@@ -153,28 +153,28 @@ export const UserStatsCards: React.FC<UserStatsCardsProps> = ({ stats, isLoading
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 mb-6">
         {[...Array(8)].map((_, index) => (
           <div
             key={index}
             className={cn(
-              "p-3 rounded-lg border animate-pulse",
-              isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"
+              "p-4 rounded-xl border animate-pulse backdrop-blur-sm",
+              isDark ? "bg-stone-800/50 border-stone-700/50" : "bg-white/50 border-stone-200/50"
             )}
           >
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-3">
               <div className={cn(
                 "w-8 h-8 rounded-lg",
-                isDark ? "bg-stone-700" : "bg-stone-100"
+                isDark ? "bg-stone-700/50" : "bg-stone-100"
               )} />
               <div>
                 <div className={cn(
-                  "h-3 w-12 rounded mb-1",
-                  isDark ? "bg-stone-700" : "bg-stone-200"
+                  "h-3 w-16 rounded mb-2",
+                  isDark ? "bg-stone-700/50" : "bg-stone-200"
                 )} />
                 <div className={cn(
-                  "h-4 w-8 rounded",
-                  isDark ? "bg-stone-700" : "bg-stone-200"
+                  "h-5 w-12 rounded",
+                  isDark ? "bg-stone-700/50" : "bg-stone-200"
                 )} />
               </div>
             </div>
@@ -185,7 +185,7 @@ export const UserStatsCards: React.FC<UserStatsCardsProps> = ({ stats, isLoading
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 mb-6">
       {statCards.map((card, index) => {
         const colors = getColorClasses(card.color)
         
@@ -193,9 +193,10 @@ export const UserStatsCards: React.FC<UserStatsCardsProps> = ({ stats, isLoading
           <div
             key={index}
             className={cn(
-              "p-3 rounded-lg border transition-all duration-200 hover:shadow-md",
+              "p-4 rounded-xl border transition-all duration-200 hover:shadow-lg hover:scale-105",
               colors.bg,
-              colors.border
+              colors.border,
+              "backdrop-blur-sm"
             )}
           >
             <div className="flex flex-col space-y-2">

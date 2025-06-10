@@ -8,7 +8,7 @@ import { createClient } from '@lib/supabase/client';
 // 定义资料类型
 export interface Profile {
   id: string;
-  full_name: string | null;
+  full_name: string | null | undefined;
   username: string | null;
   avatar_url: string | null;
   role: UserRole;

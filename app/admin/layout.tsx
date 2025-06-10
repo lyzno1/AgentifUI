@@ -17,7 +17,8 @@ import {
   Users,
   BarChart3,
   PanelLeft,
-  PanelLeftClose
+  PanelLeftClose,
+  Building2
 } from 'lucide-react'
 
 interface AdminLayoutProps {
@@ -66,6 +67,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Users, 
       href: '/admin/users',
       description: '管理用户账户和权限'
+    },
+    { 
+      text: '组织管理', 
+      icon: Building2, 
+      href: '/admin/organizations',
+      description: '管理组织结构和部门权限'
     },
     { 
       text: '数据统计', 

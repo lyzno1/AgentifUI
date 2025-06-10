@@ -23,15 +23,19 @@ export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | '
 // 用户和身份管理
 export interface Profile {
   id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  role: UserRole;
-  status: AccountStatus;
+  email?: string;
+  full_name?: string | null;
+  username?: string;
+  avatar_url?: string;
+  auth_source: string;
+  phone?: string;
+  department?: string;
+  job_title?: string;
   created_at: string;
   updated_at: string;
+  role: UserRole;
+  status: AccountStatus;
   last_login: string | null;
-  auth_source: string;
   sso_provider_id: string | null;
 }
 
@@ -62,6 +66,35 @@ export interface OrgMember {
   role: OrgMemberRole;
   department: string | null;
   job_title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- BEGIN COMMENT ---
+// 🎯 更新：部门应用权限管理
+// 改为基于部门的权限控制，更符合实际业务需求
+// --- END COMMENT ---
+// --- BEGIN COMMENT ---
+// 🎯 应用权限级别类型 - 已删除，简化权限设计
+// export type AppPermissionLevel = 'full' | 'read_only' | 'restricted';
+// --- END COMMENT ---
+export type AppVisibility = 'public' | 'org_only' | 'private';
+
+// --- BEGIN COMMENT ---
+// 🎯 部门应用权限接口 - 简化版本
+// 删除了混淆的permission_level字段，只保留核心的is_enabled和usage_quota
+// --- END COMMENT ---
+export interface DepartmentAppPermission {
+  id: string;
+  org_id: string;
+  department: string;
+  service_instance_id: string;
+  is_enabled: boolean;
+  // permission_level: AppPermissionLevel; // ❌ 已删除 - 造成混淆的字段
+  usage_quota: number | null; // NULL表示无限制
+  used_count: number;
+  quota_reset_date: string;
+  settings: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -201,6 +234,9 @@ export interface ServiceInstanceConfig {
   [key: string]: any;
 }
 
+// --- BEGIN COMMENT ---
+// 🎯 扩展ServiceInstance接口，添加可见性字段
+// --- END COMMENT ---
 export interface ServiceInstance {
   id: string;
   provider_id: string;
@@ -209,6 +245,7 @@ export interface ServiceInstance {
   instance_id: string;
   api_path: string;
   is_default: boolean;
+  visibility: AppVisibility; // 新增字段
   config: ServiceInstanceConfig;
   created_at: string;
   updated_at: string;
@@ -314,6 +351,36 @@ export interface AppExecution {
   completed_at: string | null;
 }
 
+// --- BEGIN COMMENT ---
+// 🎯 用户可访问应用的扩展信息
+// 简化版本：删除了permission_level字段
+// --- END COMMENT ---
+export interface UserAccessibleApp {
+  service_instance_id: string;
+  display_name: string | null;
+  description: string | null;
+  instance_id: string;
+  api_path: string;
+  visibility: AppVisibility;
+  config: ServiceInstanceConfig;
+  // permission_level: AppPermissionLevel; // ❌ 已删除
+  usage_quota: number | null;
+  used_count: number;
+  quota_remaining: number | null;
+  department: string | null;
+  org_name: string | null;
+}
+
+// --- BEGIN COMMENT ---
+// 🎯 应用权限检查结果 - 简化版本
+// --- END COMMENT ---
+export interface AppPermissionCheck {
+  has_access: boolean;
+  // permission_level: AppPermissionLevel | null; // ❌ 已删除
+  quota_remaining: number | null;
+  error_message: string | null;
+}
+
 // 数据库类型命名空间
 export namespace Database {
   export interface Tables {
@@ -332,5 +399,8 @@ export namespace Database {
     ai_configs: AiConfig;
     api_logs: ApiLog;
     app_executions: AppExecution;
+    department_app_permissions: DepartmentAppPermission;
+    user_accessible_apps: UserAccessibleApp;
+    app_permission_checks: AppPermissionCheck;
   }
 }

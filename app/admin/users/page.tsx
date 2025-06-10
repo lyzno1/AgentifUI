@@ -19,7 +19,8 @@ import {
   UserCheck,
   UserX,
   Clock,
-  RefreshCw
+  RefreshCw,
+  CheckSquare
 } from 'lucide-react'
 
 export default function UsersManagementPage() {
@@ -33,12 +34,15 @@ export default function UsersManagementPage() {
     users,
     stats,
     filters,
+    filterOptions,
     pagination,
     loading,
     error,
     selectedUserIds,
     loadUsers,
     loadStats,
+    loadFilterOptions,
+    loadDepartmentsByOrganization,
     updateFilters,
     setPage,
     toggleUserSelection,
@@ -135,7 +139,8 @@ export default function UsersManagementPage() {
   useEffect(() => {
     loadUsers()
     loadStats()
-  }, [loadUsers, loadStats])
+    loadFilterOptions()
+  }, [loadUsers, loadStats, loadFilterOptions])
 
   // --- BEGIN COMMENT ---
   // 处理错误提示
@@ -155,10 +160,14 @@ export default function UsersManagementPage() {
       role: undefined,
       status: undefined,
       auth_source: undefined,
+      organization: undefined,
+      department: undefined,
       search: undefined,
       sortBy: 'created_at',
       sortOrder: 'desc'
     })
+    // 重置时重新加载所有筛选选项
+    loadFilterOptions()
   }
 
   // --- BEGIN COMMENT ---
@@ -320,69 +329,73 @@ export default function UsersManagementPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* --- BEGIN COMMENT ---
-      页面标题和操作栏
-      --- END COMMENT --- */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className={cn(
-            "text-3xl font-bold font-serif mb-2",
-            isDark ? "text-stone-100" : "text-stone-900"
-          )}>
-            用户管理
-          </h1>
-          <p className={cn(
-            "text-sm font-serif",
-            isDark ? "text-stone-400" : "text-stone-600"
-          )}>
-            管理系统用户账户、权限和访问控制
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {/* --- BEGIN COMMENT ---
-          刷新按钮
-          --- END COMMENT --- */}
-          <button
-            onClick={() => {
-              loadUsers()
-              loadStats()
-            }}
-            disabled={loading.users || loading.stats}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors font-serif",
-              loading.users || loading.stats
-                ? "opacity-50 cursor-not-allowed"
-                : isDark
-                  ? "border-stone-600 text-stone-300 hover:bg-stone-700"
-                  : "border-stone-300 text-stone-700 hover:bg-stone-50"
-            )}
-          >
-            <RefreshCw className={cn(
-              "h-4 w-4",
-              (loading.users || loading.stats) && "animate-spin"
-            )} />
-            刷新
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-stone-100 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* --- BEGIN COMMENT ---
+        页面标题和操作栏 - 优化视觉层次和间距
+        --- END COMMENT --- */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+          <div>
+            <h1 className={cn(
+              "text-4xl font-bold font-serif mb-3 bg-gradient-to-r bg-clip-text text-transparent",
+              isDark 
+                ? "from-stone-100 to-stone-300" 
+                : "from-stone-800 to-stone-600"
+            )}>
+              用户管理
+            </h1>
+            <p className={cn(
+              "text-base font-serif flex items-center gap-2",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
+              <Users className="h-4 w-4" />
+              管理系统用户账户、权限和访问控制
+            </p>
+          </div>
           
-          {/* --- BEGIN COMMENT ---
-          添加用户按钮（暂时禁用）
-          --- END COMMENT --- */}
-          <button
-            onClick={() => toast.success('添加用户功能开发中')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-serif",
-              isDark
-                ? "bg-stone-600 text-white hover:bg-stone-700"
-                : "bg-stone-700 text-white hover:bg-stone-800"
-            )}
-          >
-            <Plus className="h-4 w-4" />
-            添加用户
-          </button>
+          <div className="flex items-center gap-3">
+            {/* --- BEGIN COMMENT ---
+            刷新按钮 - 优化样式和交互
+            --- END COMMENT --- */}
+            <button
+              onClick={() => {
+                loadUsers()
+                loadStats()
+              }}
+              disabled={loading.users || loading.stats}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 font-serif shadow-sm",
+                loading.users || loading.stats
+                  ? "opacity-50 cursor-not-allowed"
+                  : isDark
+                    ? "border-stone-600/50 text-stone-300 hover:bg-stone-700/50 hover:border-stone-500 hover:shadow-md"
+                    : "border-stone-300/50 text-stone-700 hover:bg-stone-50/80 hover:border-stone-400 hover:shadow-md backdrop-blur-sm"
+              )}
+            >
+              <RefreshCw className={cn(
+                "h-4 w-4",
+                (loading.users || loading.stats) && "animate-spin"
+              )} />
+              <span className="hidden sm:inline">刷新数据</span>
+            </button>
+            
+            {/* --- BEGIN COMMENT ---
+            添加用户按钮 - 优化样式和视觉效果
+            --- END COMMENT --- */}
+            <button
+              onClick={() => toast.success('添加用户功能开发中')}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 font-serif shadow-sm hover:shadow-md",
+                isDark
+                  ? "bg-gradient-to-r from-stone-600 to-stone-700 text-white hover:from-stone-500 hover:to-stone-600"
+                  : "bg-gradient-to-r from-stone-700 to-stone-800 text-white hover:from-stone-600 hover:to-stone-700"
+              )}
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">添加用户</span>
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* --- BEGIN COMMENT ---
       统计卡片
@@ -399,38 +412,51 @@ export default function UsersManagementPage() {
         filters={filters}
         onFiltersChange={updateFilters}
         onReset={handleResetFilters}
+        organizationOptions={filterOptions.organizations}
+        departmentOptions={filterOptions.departments}
+        onOrganizationChange={loadDepartmentsByOrganization}
       />
 
-      {/* --- BEGIN COMMENT ---
-      批量操作栏（当有选中项时显示）
-      --- END COMMENT --- */}
-      {selectedUserIds.length > 0 && (
-        <div className={cn(
-          "p-4 rounded-xl border mb-4",
-          isDark ? "bg-stone-500/10 border-stone-500/20" : "bg-stone-50 border-stone-200"
-        )}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className={cn(
-                "text-sm font-medium font-serif",
-                isDark ? "text-stone-300" : "text-stone-700"
-              )}>
-                已选择 {selectedUserIds.length} 个用户
-              </span>
-              <button
-                onClick={clearSelection}
-                className={cn(
-                  "text-xs px-2 py-1 rounded transition-colors font-serif",
-                  isDark 
-                    ? "text-stone-400 hover:bg-stone-500/20" 
-                    : "text-stone-600 hover:bg-stone-100"
-                )}
-              >
-                取消选择
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-2">
+        {/* --- BEGIN COMMENT ---
+        批量操作栏 - 优化设计和交互体验
+        --- END COMMENT --- */}
+        {selectedUserIds.length > 0 && (
+          <div className={cn(
+            "p-5 rounded-xl border mb-6 shadow-lg backdrop-blur-sm",
+            isDark 
+              ? "bg-stone-800/60 border-stone-700/50 shadow-stone-900/20" 
+              : "bg-white/80 border-stone-200/50 shadow-stone-200/50"
+          )}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center",
+                  isDark ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                )}>
+                  <CheckSquare className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className={cn(
+                    "text-sm font-semibold font-serif",
+                    isDark ? "text-stone-200" : "text-stone-800"
+                  )}>
+                    已选择 {selectedUserIds.length} 个用户
+                  </span>
+                  <button
+                    onClick={clearSelection}
+                    className={cn(
+                      "ml-3 text-xs px-2 py-1 rounded-lg transition-colors font-serif",
+                      isDark 
+                        ? "text-stone-400 hover:bg-stone-700/50 hover:text-stone-300" 
+                        : "text-stone-600 hover:bg-stone-100 hover:text-stone-700"
+                    )}
+                  >
+                    取消选择
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
               {/* --- BEGIN COMMENT ---
               批量角色操作
               --- END COMMENT --- */}
@@ -506,31 +532,32 @@ export default function UsersManagementPage() {
                 <UserX className="h-3 w-3" />
                 暂停
               </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* --- BEGIN COMMENT ---
-      用户表格
-      --- END COMMENT --- */}
-      <UserTable
-        users={users}
-        selectedUserIds={selectedUserIds}
-        isLoading={loading.users}
-        onSelectUser={handleSelectUser}
-        onSelectAll={handleSelectAll}
-        onEditUser={handleEditUser}
-        onViewUser={handleViewUser}
-        onDeleteUser={handleDeleteUser}
-        onChangeRole={handleChangeRole}
-        onChangeStatus={handleChangeStatus}
-      />
+        {/* --- BEGIN COMMENT ---
+        用户表格
+        --- END COMMENT --- */}
+        <UserTable
+          users={users}
+          selectedUserIds={selectedUserIds}
+          isLoading={loading.users}
+          onSelectUser={handleSelectUser}
+          onSelectAll={handleSelectAll}
+          onEditUser={handleEditUser}
+          onViewUser={handleViewUser}
+          onDeleteUser={handleDeleteUser}
+          onChangeRole={handleChangeRole}
+          onChangeStatus={handleChangeStatus}
+        />
 
-      {/* --- BEGIN COMMENT ---
-      分页控制
-      --- END COMMENT --- */}
-      <PaginationControls />
+        {/* --- BEGIN COMMENT ---
+        分页控制
+        --- END COMMENT --- */}
+        <PaginationControls />
+      </div>
     </div>
   )
 } 

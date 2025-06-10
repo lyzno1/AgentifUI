@@ -189,10 +189,11 @@ CREATE POLICY "管理员可以查看所有执行记录" ON app_executions
    - 存储 API 服务提供商信息，如 Dify
 
 2. `service_instances` 表：
-   - 主要字段：`id`, `provider_id`, `name`, `display_name`, `description`, `instance_id`, `api_path`, `is_default`, `config`, `created_at`, `updated_at`
+   - 主要字段：`id`, `provider_id`, `name`, `display_name`, `description`, `instance_id`, `api_path`, `is_default`, `visibility`, `config`, `created_at`, `updated_at`
    - 存储特定服务提供商的实例配置
    - `provider_id` 和 `instance_id` 组合具有唯一性约束
    - **默认应用唯一性约束**：通过部分唯一索引确保每个提供商最多只能有一个默认应用（`is_default = TRUE`）
+   - `visibility` 字段：应用可见性控制（'public', 'org_only', 'private'），默认为 'public'
 
 3. `api_keys` 表：
    - 主要字段：`id`, `provider_id`, `service_instance_id`, `user_id`, `key_value`, `is_default`, `usage_count`, `last_used_at`, `created_at`, `updated_at`
@@ -204,8 +205,128 @@ CREATE POLICY "管理员可以查看所有执行记录" ON app_executions
    - 主要字段：`id`, `name`, `logo_url`, `settings`, `created_at`, `updated_at`
 
 2. `org_members` 表：
-   - 主要字段：`id`, `org_id`, `user_id`, `role`, `created_at`, `updated_at`
+   - 主要字段：`id`, `org_id`, `user_id`, `role`, `department`, `job_title`, `created_at`, `updated_at`
    - `role` 字段可能的值为 `'owner'`, `'admin'` 或 `'member'`
+   - `department` 字段：部门名称，用于部门级权限控制
+   - `job_title` 字段：职位名称
+
+### 部门应用权限管理
+
+**`department_app_permissions` 表** - 实现部门级应用访问权限控制：
+
+**⚠️ 重要说明：此表不包含任何自动生成的虚拟数据，所有权限记录都必须通过管理界面手动配置。**
+
+#### 表结构设计
+
+1. **权限控制字段**：
+   - `id`: 主键，UUID 类型
+   - `org_id`: 组织ID，关联 organizations 表
+   - `department`: 部门名称，与 org_members.department 对应
+   - `service_instance_id`: 服务实例ID，关联 service_instances 表
+   - `is_enabled`: 是否启用权限，布尔类型
+
+2. **权限级别和配额**：
+   - `permission_level`: 权限级别枚举（'full', 'read_only', 'restricted'）
+   - `usage_quota`: 月度使用配额，NULL 表示无限制
+   - `used_count`: 当月已使用次数
+   - `quota_reset_date`: 配额重置日期
+
+3. **扩展和时间戳**：
+   - `settings`: 扩展配置，JSONB 格式
+   - `created_at`, `updated_at`: 时间戳字段
+
+#### 权限配置原则
+
+1. **手动配置原则**：
+   - 所有权限记录必须通过管理界面手动创建
+   - 系统不会自动为组织×部门×应用的组合创建权限记录
+   - 确保权限控制的精确性和安全性
+
+2. **默认拒绝策略**：
+   - 如果部门没有权限记录，则无法访问 `org_only` 类型的应用
+   - 只有 `public` 应用对所有用户可见
+   - 管理员需要明确授权部门访问特定应用
+
+3. **数据清理保证**：
+   - 迁移文件 `20250610140000_clean_virtual_department_permissions.sql` 已清空所有虚拟数据
+   - 修改了同步函数，移除自动创建权限的逻辑
+   - 确保数据库中只包含真实的权限配置
+
+#### 权限控制机制
+
+1. **三元组权限控制**：
+   - 基于 `(org_id + department + service_instance_id)` 的精确权限控制
+   - 唯一约束确保一个部门对一个应用只有一条权限记录
+
+2. **应用可见性管理**：
+   - `public`: 公开应用，所有用户可见
+   - `org_only`: 组织应用，只有被授权的部门成员可见
+   - `private`: 私有应用，预留给未来扩展
+
+3. **权限级别说明**：
+   - `full`: 完全访问权限
+   - `read_only`: 只读权限
+   - `restricted`: 受限权限
+
+#### 核心数据库函数
+
+1. **`get_user_accessible_apps(user_id UUID)`**：
+   - 获取用户可访问的应用列表
+   - 基于用户所属部门的权限配置
+   - 支持应用可见性过滤
+
+2. **`check_user_app_permission(user_id UUID, app_instance_id TEXT)`**：
+   - 检查用户对特定应用的访问权限
+   - 返回权限状态、级别和剩余配额
+   - 支持配额限制检查
+
+3. **`increment_app_usage(user_id UUID, app_instance_id TEXT)`**：
+   - 增加应用使用计数
+   - 支持配额管理和限制检查
+   - 自动更新部门使用统计
+
+4. **`reset_monthly_quotas()`**：
+   - 重置所有部门的月度使用配额
+   - 支持定期配额重置
+
+#### 索引优化
+
+```sql
+-- 部门查询优化
+CREATE INDEX idx_dept_app_permissions_org_dept ON department_app_permissions(org_id, department);
+
+-- 应用查询优化
+CREATE INDEX idx_dept_app_permissions_service_instance_id ON department_app_permissions(service_instance_id);
+
+-- 权限过滤优化
+CREATE INDEX idx_dept_app_permissions_enabled ON department_app_permissions(org_id, department, is_enabled);
+```
+
+#### 行级安全策略
+
+```sql
+-- 用户可以查看自己部门的应用权限
+CREATE POLICY "用户可以查看自己部门的应用权限" ON department_app_permissions
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_members.org_id = department_app_permissions.org_id
+      AND org_members.department = department_app_permissions.department
+      AND org_members.user_id = auth.uid()
+    )
+  );
+
+-- 组织管理员可以管理所有部门的应用权限
+CREATE POLICY "组织管理员可以管理部门应用权限" ON department_app_permissions
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_members.org_id = department_app_permissions.org_id
+      AND org_members.user_id = auth.uid()
+      AND org_members.role IN ('owner', 'admin')
+    )
+  );
+```
 
 ### SSO 认证
 
@@ -449,6 +570,11 @@ if (!isAdmin) return <AccessDenied />;
    - 管理员可以进行所有操作
    - 允许服务端和已认证用户读取 API 密钥（仅读取，不能修改）
 
+4. **department_app_permissions 表**：
+   - 用户只能查看自己部门的应用权限
+   - 组织管理员可以管理所有部门的应用权限
+   - 权限检查基于用户所属组织和部门
+
 这些策略确保了 API 路由可以正常访问 Dify 配置，同时保持了适当的安全控制。
 
 ## 相关迁移文件
@@ -502,6 +628,12 @@ if (!isAdmin) return <AccessDenied />;
 
 ### 应用执行记录管理
 - `/supabase/migrations/20250601124105_add_app_executions_table.sql`: 添加应用执行记录表，支持工作流和文本生成应用的执行历史管理
+
+### 部门应用权限管理
+- `/supabase/migrations/20250610120000_add_org_app_permissions.sql`: 初始组织级权限系统（已被替代）
+- `/supabase/migrations/20250610120001_redesign_department_permissions.sql`: 重新设计的部门级权限系统，实现精确的部门级应用权限控制
+- `/supabase/migrations/20250610130000_add_department_permission_management.sql`: 添加部门权限管理函数和同步工具
+- `/supabase/migrations/20250610140000_clean_virtual_department_permissions.sql`: **清空虚拟权限数据，确保只有手动配置的权限记录**
 
 ## 迁移文件说明
 

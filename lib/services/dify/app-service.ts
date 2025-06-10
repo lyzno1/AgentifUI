@@ -3,7 +3,8 @@ import type { DifyAppParametersResponse, DifyApiError, DifyAppInfoResponse, Dify
 import type { ServiceInstanceConfig } from '@lib/types/database';
 
 /**
- * 获取所有可用的Dify应用
+ * 获取所有可用的Dify应用（管理员用）
+ * 返回所有应用，包括私有应用，用于管理界面
  */
 export async function getAllDifyApps(): Promise<Array<{
   id: string;
@@ -12,6 +13,7 @@ export async function getAllDifyApps(): Promise<Array<{
   display_name?: string;
   description?: string;
   config?: ServiceInstanceConfig;
+  visibility?: string;
 }>> {
   try {
     // 获取Dify提供商
@@ -20,13 +22,13 @@ export async function getAllDifyApps(): Promise<Array<{
       throw new Error('未找到Dify提供商');
     }
 
-    // 获取所有Dify服务实例
+    // 获取所有Dify服务实例（包括visibility字段）
     const { createClient } = await import('@lib/supabase/client');
     const supabase = createClient();
     
     const { data: instances, error } = await supabase
       .from('service_instances')
-      .select('id, instance_id, display_name, description, config')
+      .select('id, instance_id, display_name, description, config, visibility')
       .eq('provider_id', providerResult.data.id)
       .order('display_name');
       
@@ -40,11 +42,63 @@ export async function getAllDifyApps(): Promise<Array<{
       instance_id: instance.instance_id,
       display_name: instance.display_name,
       description: instance.description,
-      config: instance.config as ServiceInstanceConfig
+      config: instance.config as ServiceInstanceConfig,
+      visibility: instance.visibility || 'public' // 默认为公开
     })) || [];
     
   } catch (error) {
     console.error('获取Dify应用列表失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 获取公开的Dify应用（未登录用户用）
+ * 只返回公开应用，用于应用市场
+ */
+export async function getPublicDifyApps(): Promise<Array<{
+  id: string;
+  name: string;
+  instance_id: string;
+  display_name?: string;
+  description?: string;
+  config?: ServiceInstanceConfig;
+  visibility?: string;
+}>> {
+  try {
+    // 获取Dify提供商
+    const providerResult = await getProviderByName('Dify');
+    if (!providerResult.success || !providerResult.data) {
+      throw new Error('未找到Dify提供商');
+    }
+
+    // 只获取公开的Dify服务实例
+    const { createClient } = await import('@lib/supabase/client');
+    const supabase = createClient();
+    
+    const { data: instances, error } = await supabase
+      .from('service_instances')
+      .select('id, instance_id, display_name, description, config, visibility')
+      .eq('provider_id', providerResult.data.id)
+      .in('visibility', ['public']) // 只获取公开应用
+      .order('display_name');
+      
+    if (error) {
+      throw error;
+    }
+    
+    return instances?.map(instance => ({
+      id: instance.id,
+      name: instance.display_name || instance.instance_id,
+      instance_id: instance.instance_id,
+      display_name: instance.display_name,
+      description: instance.description,
+      config: instance.config as ServiceInstanceConfig,
+      visibility: instance.visibility || 'public'
+    })) || [];
+    
+  } catch (error) {
+    console.error('获取公开Dify应用列表失败:', error);
     throw error;
   }
 }

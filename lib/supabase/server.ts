@@ -6,9 +6,9 @@ import { cookies } from 'next/headers'
  * 用于服务器组件中访问 Supabase 服务
  * 注意：必须在服务器组件中使用此函数
  */
-export const createClient = () => {
-  // 使用类型断言来处理 cookies 的类型问题
-  const cookieStore = cookies() as any
+export const createClient = async () => {
+  // 根据Next.js 15要求，cookies()需要被await
+  const cookieStore = await cookies()
   
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

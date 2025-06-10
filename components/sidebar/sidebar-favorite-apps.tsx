@@ -344,7 +344,7 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
         </div>
       )}
 
-      {/* 查看全部收藏按钮 - 参考chat list的"查看全部历史"样式 */}
+      {/* 查看全部常用按钮 - 参考chat list的"查看全部历史"样式 */}
       {favoriteApps.length > 0 && (
         <div className="px-2">
           <div className="mt-1">
@@ -371,7 +371,7 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
               )}
             >
               <span className="text-xs font-medium font-serif">
-                {favoriteApps.length > 5 ? `查看全部收藏 (${favoriteApps.length})` : '查看收藏应用'}
+                {favoriteApps.length > 5 ? `查看全部常用 (${favoriteApps.length})` : '查看常用应用'}
               </span>
             </SidebarListButton>
           </div>

@@ -92,6 +92,8 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
       status,
       auth_source,
       search,
+      department,
+      organization,
       sortBy = 'created_at',
       sortOrder = 'desc',
       page = 1,
@@ -130,6 +132,22 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
     }
     if (search) {
       query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`);
+    }
+    
+    // --- BEGIN COMMENT ---
+    // 组织和部门筛选：通过关联的org_members表进行筛选
+    // 注意：这里需要使用inner join来确保只返回有组织关联的用户
+    // --- END COMMENT ---
+    if (organization || department) {
+      // 如果有组织或部门筛选，需要确保用户有org_members记录
+      query = query.not('org_members', 'is', null);
+      
+      if (organization) {
+        query = query.eq('org_members.organizations.name', organization);
+      }
+      if (department) {
+        query = query.eq('org_members.department', department);
+      }
     }
 
     // 应用排序
@@ -328,17 +346,19 @@ export async function updateUserStatus(userId: string, status: AccountStatus): P
 }
 
 /**
- * 删除用户（仅删除profile，auth.users会通过级联删除）
+ * 删除用户（使用安全的RPC函数删除auth.users记录，触发级联删除）
  */
 export async function deleteUser(userId: string): Promise<Result<void>> {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
+    const { data, error } = await supabase
+      .rpc('safe_delete_user', { target_user_id: userId });
 
     if (error) {
       return failure(new Error(`删除用户失败: ${error.message}`));
+    }
+
+    if (!data) {
+      return failure(new Error('删除用户失败：操作未成功'));
     }
 
     return success(undefined);
@@ -427,5 +447,96 @@ export async function batchUpdateUserRole(userIds: string[], role: UserRole): Pr
   } catch (error) {
     console.error('批量更新用户角色异常:', error);
     return failure(error instanceof Error ? error : new Error('批量更新用户角色失败'));
+  }
+}
+
+/**
+ * 获取所有可用的组织列表（用于筛选下拉框）
+ */
+export async function getOrganizationOptions(): Promise<Result<Array<{ value: string; label: string }>>> {
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('name')
+      .order('name');
+
+    if (error) {
+      console.error('获取组织列表失败:', error);
+      return failure(new Error(`获取组织列表失败: ${error.message}`));
+    }
+
+    const options = (data || []).map(org => ({
+      value: org.name,
+      label: org.name
+    }));
+
+    return success(options);
+  } catch (error) {
+    console.error('获取组织列表异常:', error);
+    return failure(error instanceof Error ? error : new Error('获取组织列表失败'));
+  }
+}
+
+/**
+ * 获取所有可用的部门列表（用于筛选下拉框）
+ */
+export async function getDepartmentOptions(): Promise<Result<Array<{ value: string; label: string }>>> {
+  try {
+    const { data, error } = await supabase
+      .from('org_members')
+      .select('department')
+      .not('department', 'is', null)
+      .order('department');
+
+    if (error) {
+      console.error('获取部门列表失败:', error);
+      return failure(new Error(`获取部门列表失败: ${error.message}`));
+    }
+
+    // 去重并格式化
+    const uniqueDepartments = [...new Set((data || []).map(item => item.department).filter(Boolean))];
+    const options = uniqueDepartments.map(dept => ({
+      value: dept,
+      label: dept
+    }));
+
+    return success(options);
+  } catch (error) {
+    console.error('获取部门列表异常:', error);
+    return failure(error instanceof Error ? error : new Error('获取部门列表失败'));
+  }
+}
+
+/**
+ * 根据组织获取该组织下的部门列表
+ */
+export async function getDepartmentOptionsByOrganization(organizationName: string): Promise<Result<Array<{ value: string; label: string }>>> {
+  try {
+    const { data, error } = await supabase
+      .from('org_members')
+      .select(`
+        department,
+        organizations!inner(name)
+      `)
+      .eq('organizations.name', organizationName)
+      .not('department', 'is', null)
+      .order('department');
+
+    if (error) {
+      console.error('获取组织部门列表失败:', error);
+      return failure(new Error(`获取组织部门列表失败: ${error.message}`));
+    }
+
+    // 去重并格式化
+    const uniqueDepartments = [...new Set((data || []).map(item => item.department).filter(Boolean))];
+    const options = uniqueDepartments.map(dept => ({
+      value: dept,
+      label: dept
+    }));
+
+    return success(options);
+  } catch (error) {
+    console.error('获取组织部门列表异常:', error);
+    return failure(error instanceof Error ? error : new Error('获取组织部门列表失败'));
   }
 } 

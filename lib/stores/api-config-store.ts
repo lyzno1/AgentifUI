@@ -90,6 +90,7 @@ export const useApiConfigStore = create<ApiConfigState>((set, get) => ({
         instance_id: instance.instance_id || '',
         api_path: instance.api_path || '',
         is_default: instance.is_default || false,
+        visibility: instance.visibility || 'public', // 默认为公开应用
         config: instance.config || {}
       });
       
@@ -436,6 +437,7 @@ export const useApiConfigStore = create<ApiConfigState>((set, get) => ({
             instance_id: 'default',
             api_path: '',
             is_default: true,
+            visibility: 'public', // 默认为公开应用
             config: {}
           });
             

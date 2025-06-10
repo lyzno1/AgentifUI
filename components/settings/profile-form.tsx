@@ -68,8 +68,20 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
       if (result.success && result.data) {
         // --- BEGIN COMMENT ---
         // 更新localStorage缓存，确保在其他页面能立即看到最新数据
+        // 需要类型转换以匹配ExtendedProfile接口
         // --- END COMMENT ---
-        updateProfileCache(result.data, profile.id);
+        const extendedProfile: ExtendedProfile = {
+          ...result.data,
+          full_name: result.data.full_name || null,
+          username: result.data.username || null,
+          avatar_url: result.data.avatar_url || null,
+          organization: profile.organization,
+          organization_role: profile.organization_role,
+          department: profile.department,
+          job_title: profile.job_title,
+          auth_last_sign_in_at: profile.auth_last_sign_in_at
+        };
+        updateProfileCache(extendedProfile, profile.id);
 
         setMessage({
           type: "success",

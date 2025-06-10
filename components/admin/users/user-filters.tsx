@@ -1,21 +1,32 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Search, Filter, RotateCcw, Users, UserCheck, UserX, Clock, Shield, Crown, UserIcon, ChevronDown, ChevronUp, Settings } from 'lucide-react'
+import { Search, Filter, RotateCcw, Users, UserCheck, UserX, Clock, Shield, Crown, UserIcon, ChevronDown, ChevronUp, Settings, Building2, Briefcase } from 'lucide-react'
 import { useTheme } from '@lib/hooks/use-theme'
 import { cn } from '@lib/utils'
 import type { UserFilters } from '@lib/db/users'
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
 
 interface UserFiltersProps {
   filters: UserFilters
   onFiltersChange: (filters: Partial<UserFilters>) => void
   onReset: () => void
+  organizationOptions?: FilterOption[]
+  departmentOptions?: FilterOption[]
+  onOrganizationChange?: (organizationName: string) => void
 }
 
 export const UserFiltersComponent: React.FC<UserFiltersProps> = ({
   filters,
   onFiltersChange,
-  onReset
+  onReset,
+  organizationOptions = [],
+  departmentOptions = [],
+  onOrganizationChange
 }) => {
   const { isDark } = useTheme()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -41,14 +52,14 @@ export const UserFiltersComponent: React.FC<UserFiltersProps> = ({
   ]
 
   // --- BEGIN COMMENT ---
-  // 认证来源选项
+  // 认证来源选项（直接对应Supabase的provider值）
   // --- END COMMENT ---
   const authSourceOptions = [
-    { value: '', label: '所有来源' },
-    { value: 'password', label: '密码登录' },
-    { value: 'google', label: 'Google' },
-    { value: 'github', label: 'GitHub' },
-    { value: 'sso', label: 'SSO' }
+    { value: '', label: '全部认证来源' },
+    { value: 'email', label: '📧 邮箱' },
+    { value: 'github', label: '🐙 GitHub' },
+    { value: 'phone', label: '📱 手机号' },
+    { value: 'google', label: '🔍 Google' },
   ]
 
   // --- BEGIN COMMENT ---
@@ -69,9 +80,27 @@ export const UserFiltersComponent: React.FC<UserFiltersProps> = ({
   }
 
   // --- BEGIN COMMENT ---
+  // 处理组织选择变化，级联更新部门选项
+  // --- END COMMENT ---
+  const handleOrganizationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const organizationName = e.target.value
+    
+    // 更新组织筛选
+    onFiltersChange({ 
+      organization: organizationName || undefined,
+      department: undefined // 清空部门选择
+    })
+    
+    // 加载对应组织的部门选项
+    if (organizationName && onOrganizationChange) {
+      onOrganizationChange(organizationName)
+    }
+  }
+
+  // --- BEGIN COMMENT ---
   // 检查是否有活跃的筛选条件（除了搜索）
   // --- END COMMENT ---
-  const hasActiveFilters = filters.role || filters.status || filters.auth_source
+  const hasActiveFilters = filters.role || filters.status || filters.auth_source || filters.organization || filters.department
   const hasSearchFilter = filters.search
 
   return (
@@ -159,7 +188,7 @@ export const UserFiltersComponent: React.FC<UserFiltersProps> = ({
           "border-t px-4 pb-4",
           isDark ? "border-stone-700/50" : "border-stone-200/50"
         )}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 pt-4">
             {/* --- 角色筛选 --- */}
             <div>
               <label className={cn(
@@ -216,6 +245,84 @@ export const UserFiltersComponent: React.FC<UserFiltersProps> = ({
                   )}
                 >
                   {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className={cn(
+                  "absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 pointer-events-none",
+                  isDark ? "text-stone-500" : "text-stone-400"
+                )} />
+              </div>
+            </div>
+
+            {/* --- 组织筛选 --- */}
+            <div>
+              <label className={cn(
+                "block text-xs font-semibold mb-2 font-serif uppercase tracking-wider",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )}>
+                <Building2 className="h-3 w-3 inline mr-1" />
+                所属组织
+              </label>
+              <div className="relative">
+                <select
+                  value={filters.organization || ''}
+                  onChange={handleOrganizationChange}
+                  className={cn(
+                    "w-full appearance-none px-3 py-2 rounded-lg border text-sm font-serif cursor-pointer",
+                    "focus:outline-none focus:ring-2 focus:ring-offset-1",
+                    isDark
+                      ? "bg-stone-800/50 border-stone-600 text-stone-100 focus:ring-stone-500/30 focus:ring-offset-stone-900"
+                      : "bg-stone-50/50 border-stone-300 text-stone-900 focus:ring-stone-400/30 focus:ring-offset-white",
+                    "transition-all duration-200"
+                  )}
+                >
+                  <option value="">所有组织</option>
+                  {organizationOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className={cn(
+                  "absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 pointer-events-none",
+                  isDark ? "text-stone-500" : "text-stone-400"
+                )} />
+              </div>
+            </div>
+
+            {/* --- 部门筛选 --- */}
+            <div>
+              <label className={cn(
+                "block text-xs font-semibold mb-2 font-serif uppercase tracking-wider",
+                isDark ? "text-stone-400" : "text-stone-600",
+                !filters.organization && "opacity-50"
+              )}>
+                <Briefcase className="h-3 w-3 inline mr-1" />
+                所属部门
+                {!filters.organization && (
+                  <span className="text-xs font-normal ml-1">(请先选择组织)</span>
+                )}
+              </label>
+              <div className="relative">
+                <select
+                  value={filters.department || ''}
+                  onChange={(e) => onFiltersChange({ department: e.target.value || undefined })}
+                  disabled={!filters.organization}
+                  className={cn(
+                    "w-full appearance-none px-3 py-2 rounded-lg border text-sm font-serif cursor-pointer",
+                    "focus:outline-none focus:ring-2 focus:ring-offset-1",
+                    isDark
+                      ? "bg-stone-800/50 border-stone-600 text-stone-100 focus:ring-stone-500/30 focus:ring-offset-stone-900"
+                      : "bg-stone-50/50 border-stone-300 text-stone-900 focus:ring-stone-400/30 focus:ring-offset-white",
+                    "transition-all duration-200",
+                    !filters.organization && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <option value="">{filters.organization ? "所有部门" : "请先选择组织"}</option>
+                  {filters.organization && departmentOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>

@@ -80,6 +80,8 @@ export function DynamicTitle() {
           newTitle = '管理后台 | ' + baseTitle
         } else if (pathname === '/admin/users') {
           newTitle = '用户管理 | ' + baseTitle
+        } else if (pathname === '/admin/organizations') {
+          newTitle = '组织管理 | ' + baseTitle
         } else if (pathname === '/admin/api-config') {
           newTitle = 'API配置 | ' + baseTitle
         } else if (pathname === '/admin/security') {
