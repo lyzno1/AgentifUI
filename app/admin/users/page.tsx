@@ -329,7 +329,12 @@ export default function UsersManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-stone-100 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
+    <div className={cn(
+      "min-h-screen",
+      isDark 
+        ? "bg-gradient-to-br from-stone-950 via-stone-900 to-stone-800" 
+        : "bg-gradient-to-br from-stone-50 via-white to-stone-100"
+    )}>
       <div className="p-6 max-w-7xl mx-auto">
         {/* --- BEGIN COMMENT ---
         页面标题和操作栏 - 优化视觉层次和间距

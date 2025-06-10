@@ -543,9 +543,11 @@ export default function OrganizationsManagement() {
   return (
     <div className={cn(
       "min-h-screen w-full",
-      isDark ? "bg-stone-950" : "bg-stone-100"
+      isDark 
+        ? "bg-gradient-to-br from-stone-950 via-stone-900 to-stone-800" 
+        : "bg-gradient-to-br from-stone-50 via-white to-stone-100"
     )}>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-6 max-w-7xl mx-auto">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>

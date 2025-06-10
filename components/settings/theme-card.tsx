@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@lib/utils"
+import { useTheme } from "@lib/hooks/use-theme"
 
 // --- BEGIN COMMENT ---
 // 主题卡片组件
@@ -14,8 +15,8 @@ interface ThemeCardProps {
 }
 
 export function ThemeCard({ title, theme, currentTheme, onClick }: ThemeCardProps) {
+  const { isDark } = useTheme()
   const isActive = currentTheme === theme
-  const isDark = theme === "dark"
   
   // 根据主题类型渲染不同的预览内容
   const renderPreview = () => {
@@ -47,9 +48,7 @@ export function ThemeCard({ title, theme, currentTheme, onClick }: ThemeCardProp
       className={cn(
         "relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
         isActive
-          ? isDark 
-            ? "border-primary ring-2 ring-primary/20"
-            : "border-primary ring-2 ring-primary/20"
+          ? "border-primary ring-2 ring-primary/20"
           : isDark
             ? "border-stone-700"
             : "border-stone-200"
@@ -58,7 +57,7 @@ export function ThemeCard({ title, theme, currentTheme, onClick }: ThemeCardProp
       {renderPreview()}
       <p className={cn(
         "text-sm font-medium text-center font-serif",
-        isActive ? "text-primary" : ""
+        isActive ? "text-primary" : isDark ? "text-stone-200" : "text-stone-900"
       )}>
         {title}
       </p>

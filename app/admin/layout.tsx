@@ -284,7 +284,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       "transition-all duration-200 ease-in-out",
                       "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                       isDark ? "focus-visible:ring-blue-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
-                      "border border-transparent h-10 min-h-[2.5rem]",
+                      "border border-transparent min-h-[2.75rem]",
                       !isDark && [
                         "text-stone-600",
                         "hover:bg-stone-300 hover:shadow-md",
