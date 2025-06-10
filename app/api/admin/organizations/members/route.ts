@@ -104,16 +104,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '组织不存在' }, { status: 404 })
     }
 
-    // --- 检查用户是否已在该组织中 ---
+    // --- 检查用户是否已在该组织的该部门中 ---
+    // --- BEGIN COMMENT ---
+    // 🔧 修复：支持用户在同组织的不同部门
+    // 检查用户是否已在该组织的特定部门，而不是整个组织
+    // --- END COMMENT ---
     const { data: existingMember } = await supabase
       .from('org_members')
-      .select('id')
+      .select('id, department')
       .eq('user_id', userId)
       .eq('org_id', orgId)
+      .eq('department', department?.trim() || '默认部门')
       .single()
 
     if (existingMember) {
-      return NextResponse.json({ error: '用户已在该组织中' }, { status: 400 })
+      return NextResponse.json({ 
+        error: `用户已在该组织的"${department?.trim() || '默认部门'}"部门中` 
+      }, { status: 400 })
     }
 
     // --- 添加用户到组织 ---

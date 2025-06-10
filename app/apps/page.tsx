@@ -20,10 +20,6 @@ import {
 // import { getDifyAppTypeInfo, getAllDifyAppTypes } from "@lib/types/dify-app-types"
 // --- END COMMENT ---
 import type { AppInstance } from "@components/apps/types"
-// --- BEGIN COMMENT ---
-// 🎯 新增：导入用户认证相关功能
-// --- END COMMENT ---
-import { createClient } from "@lib/supabase/client"
 
 export default function AppsPage() {
   const router = useRouter()
@@ -34,103 +30,26 @@ export default function AppsPage() {
   const { selectItem } = useSidebarStore()
   
   // 🎯 使用真实的应用列表数据，替代硬编码
-  const { apps: rawApps, fetchApps, fetchUserAccessibleApps, isLoading, fetchAllApps } = useAppListStore()
+  const { apps: rawApps, fetchApps, isLoading } = useAppListStore()
   
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("全部")
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  // --- BEGIN COMMENT ---
-  // 🎯 新增：用户状态管理 - 修复权限泄露问题
-  // --- END COMMENT ---
-  const [currentUser, setCurrentUser] = useState<any>(undefined) // undefined = 未加载, null = 未登录, object = 已登录
-  const [userProfile, setUserProfile] = useState<any>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [userStateLoaded, setUserStateLoaded] = useState(false) // 🔧 新增：用户状态是否已加载完成
 
   // --- BEGIN COMMENT ---
-  // 🎯 获取当前用户信息 - 修复权限泄露时序问题
+  // 🎯 效仿模型选择器：简洁的应用获取逻辑
+  // 只需要一行代码，无需复杂的用户状态判断
   // --- END COMMENT ---
   useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        console.log('[Apps] 获取用户信息:', user ? `用户ID: ${user.id}` : '未登录')
-        
-        if (user) {
-          // 获取用户profile信息
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-          
-          if (profile) {
-            console.log('[Apps] 用户角色:', profile.role)
-            setUserProfile(profile)
-            setIsAdmin(profile.role === 'admin')
-          }
-        }
-        
-        // 🔧 关键修复：无论是否登录，都设置用户状态和加载完成标志
-        setCurrentUser(user)
-        setUserStateLoaded(true)
-        
-        console.log('[Apps] 用户状态加载完成')
-      } catch (error) {
-        console.error('[Apps] 获取用户信息失败:', error)
-        // 即使出错也要设置加载完成，避免无限loading
-        setCurrentUser(null)
-        setUserStateLoaded(true)
-      }
-    }
-    getCurrentUser()
-  }, [])
+    fetchApps();
+  }, [fetchApps]);
 
-  // --- BEGIN COMMENT ---
-  // 🎯 根据用户身份获取应用列表 - 修复权限泄露问题
-  // 🔧 关键修复：只有在用户状态加载完成后才获取应用列表
-  // --- END COMMENT ---
+  // 🎯 在组件挂载时清除sidebar选中状态
   useEffect(() => {
-    // 🔧 防止权限泄露：用户状态未加载完成时不执行任何操作
-    if (!userStateLoaded) {
-      console.log('[Apps] 用户状态未加载完成，等待中...')
-      return
-    }
-    
-    console.log('[Apps] 用户状态已确定，强制清除缓存并获取正确的应用列表')
-    
-    // 🔥 关键修复：强制清除所有缓存，防止其他页面的缓存影响权限验证
-    const { clearCache } = useAppListStore.getState()
-    clearCache()
-    
-    if (currentUser) {
-      // 已登录用户：根据权限获取应用
-      if (isAdmin) {
-        console.log('[Apps] 管理员用户，获取所有应用')
-        fetchAllApps()
-      } else {
-        console.log('[Apps] 普通用户，获取有权限的应用')
-        fetchUserAccessibleApps(currentUser.id)
-      }
-    } else {
-      // 未登录用户：获取公开应用
-      console.log('[Apps] 未登录用户，获取公开应用')
-      fetchApps()
-    }
-  }, [userStateLoaded, currentUser, isAdmin, fetchApps, fetchUserAccessibleApps, fetchAllApps])
-
-  // 🔧 修复loading闪烁问题：只有当用户状态未加载或应用数据为空且正在加载时才显示loading
-  const shouldShowLoading = !userStateLoaded || (isLoading && rawApps.length === 0)
-
-  // 🎯 在组件挂载时获取应用列表并清除sidebar选中状态
-  useEffect(() => {
-    // 清除sidebar选中状态，因为在应用市场页面不应该有选中的应用
     selectItem(null, null)
   }, [selectItem])
 
-  // 🎯 新增：处理URL查询参数，支持直接跳转到特定筛选
+  // 🎯 处理URL查询参数，支持直接跳转到特定筛选
   useEffect(() => {
     const categoryParam = searchParams.get('category')
     const searchParam = searchParams.get('search')
@@ -144,7 +63,7 @@ export default function AppsPage() {
     }
   }, [searchParams])
 
-  // 🎯 新增：更新URL查询参数的函数
+  // 🎯 更新URL查询参数的函数
   const updateURLParams = (category?: string, search?: string) => {
     const params = new URLSearchParams()
     
@@ -159,17 +78,16 @@ export default function AppsPage() {
     const queryString = params.toString()
     const newURL = queryString ? `/apps?${queryString}` : '/apps'
     
-    // 使用replace避免在浏览器历史中创建过多条目
     router.replace(newURL, { scroll: false })
   }
 
-  // 🎯 修改分类选择处理函数，同步更新URL
+  // 🎯 分类选择处理函数
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
     updateURLParams(category, searchTerm)
   }
 
-  // 🎯 修改搜索处理函数，同步更新URL
+  // 🎯 搜索处理函数
   const handleSearchChange = (search: string) => {
     setSearchTerm(search)
     updateURLParams(selectedCategory, search)
@@ -181,7 +99,7 @@ export default function AppsPage() {
     .filter(app => {
       const metadata = app.config?.app_metadata
       
-      // 如果有元数据配置，检查是否为应用市场类型
+      // 🎯 效仿模型选择器的过滤逻辑：只保留marketplace类型
       if (metadata) {
         return metadata.app_type === 'marketplace' || metadata.is_marketplace_app === true
       }
@@ -194,23 +112,15 @@ export default function AppsPage() {
       const isLikelyMarketplace = marketplaceKeywords.some(keyword => appName.includes(keyword))
       const isLikelyModel = modelKeywords.some(keyword => appName.includes(keyword))
       
-      // 优先判断为应用市场应用，除非明确是模型
       return isLikelyMarketplace || (!isLikelyModel && !appName.includes('chat') && !appName.includes('对话'))
     })
     .map(app => {
       const metadata = app.config?.app_metadata
       const difyParams = app.config?.dify_parameters
       
-      // --- BEGIN COMMENT ---
-      // 🎯 重构：直接使用应用配置中的信息，移除对Dify应用类型映射的依赖
-      // 优先使用用户配置的描述信息，简化数据转换逻辑
-      // --- END COMMENT ---
       const difyAppType = metadata?.dify_apptype
       
-      // --- BEGIN COMMENT ---
-      // 🎯 智能生成应用描述：优先使用配置的描述
-      // 移除对difyTypeInfo的依赖，使用更简单的fallback逻辑
-      // --- END COMMENT ---
+      // 🎯 简化描述生成逻辑
       let description = metadata?.brief_description || app.description || difyParams?.opening_statement
       
       if (!description) {
@@ -223,13 +133,8 @@ export default function AppsPage() {
         description,
         appType: 'marketplace' as const,
         iconUrl: metadata?.icon_url,
-        // --- BEGIN COMMENT ---
-        // 🎯 重构：移除category字段，改为完全基于tags进行分类
-        // category: metadata?.tags?.[0] || '其他', // 可选：使用第一个tag作为主分类
-        // --- END COMMENT ---
-        difyAppType: difyAppType, // 保留用于路由跳转
+        difyAppType: difyAppType,
         tags: metadata?.tags || [],
-        // 展示用的辅助信息
         isPopular: metadata?.is_common_model || false,
         lastUsed: new Date().toISOString().split('T')[0],
         config: app.config
@@ -237,21 +142,15 @@ export default function AppsPage() {
     })
 
   // --- BEGIN COMMENT ---
-  // 🎯 重构分类逻辑：基于用户友好的tag分类，而非技术性的Dify应用类型
-  // 收集所有应用的tags，按使用频率和重要性动态生成分类
+  // 🎯 基于tags的动态分类生成（保持原有逻辑）
   // --- END COMMENT ---
   const getDynamicCategories = () => {
     const categories = ['全部']
     
-    // 添加常用应用分类（如果有）
     if (favoriteApps.length > 0) {
       categories.push('常用应用')
     }
     
-    // --- BEGIN COMMENT ---
-    // 🎯 收集所有应用中的tags，统计使用频率
-    // 优先显示使用频率高且用户关心的功能标签
-    // --- END COMMENT ---
     const tagUsageMap = new Map<string, number>()
     
     apps.forEach(app => {
@@ -261,48 +160,27 @@ export default function AppsPage() {
       })
     })
     
-    // --- BEGIN COMMENT ---
-    // 🎯 预定义标签优先级顺序 - 基于用户使用场景重要性
-    // 将用户最关心的功能分类排在前面
-    // --- END COMMENT ---
     const tagPriorityOrder = [
-      // 核心功能类（用户最常用）
       '写作', '翻译', '代码', '代码生成', '分析', '总结',
-      
-      // 内容类型
       '文本生成', '对话', '助手', '文档', '数据分析',
-      
-      // 模型特性
       '多模态', '对话模型', '推理模型', '文档模型',
-      
-      // 技术特性
       '本地', '企业级', '快速响应', '高精度', '通用', '专业',
-      
-      // 工具类
       '工具'
     ]
     
-    // --- BEGIN COMMENT ---
-    // 🎯 按优先级顺序添加存在的标签，确保重要标签排在前面
-    // 同时过滤掉使用频率过低的标签（可配置阈值）
-    // --- END COMMENT ---
-    const minUsageThreshold = 1 // 至少被1个应用使用才显示
+    const minUsageThreshold = 1
     
     tagPriorityOrder.forEach(tag => {
       const usageCount = tagUsageMap.get(tag) || 0
       if (usageCount >= minUsageThreshold) {
         categories.push(tag)
-        tagUsageMap.delete(tag) // 避免重复添加
+        tagUsageMap.delete(tag)
       }
     })
     
-    // --- BEGIN COMMENT ---
-    // 🎯 添加其他未在优先级列表中的标签（按使用频率排序）
-    // 确保不遗漏用户自定义的有价值标签
-    // --- END COMMENT ---
     const remainingTags = Array.from(tagUsageMap.entries())
       .filter(([_, count]) => count >= minUsageThreshold)
-      .sort((a, b) => b[1] - a[1]) // 按使用频率降序
+      .sort((a, b) => b[1] - a[1])
       .map(([tag, _]) => tag)
     
     categories.push(...remainingTags)
@@ -312,19 +190,12 @@ export default function AppsPage() {
 
   const categories = getDynamicCategories()
 
-  // --- BEGIN COMMENT ---
-  // 🎯 重构过滤逻辑：基于tag的用户友好分类筛选
-  // 支持直接根据应用的tags进行匹配，更贴近用户使用场景
-  // --- END COMMENT ---
+  // 🎯 应用过滤逻辑（保持原有逻辑）
   const filteredApps = apps.filter(app => {
     const matchesSearch = app.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          app.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          app.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     
-    // --- BEGIN COMMENT ---
-    // 🎯 新的分类匹配逻辑：基于tag的直接匹配
-    // 简化逻辑，直接检查应用的tags是否包含选定的分类
-    // --- END COMMENT ---
     let matchesCategory = false
     
     if (selectedCategory === "全部") {
@@ -332,10 +203,6 @@ export default function AppsPage() {
     } else if (selectedCategory === "常用应用") {
       matchesCategory = favoriteApps.some(fav => fav.instanceId === app.instanceId)
     } else {
-      // --- BEGIN COMMENT ---
-      // 🎯 直接检查应用的tags是否包含选定的分类标签
-      // 这比基于Dify应用类型的映射更直观和准确
-      // --- END COMMENT ---
       const appTags = app.tags || []
       matchesCategory = appTags.includes(selectedCategory)
     }
@@ -343,29 +210,21 @@ export default function AppsPage() {
     return matchesSearch && matchesCategory
   })
 
-  // --- BEGIN COMMENT ---
-  // 🎯 重构排序逻辑：常用应用置顶，然后按功能重要性和名称排序
-  // 移除对技术性Dify应用类型的依赖，基于用户使用偏好排序
-  // --- END COMMENT ---
+  // 🎯 应用排序逻辑（保持原有逻辑）
   const sortedApps = [...filteredApps].sort((a, b) => {
-    // 首先按是否为常用应用排序（常用应用置顶）
     const aIsFavorite = favoriteApps.some(fav => fav.instanceId === a.instanceId)
     const bIsFavorite = favoriteApps.some(fav => fav.instanceId === b.instanceId)
     
     if (aIsFavorite && !bIsFavorite) return -1
     if (!aIsFavorite && bIsFavorite) return 1
     
-    // --- BEGIN COMMENT ---
-    // 🎯 按功能标签重要性排序：核心功能 > 专业功能 > 其他
-    // 这比技术分类更符合用户的使用习惯
-    // --- END COMMENT ---
     const getTagPriority = (tags: string[] = []) => {
       const coreTags = ['写作', '翻译', '代码', '对话', '助手']
       const professionalTags = ['分析', '总结', '文本生成', '数据分析']
       
-      if (tags.some(tag => coreTags.includes(tag))) return 1 // 核心功能
-      if (tags.some(tag => professionalTags.includes(tag))) return 2 // 专业功能
-      return 3 // 其他功能
+      if (tags.some(tag => coreTags.includes(tag))) return 1
+      if (tags.some(tag => professionalTags.includes(tag))) return 2
+      return 3
     }
     
     const aPriority = getTagPriority(a.tags)
@@ -375,17 +234,14 @@ export default function AppsPage() {
       return aPriority - bPriority
     }
     
-    // 最后按名称排序
     return a.displayName.localeCompare(b.displayName)
   })
 
-  // 🎯 打开应用详情 - 根据Dify应用类型动态路由
+  // 🎯 打开应用详情
   const handleOpenApp = async (app: AppInstance) => {
     try {
-      // 🎯 获取Dify应用类型
       const difyAppType = app.config?.app_metadata?.dify_apptype
       
-      // 🎯 根据应用类型构建不同的路由路径
       let routePath: string
       
       switch (difyAppType) {
@@ -405,28 +261,26 @@ export default function AppsPage() {
           routePath = `/apps/text-generation/${app.instanceId}`
           break
         default:
-          // 🎯 如果没有指定类型或类型无效，默认跳转到chatbot
           console.warn(`未知的Dify应用类型: ${difyAppType}，使用默认路由`)
           routePath = `/apps/chatbot/${app.instanceId}`
       }
       
       console.log(`[路由跳转] 应用: ${app.displayName}, 类型: ${difyAppType}, 路径: ${routePath}`)
       
-      // 🎯 执行路由跳转
       router.push(routePath)
     } catch (error) {
       console.error('打开应用失败:', error)
     }
   }
 
-  // 🎯 加载状态显示 - 修复权限泄露和闪烁问题
-  if (shouldShowLoading) {
+  // 🎯 效仿模型选择器：简化加载状态判断
+  // 只需要判断isLoading，无需复杂的用户状态加载逻辑
+  if (isLoading && rawApps.length === 0) {
     return <AppLoading />
   }
 
   return (
     <>
-      {/* 🎯 添加导航栏 */}
       <NavBar />
       
       <div className={cn(
@@ -435,14 +289,12 @@ export default function AppsPage() {
         "pt-16 md:pt-12"
       )}>
         <div className="container mx-auto px-4 py-8">
-          {/* 🎯 优化页面标题：显示更多统计信息 */}
           <AppHeader 
             totalApps={apps.length}
             filteredApps={sortedApps.length}
             selectedCategory={selectedCategory}
           />
 
-          {/* 🎯 优化搜索和过滤栏：支持Dify应用类型筛选 */}
           <AppFilters
             searchTerm={searchTerm}
             onSearchChange={handleSearchChange}
@@ -453,7 +305,6 @@ export default function AppsPage() {
             onViewModeChange={setViewMode}
           />
 
-          {/* 🎯 优化应用列表：显示Dify应用类型信息 */}
           <AppList
             apps={sortedApps}
             viewMode={viewMode}

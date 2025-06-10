@@ -148,6 +148,28 @@ export default function OrganizationsManagement() {
   const [filteredUsers, setFilteredUsers] = useState<typeof allUsers>([])
   const [selectedUser, setSelectedUser] = useState<typeof allUsers[0] | null>(null)
 
+  // --- 新增批量添加相关状态 ---
+  const [isBatchAddOpen, setIsBatchAddOpen] = useState(false)
+  const [selectedDepartmentForAdd, setSelectedDepartmentForAdd] = useState<{
+    orgId: string;
+    orgName: string;
+    department: string;
+  } | null>(null)
+  const [batchAddForm, setBatchAddForm] = useState({
+    selectedUsers: [] as string[],
+    role: 'member' as 'owner' | 'admin' | 'member',
+    jobTitle: ''
+  })
+
+  // --- 新增成员编辑相关状态 ---
+  const [isEditMemberOpen, setIsEditMemberOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<OrgMember | null>(null)
+  const [editMemberForm, setEditMemberForm] = useState({
+    role: 'member' as 'owner' | 'admin' | 'member',
+    jobTitle: '',
+    department: ''
+  })
+
   // --- 从现有成员数据生成部门信息 ---
   const getDepartmentInfo = () => {
     const departmentGroups = orgMembers.reduce((acc, member) => {
@@ -528,6 +550,154 @@ export default function OrganizationsManagement() {
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isUserDropdownOpen])
+
+  // --- 批量添加成员处理函数 ---
+  const handleBatchAddUsers = async () => {
+    if (!selectedDepartmentForAdd || batchAddForm.selectedUsers.length === 0) {
+      toast.error('请选择部门和用户')
+      return
+    }
+
+    setOperationLoading(true)
+    let successCount = 0
+    let failedCount = 0
+
+    try {
+      for (const userId of batchAddForm.selectedUsers) {
+        try {
+          const response = await fetch('/api/admin/organizations/members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              orgId: selectedDepartmentForAdd.orgId,
+              department: selectedDepartmentForAdd.department,
+              jobTitle: batchAddForm.jobTitle,
+              role: batchAddForm.role
+            }),
+          })
+
+          if (response.ok) {
+            successCount++
+          } else {
+            failedCount++
+            console.error(`添加用户 ${userId} 失败`)
+          }
+        } catch (error) {
+          failedCount++
+          console.error(`添加用户 ${userId} 异常:`, error)
+        }
+      }
+
+      // 重新获取数据
+      await fetchOrgMembers()
+      
+      // 关闭对话框并重置表单
+      setIsBatchAddOpen(false)
+      setSelectedDepartmentForAdd(null)
+      setBatchAddForm({
+        selectedUsers: [],
+        role: 'member',
+        jobTitle: ''
+      })
+
+      // 显示结果
+      if (successCount > 0) {
+        toast.success(`成功添加 ${successCount} 名成员${failedCount > 0 ? `, ${failedCount} 名失败` : ''}`)
+      } else {
+        toast.error('批量添加失败')
+      }
+
+    } catch (error) {
+      toast.error('批量添加成员失败')
+      console.error('批量添加成员失败:', error)
+    } finally {
+      setOperationLoading(false)
+    }
+  }
+
+  // --- 打开部门批量添加对话框 ---
+  const openDepartmentBatchAdd = (dept: OrgDepartmentInfo) => {
+    setSelectedDepartmentForAdd({
+      orgId: dept.org_id,
+      orgName: dept.org_name,
+      department: dept.department
+    })
+    setIsBatchAddOpen(true)
+    initializeUserList()
+  }
+
+  // --- 批量用户选择逻辑 ---
+  const toggleUserSelection = (userId: string) => {
+    setBatchAddForm(prev => ({
+      ...prev,
+      selectedUsers: prev.selectedUsers.includes(userId)
+        ? prev.selectedUsers.filter(id => id !== userId)
+        : [...prev.selectedUsers, userId]
+    }))
+  }
+
+  const toggleSelectAllUsers = () => {
+    const availableUsers = filteredUsers.filter(user => 
+      !orgMembers.some(member => 
+        member.user_id === user.id && 
+        member.org_id === selectedDepartmentForAdd?.orgId &&
+        member.department === selectedDepartmentForAdd?.department
+      )
+    )
+    
+    const allSelected = availableUsers.every(user => 
+      batchAddForm.selectedUsers.includes(user.id)
+    )
+    
+    setBatchAddForm(prev => ({
+      ...prev,
+      selectedUsers: allSelected ? [] : availableUsers.map(user => user.id)
+    }))
+  }
+
+  // --- 编辑成员相关函数 ---
+  const openEditMember = (member: OrgMember) => {
+    setEditingMember(member)
+    setEditMemberForm({
+      role: member.role,
+      jobTitle: member.job_title || '',
+      department: member.department || ''
+    })
+    setIsEditMemberOpen(true)
+  }
+
+  const handleEditMember = async () => {
+    if (!editingMember) return
+
+    setOperationLoading(true)
+    try {
+      const response = await fetch(`/api/admin/organizations/members/${editingMember.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: editMemberForm.role,
+          jobTitle: editMemberForm.jobTitle,
+          department: editMemberForm.department
+        }),
+      })
+
+      if (response.ok) {
+        toast.success('成员信息更新成功')
+        await fetchOrgMembers()
+        setIsEditMemberOpen(false)
+        setEditingMember(null)
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || '更新成员信息失败')
+      }
+    } catch (error) {
+      toast.error('更新成员信息失败')
+      console.error('更新成员信息失败:', error)
+    } finally {
+      setOperationLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -1093,6 +1263,431 @@ export default function OrganizationsManagement() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* --- 批量添加成员对话框 --- */}
+          <Dialog open={isBatchAddOpen} onOpenChange={(open) => {
+            setIsBatchAddOpen(open)
+            if (!open) {
+              setSelectedDepartmentForAdd(null)
+              setBatchAddForm({
+                selectedUsers: [],
+                role: 'member',
+                jobTitle: ''
+              })
+            }
+          }}>
+            <DialogContent className={cn(
+              "max-w-4xl max-h-[90vh] overflow-hidden flex flex-col",
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+            )}>
+              <DialogHeader>
+                <DialogTitle className={cn(
+                  "font-serif",
+                  isDark ? "text-stone-100" : "text-stone-900"
+                )}>
+                  批量添加成员
+                </DialogTitle>
+                <DialogDescription className={cn(
+                  "font-serif",
+                  isDark ? "text-stone-400" : "text-stone-600"
+                )}>
+                  {selectedDepartmentForAdd && 
+                    `向 ${selectedDepartmentForAdd.orgName} - ${selectedDepartmentForAdd.department} 部门批量添加成员`
+                  }
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 左侧：用户选择区域 */}
+                <div className="lg:col-span-2 flex flex-col">
+                  {/* 搜索和全选 */}
+                  <div className="space-y-3 mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <Input
+                        value={userSearchTerm}
+                        onChange={(e) => handleUserSearch(e.target.value)}
+                        placeholder="搜索用户姓名或用户名..."
+                        className={cn(
+                          "pl-10 font-serif",
+                          isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                        )}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className={cn(
+                        "font-serif text-sm",
+                        isDark ? "text-stone-300" : "text-stone-700"
+                      )}>
+                        选择用户 ({batchAddForm.selectedUsers.length} 已选)
+                      </Label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={toggleSelectAllUsers}
+                        className={cn(
+                          "font-serif text-xs",
+                          isDark ? "border-stone-700 text-stone-300" : "border-stone-300 text-stone-700"
+                        )}
+                      >
+                        {filteredUsers.filter(user => 
+                          !orgMembers.some(member => 
+                            member.user_id === user.id && 
+                            member.org_id === selectedDepartmentForAdd?.orgId &&
+                            member.department === selectedDepartmentForAdd?.department
+                          )
+                        ).every(user => batchAddForm.selectedUsers.includes(user.id)) ? '取消全选' : '全选'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 用户列表 */}
+                  <div className="flex-1 overflow-auto">
+                    <div className="grid gap-2">
+                      {filteredUsers.filter(user => 
+                        !orgMembers.some(member => 
+                          member.user_id === user.id && 
+                          member.org_id === selectedDepartmentForAdd?.orgId &&
+                          member.department === selectedDepartmentForAdd?.department
+                        )
+                      ).map((user) => (
+                        <div
+                          key={user.id}
+                          onClick={() => toggleUserSelection(user.id)}
+                          className={cn(
+                            "p-3 rounded-lg border cursor-pointer transition-all",
+                            batchAddForm.selectedUsers.includes(user.id)
+                              ? isDark 
+                                ? "bg-stone-700 border-stone-600 ring-1 ring-stone-500/50" 
+                                : "bg-stone-100 border-stone-400 ring-1 ring-stone-300/50"
+                              : isDark
+                                ? "bg-stone-800 border-stone-700 hover:bg-stone-750"
+                                : "bg-white border-stone-200 hover:bg-stone-50"
+                          )}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={cn(
+                              "w-6 h-6 rounded border-2 flex items-center justify-center",
+                              batchAddForm.selectedUsers.includes(user.id)
+                                ? isDark
+                                  ? "bg-stone-600 border-stone-600"
+                                  : "bg-stone-700 border-stone-700"
+                                : isDark 
+                                  ? "border-stone-600" 
+                                  : "border-stone-300"
+                            )}>
+                              {batchAddForm.selectedUsers.includes(user.id) && (
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center",
+                              user.role === 'admin' && (isDark ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"),
+                              user.role === 'manager' && (isDark ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800"),
+                              user.role === 'user' && (isDark ? "bg-stone-700 text-stone-300" : "bg-stone-200 text-stone-700")
+                            )}>
+                              <UserIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                "font-medium font-serif text-sm truncate",
+                                isDark ? "text-stone-100" : "text-stone-900"
+                              )}>
+                                {user.full_name || user.username}
+                              </p>
+                              <p className={cn(
+                                "text-xs font-serif truncate",
+                                isDark ? "text-stone-400" : "text-stone-600"
+                              )}>
+                                @{user.username} • {user.role}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 右侧：配置区域 */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className={cn(
+                      "font-serif",
+                      isDark ? "text-stone-300" : "text-stone-700"
+                    )}>
+                      职位（可选）
+                    </Label>
+                    <Input
+                      value={batchAddForm.jobTitle}
+                      onChange={(e) => setBatchAddForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                      placeholder="输入职位"
+                      className={cn(
+                        "font-serif mt-1",
+                        isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Label className={cn(
+                      "font-serif",
+                      isDark ? "text-stone-300" : "text-stone-700"
+                    )}>
+                      角色
+                    </Label>
+                    <Select
+                      value={batchAddForm.role}
+                      onValueChange={(value: 'owner' | 'admin' | 'member') =>
+                        setBatchAddForm(prev => ({ ...prev, role: value }))
+                      }
+                    >
+                      <SelectTrigger className={cn(
+                        "font-serif mt-1",
+                        isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                      )}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"}>
+                        <SelectItem value="member" className="font-serif">成员</SelectItem>
+                        <SelectItem value="admin" className="font-serif">管理员</SelectItem>
+                        <SelectItem value="owner" className="font-serif">所有者</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 选中用户预览 */}
+                  {batchAddForm.selectedUsers.length > 0 && (
+                    <div className={cn(
+                      "p-3 rounded-lg border",
+                      isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
+                    )}>
+                      <Label className={cn(
+                        "font-serif text-sm",
+                        isDark ? "text-stone-300" : "text-stone-700"
+                      )}>
+                        将要添加的用户
+                      </Label>
+                      <div className="mt-2 space-y-1 max-h-32 overflow-auto">
+                        {batchAddForm.selectedUsers.slice(0, 5).map(userId => {
+                          const user = allUsers.find(u => u.id === userId)
+                          if (!user) return null
+                          return (
+                            <div key={userId} className={cn(
+                              "text-xs font-serif p-2 rounded",
+                              isDark ? "bg-stone-900 text-stone-300" : "bg-white text-stone-700"
+                            )}>
+                              {user.full_name || user.username}
+                            </div>
+                          )
+                        })}
+                        {batchAddForm.selectedUsers.length > 5 && (
+                          <div className={cn(
+                            "text-xs font-serif text-center py-1",
+                            isDark ? "text-stone-400" : "text-stone-500"
+                          )}>
+                            ...还有 {batchAddForm.selectedUsers.length - 5} 个用户
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsBatchAddOpen(false)}
+                  className={cn(
+                    "font-serif",
+                    isDark ? "border-stone-700 text-stone-300" : "border-stone-300 text-stone-700"
+                  )}
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleBatchAddUsers}
+                  disabled={batchAddForm.selectedUsers.length === 0 || operationLoading}
+                  className={cn(
+                    "font-serif",
+                    isDark ? "bg-stone-100 hover:bg-stone-200 text-stone-900" : "bg-stone-900 hover:bg-stone-800 text-white"
+                  )}
+                >
+                  {operationLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      添加中...
+                    </>
+                  ) : (
+                    `批量添加 (${batchAddForm.selectedUsers.length})`
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* --- 编辑成员对话框 --- */}
+          <Dialog open={isEditMemberOpen} onOpenChange={(open) => {
+            setIsEditMemberOpen(open)
+            if (!open) {
+              setEditingMember(null)
+              setEditMemberForm({
+                role: 'member',
+                jobTitle: '',
+                department: ''
+              })
+            }
+          }}>
+            <DialogContent className={cn(
+              "max-w-md",
+              isDark ? "bg-stone-900 border-stone-800" : "bg-stone-50 border-stone-200"
+            )}>
+              <DialogHeader>
+                <DialogTitle className={cn(
+                  "font-serif",
+                  isDark ? "text-stone-100" : "text-stone-900"
+                )}>
+                  编辑成员信息
+                </DialogTitle>
+                <DialogDescription className={cn(
+                  "font-serif",
+                  isDark ? "text-stone-400" : "text-stone-600"
+                )}>
+                  修改 {editingMember?.user?.full_name || editingMember?.user?.username || '成员'} 的信息
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className={cn(
+                    "font-serif",
+                    isDark ? "text-stone-300" : "text-stone-700"
+                  )}>
+                    部门
+                  </Label>
+                  <Input
+                    value={editMemberForm.department}
+                    onChange={(e) => setEditMemberForm(prev => ({ ...prev, department: e.target.value }))}
+                    placeholder="输入部门名称"
+                    className={cn(
+                      "font-serif mt-1",
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                    )}
+                  />
+                </div>
+                
+                <div>
+                  <Label className={cn(
+                    "font-serif",
+                    isDark ? "text-stone-300" : "text-stone-700"
+                  )}>
+                    职位
+                  </Label>
+                  <Input
+                    value={editMemberForm.jobTitle}
+                    onChange={(e) => setEditMemberForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                    placeholder="输入职位（可选）"
+                    className={cn(
+                      "font-serif mt-1",
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                    )}
+                  />
+                </div>
+                
+                <div>
+                  <Label className={cn(
+                    "font-serif",
+                    isDark ? "text-stone-300" : "text-stone-700"
+                  )}>
+                    角色
+                  </Label>
+                  <Select
+                    value={editMemberForm.role}
+                    onValueChange={(value: 'owner' | 'admin' | 'member') =>
+                      setEditMemberForm(prev => ({ ...prev, role: value }))
+                    }
+                  >
+                    <SelectTrigger className={cn(
+                      "font-serif mt-1",
+                      isDark ? "bg-stone-800 border-stone-700 text-stone-100" : "bg-white border-stone-300"
+                    )}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className={isDark ? "bg-stone-800 border-stone-700" : "bg-white border-stone-200"}>
+                      <SelectItem value="member" className="font-serif">成员</SelectItem>
+                      <SelectItem value="admin" className="font-serif">管理员</SelectItem>
+                      <SelectItem value="owner" className="font-serif">所有者</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 当前信息显示 */}
+                <div className={cn(
+                  "p-3 rounded-lg border bg-stone-50",
+                  isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-200"
+                )}>
+                  <Label className={cn(
+                    "font-serif text-xs",
+                    isDark ? "text-stone-400" : "text-stone-600"
+                  )}>
+                    当前信息
+                  </Label>
+                  <div className="mt-1 space-y-1 text-xs">
+                    <div className={cn(
+                      "font-serif",
+                      isDark ? "text-stone-300" : "text-stone-700"
+                    )}>
+                      部门: {editingMember?.department || '未设置'}
+                    </div>
+                    <div className={cn(
+                      "font-serif",
+                      isDark ? "text-stone-300" : "text-stone-700"
+                    )}>
+                      职位: {editingMember?.job_title || '未设置'}
+                    </div>
+                    <div className={cn(
+                      "font-serif",
+                      isDark ? "text-stone-300" : "text-stone-700"
+                    )}>
+                      角色: {editingMember?.role === 'owner' ? '所有者' : editingMember?.role === 'admin' ? '管理员' : '成员'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditMemberOpen(false)}
+                  className={cn(
+                    "font-serif",
+                    isDark ? "border-stone-700 text-stone-300" : "border-stone-300 text-stone-700"
+                  )}
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleEditMember}
+                  disabled={operationLoading}
+                  className={cn(
+                    "font-serif",
+                    isDark ? "bg-stone-100 hover:bg-stone-200 text-stone-900" : "bg-stone-900 hover:bg-stone-800 text-white"
+                  )}
+                >
+                  {operationLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      更新中...
+                    </>
+                  ) : (
+                    '保存修改'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -1254,12 +1849,25 @@ export default function OrganizationsManagement() {
                           </p>
                           <div className="flex flex-wrap gap-1">
                             {orgDepartments.slice(0, 3).map((dept) => (
-                              <Badge key={dept.department} variant="secondary" className="text-xs font-serif">
+                              <Badge 
+                                key={dept.department} 
+                                variant="outline" 
+                                className={cn(
+                                  "text-xs font-serif",
+                                  isDark ? "border-stone-600 text-stone-300" : "border-stone-300 text-stone-700"
+                                )}
+                              >
                                 {dept.department}
                               </Badge>
                             ))}
                             {orgDepartments.length > 3 && (
-                              <Badge variant="outline" className="text-xs font-serif">
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "text-xs font-serif",
+                                  isDark ? "border-stone-600 text-stone-400" : "border-stone-300 text-stone-500"
+                                )}
+                              >
                                 +{orgDepartments.length - 3}
                               </Badge>
                             )}
@@ -1312,21 +1920,19 @@ export default function OrganizationsManagement() {
         {/* 部门管理 */}
         <TabsContent value="departments" className="space-y-4">
           {/* --- 部门管理头部操作区 --- */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className={cn(
-                "text-lg font-medium font-serif",
-                isDark ? "text-stone-100" : "text-stone-900"
-              )}>
-                部门管理
-              </h3>
-              <p className={cn(
-                "text-sm font-serif",
-                isDark ? "text-stone-400" : "text-stone-600"
-              )}>
-                管理各组织的部门结构
-              </p>
-            </div>
+          <div className="mb-6">
+            <h3 className={cn(
+              "text-lg font-medium font-serif",
+              isDark ? "text-stone-100" : "text-stone-900"
+            )}>
+              部门管理
+            </h3>
+            <p className={cn(
+              "text-sm font-serif",
+              isDark ? "text-stone-400" : "text-stone-600"
+            )}>
+              管理各组织的部门结构，每个部门卡片内可直接添加成员
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -1337,59 +1943,69 @@ export default function OrganizationsManagement() {
 
               return (
                 <Card key={`${dept.org_id}-${dept.department}`} className={cn(
-                  "border shadow-sm",
-                  isDark ? "bg-stone-900 border-stone-800" : "bg-stone-100 border-stone-200"
+                  "border shadow-sm transition-all duration-200 hover:shadow-md",
+                  isDark ? "bg-stone-900 border-stone-800 hover:border-stone-700" : "bg-stone-50 border-stone-200 hover:border-stone-300"
                 )}>
-                  <CardHeader>
+                  <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
                         <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center",
-                          isDark ? "bg-stone-800" : "bg-stone-100"
+                          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                          isDark ? "bg-stone-800" : "bg-stone-200"
                         )}>
                           <Layers className={cn(
                             "w-4 h-4", 
-                            isDark ? "text-stone-400" : "text-stone-500"
+                            isDark ? "text-stone-400" : "text-stone-600"
                           )} />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <CardTitle className={cn(
-                            "font-serif text-lg",
+                            "font-serif text-base sm:text-lg truncate",
                             isDark ? "text-stone-100" : "text-stone-900"
                           )}>
                             {dept.org_name} - {dept.department}
                           </CardTitle>
                           <CardDescription className={cn(
-                            "font-serif",
+                            "font-serif text-sm",
                             isDark ? "text-stone-400" : "text-stone-600"
                           )}>
                             {dept.member_count} 名成员
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge
-                        variant={dept.has_permissions ? "default" : "outline"}
-                        className="font-serif"
+                      
+                      {/* --- 添加成员按钮 --- */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openDepartmentBatchAdd(dept)}
+                        className={cn(
+                          "font-serif flex-shrink-0 ml-2",
+                          isDark 
+                            ? "border-stone-700 hover:bg-stone-800 text-stone-300 hover:text-stone-100" 
+                            : "border-stone-300 hover:bg-stone-100 text-stone-700 hover:text-stone-900"
+                        )}
                       >
-                        {dept.has_permissions ? '已配权限' : '未配权限'}
-                      </Badge>
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline ml-1">添加成员</span>
+                      </Button>
                     </div>
                   </CardHeader>
 
-                  <CardContent>
+                  <CardContent className="pt-0">
                     {deptMembers.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="grid gap-3 sm:gap-2">
                         {deptMembers.map((member) => (
                           <div
                             key={member.id}
                             className={cn(
-                              "flex items-center justify-between p-3 rounded-lg border",
-                              isDark ? "bg-stone-800 border-stone-700" : "bg-stone-100 border-stone-300"
+                              "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between p-3 rounded-lg border transition-colors",
+                              isDark ? "bg-stone-800 border-stone-700 hover:bg-stone-750" : "bg-white border-stone-200 hover:bg-stone-50"
                             )}
                           >
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-3 min-w-0 flex-1">
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center",
+                                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                                 member.role === 'owner' && (isDark ? "bg-amber-900 text-amber-200" : "bg-amber-100 text-amber-800"),
                                 member.role === 'admin' && (isDark ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"),
                                 member.role === 'member' && (isDark ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800")
@@ -1398,22 +2014,22 @@ export default function OrganizationsManagement() {
                                 {member.role === 'admin' && <Shield className="w-4 h-4" />}
                                 {member.role === 'member' && <UserIcon className="w-4 h-4" />}
                               </div>
-                              <div>
+                              <div className="min-w-0 flex-1">
                                 <p className={cn(
-                                  "font-medium font-serif",
+                                  "font-medium font-serif text-sm sm:text-base truncate",
                                   isDark ? "text-stone-100" : "text-stone-900"
                                 )}>
                                   {member.user?.full_name || member.user?.username || '未知用户'}
                                 </p>
                                 <p className={cn(
-                                  "text-sm font-serif",
+                                  "text-xs sm:text-sm font-serif truncate",
                                   isDark ? "text-stone-400" : "text-stone-600"
                                 )}>
                                   {member.job_title || '暂无职位'}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                               <Badge
                                 variant={
                                   member.role === 'owner' ? 'default' :
@@ -1428,11 +2044,25 @@ export default function OrganizationsManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                onClick={() => openEditMember(member)}
+                                disabled={operationLoading}
+                                className={cn(
+                                  "font-serif",
+                                  isDark 
+                                    ? "border-stone-700 hover:bg-stone-800 text-stone-300 hover:text-stone-100" 
+                                    : "border-stone-300 hover:bg-stone-100 text-stone-700 hover:text-stone-900"
+                                )}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={() => handleRemoveUserFromOrg(member.id, member.user?.full_name || member.user?.username || '未知用户')}
                                 disabled={operationLoading}
                                 className={cn(
-                                  "text-red-500 hover:text-red-700 disabled:opacity-50",
-                                  isDark ? "hover:bg-red-900/20" : "hover:bg-red-50"
+                                  "text-red-500 hover:text-red-700 disabled:opacity-50 border-red-200",
+                                  isDark ? "hover:bg-red-900/20 border-red-800" : "hover:bg-red-50"
                                 )}
                               >
                                 {operationLoading ? (
@@ -1446,14 +2076,28 @@ export default function OrganizationsManagement() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-6">
+                      <div className="text-center py-8">
                         <Users className="w-12 h-12 text-stone-400 mx-auto mb-3" />
                         <p className={cn(
-                          "font-serif",
+                          "font-serif text-sm",
                           isDark ? "text-stone-400" : "text-stone-600"
                         )}>
                           该部门暂无成员
                         </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDepartmentBatchAdd(dept)}
+                          className={cn(
+                            "mt-3 font-serif",
+                            isDark 
+                              ? "border-stone-700 hover:bg-stone-800 text-stone-300" 
+                              : "border-stone-300 hover:bg-stone-100 text-stone-700"
+                          )}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          添加成员
+                        </Button>
                       </div>
                     )}
                   </CardContent>

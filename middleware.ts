@@ -50,10 +50,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 获取用户会话
+  // 🔒 安全修复：使用 getUser() 替代 getSession()
+  // getUser() 会向 Supabase Auth 服务器验证 JWT token 的真实性
+  // 防止本地 cookie 被篡改导致的权限提升攻击
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser()
+
+  // 处理认证错误
+  if (authError) {
+    console.log(`[Middleware] Auth verification failed: ${authError.message}`)
+  }
 
   // 基于用户会话状态的路由保护逻辑
   const isAuthRoute = pathname.startsWith('/auth')
@@ -68,18 +76,19 @@ export async function middleware(request: NextRequest) {
                          pathname === '/reset-password';
   
   // 启用路由保护逻辑，确保未登录用户无法访问受保护的路由
-  if (!session && !isAuthRoute && !isApiRoute && !isPublicRoute) {
-    console.log(`[Middleware] User not logged in, redirecting protected route ${pathname} to /login`)
+  if (!user && !isAuthRoute && !isApiRoute && !isPublicRoute) {
+    console.log(`[Middleware] User not authenticated, redirecting protected route ${pathname} to /login`)
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // 管理员路由权限检查
-  if (session && isAdminRoute) {
+  // 🔒 安全的管理员路由权限检查
+  // 使用经过服务器验证的 user.id 而非可能被篡改的 session.user.id
+  if (user && isAdminRoute) {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', user.id)  // 🔒 使用安全验证过的 user.id
         .single()
 
       if (error || !profile || profile.role !== 'admin') {
@@ -93,7 +102,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (session && isAuthRoute) {
+  if (user && isAuthRoute) {
     console.log(`[Middleware] User logged in, redirecting auth route ${pathname} to /`)
     return NextResponse.redirect(new URL('/', request.url))
   }

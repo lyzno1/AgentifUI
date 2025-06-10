@@ -11,6 +11,7 @@ export default function AboutPage() {
   const router = useRouter();
   const { isDark } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   
   // 确保客户端渲染一致性
   useEffect(() => {
@@ -66,9 +67,9 @@ export default function AboutPage() {
     try {
       // 检查用户是否已登录
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (session) {
+      if (user) {
         // 用户已登录，直接跳转到聊天页面
         router.push('/chat');
       } else {
@@ -81,6 +82,18 @@ export default function AboutPage() {
       router.push('/login');
     }
   };
+
+  useEffect(() => {
+    const checkUser = async () => {
+      // 🔒 安全修复：使用 getUser() 进行服务器端验证
+      // 避免依赖可能被篡改的本地 session 数据
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+
+    checkUser();
+  }, []);
 
   return (
     <main className="min-h-screen w-full py-6 px-4 sm:px-6 lg:px-8 overflow-x-hidden">
@@ -161,7 +174,7 @@ export default function AboutPage() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-center mb-10"
         >
-          {/* “加入我们”标题和段落已根据用户要求移除 */}
+          {/* "加入我们"标题和段落已根据用户要求移除 */}
           <Button
             size="lg" 
             className={`${colors.buttonClass} px-8 py-3 h-auto text-base font-medium rounded-lg transition-all duration-200`}

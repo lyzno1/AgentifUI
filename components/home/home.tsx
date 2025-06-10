@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@lib/supabase/client';
 import { useTheme } from '@lib/hooks/use-theme';
 import { AdminButton } from '@components/admin/admin-button';
@@ -12,6 +12,7 @@ export function Home() {
   const router = useRouter();
   const { isDark } = useTheme();
   const supabase = createClient();
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const handleStartClick = async () => {
     try {
@@ -66,6 +67,17 @@ export function Home() {
   };
 
   const colors = getColors();
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      // 🔒 安全修复：使用 getUser() 进行服务器端验证
+      // 避免依赖可能被篡改的本地 session 数据
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+
+    getCurrentUser();
+  }, []);
 
   return (
     <AnimatePresence>
