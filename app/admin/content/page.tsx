@@ -221,14 +221,14 @@ export default function ContentManagementPage() {
 
   return (
     <div className={cn(
-      "min-h-screen flex flex-col",
+      "h-screen flex flex-col overflow-hidden",
       isDark ? "bg-stone-900" : "bg-stone-50"
     )}>
       {/* --- BEGIN COMMENT ---
       页面头部区域 - 标题和描述 (压缩高度)
       --- END COMMENT --- */}
       <div className={cn(
-        "border-b",
+        "border-b flex-shrink-0",
         isDark ? "bg-stone-800 border-stone-600" : "bg-white border-stone-200"
       )}>
         <div className="w-full px-4 py-3">

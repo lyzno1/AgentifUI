@@ -53,7 +53,7 @@ export function ChatflowFloatingController({
   
   return (
     <div className={cn(
-      "fixed bottom-24 right-6 z-20",
+      "fixed bottom-24 right-4 z-20",
       className
     )}>
       {/* 悬浮球 - 点击直接切换节点跟踪器 */}

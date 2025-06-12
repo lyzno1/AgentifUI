@@ -48,6 +48,56 @@ export function WorkflowTracker({
   const progress = useWorkflowExecutionStore(state => state.executionProgress)
   const error = useWorkflowExecutionStore(state => state.error)
   const canRetry = useWorkflowExecutionStore(state => state.canRetry)
+  const iterationExpandedStates = useWorkflowExecutionStore(state => state.iterationExpandedStates)
+  const loopExpandedStates = useWorkflowExecutionStore(state => state.loopExpandedStates)
+
+  // 🎯 过滤和分组节点：根据展开状态控制迭代/循环中的节点显示
+  const getVisibleNodes = () => {
+    const visibleNodes = []
+    
+    for (const node of nodes) {
+      // 🎯 容器节点（迭代/循环/并行分支）总是显示
+      if (node.isIterationNode || node.isLoopNode || node.isParallelNode) {
+        visibleNodes.push(node)
+      }
+      // 非嵌套节点总是显示
+      else if (!node.isInIteration && !node.isInLoop) {
+        visibleNodes.push(node)
+      } 
+      // 迭代中的子节点：根据容器展开状态决定是否显示
+      else if (node.isInIteration) {
+        // 迭代中的节点：需要找到对应的迭代容器节点
+        const iterationNode = nodes.find(n => 
+          n.isIterationNode && 
+          n.id !== node.id && 
+          // 简单的判断：如果迭代节点在当前节点之前，则认为是其容器
+          nodes.indexOf(n) < nodes.indexOf(node)
+        )
+        
+        // 如果找到迭代容器节点且已展开，则显示此迭代中的节点
+        if (iterationNode && iterationExpandedStates[iterationNode.id]) {
+          visibleNodes.push(node)
+        }
+      } 
+      // 循环中的子节点：根据容器展开状态决定是否显示
+      else if (node.isInLoop) {
+        // 循环中的节点：需要找到对应的循环容器节点
+        const loopNode = nodes.find(n => 
+          n.isLoopNode && 
+          n.id !== node.id && 
+          // 简单的判断：如果循环节点在当前节点之前，则认为是其容器
+          nodes.indexOf(n) < nodes.indexOf(node)
+        )
+        
+        // 如果找到循环容器节点且已展开，则显示此循环中的节点
+        if (loopNode && loopExpandedStates[loopNode.id]) {
+          visibleNodes.push(node)
+        }
+      }
+    }
+    
+    return visibleNodes
+  }
   
   // --- 自动打开结果查看器 ---
   const prevExecutionRef = useRef<string | null>(null)
@@ -158,8 +208,8 @@ export function WorkflowTracker({
                 </div>
               </div>
             ) : (
-              // 显示真实的节点数据
-              nodes.map((node, index) => (
+              // 🎯 显示过滤后的节点数据：根据展开状态控制迭代/循环中的节点显示
+              getVisibleNodes().map((node, index) => (
                 <ExecutionBar
                   key={node.id}
                   node={node}

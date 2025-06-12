@@ -3,7 +3,7 @@
 // 实现与 Dify 聊天相关 API 的交互逻辑。
 // --- END COMMENT ---
 
-import { DifyChatRequestPayload, DifyStreamResponse, DifySseEvent, DifySseNodeStartedEvent, DifySseNodeFinishedEvent, DifySseIterationStartedEvent, DifySseIterationNextEvent, DifySseIterationCompletedEvent, DifySseParallelBranchStartedEvent, DifySseParallelBranchFinishedEvent } from './types';
+import { DifyChatRequestPayload, DifyStreamResponse, DifySseEvent, DifySseNodeStartedEvent, DifySseNodeFinishedEvent, DifySseIterationStartedEvent, DifySseIterationNextEvent, DifySseIterationCompletedEvent, DifySseParallelBranchStartedEvent, DifySseParallelBranchFinishedEvent, DifySseLoopStartedEvent, DifySseLoopNextEvent, DifySseLoopCompletedEvent } from './types';
 import { parseSseStream } from '@lib/utils/sse-parser';
 
 // --- BEGIN COMMENT ---
@@ -30,7 +30,7 @@ export async function streamDifyChat(
   payload: DifyChatRequestPayload,
   appId: string, // 将 appId 作为参数传入
   onConversationIdReceived?: (id: string) => void,
-  onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent) => void // 🎯 扩展节点事件回调类型
+  onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent | DifySseLoopStartedEvent | DifySseLoopNextEvent | DifySseLoopCompletedEvent) => void // 🎯 扩展节点事件回调类型
 ): Promise<DifyStreamResponse> {
   console.log('[Dify Service] Sending request to proxy:', payload);
   
@@ -228,6 +228,39 @@ export async function streamDifyChat(
                   onNodeEvent(event as any);
                 } catch (callbackError) {
                   console.error('[Dify Service] Error in onNodeEvent callback (parallel_branch_finished):', callbackError);
+                }
+              }
+              break;
+            // --- BEGIN COMMENT ---
+            // 🎯 新增：循环事件处理
+            // --- END COMMENT ---
+            case 'loop_started': // 循环开始
+              console.log('[Dify Service] Loop started:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (loop_started):', callbackError);
+                }
+              }
+              break;
+            case 'loop_next': // 循环下一轮
+              console.log('[Dify Service] Loop next:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (loop_next):', callbackError);
+                }
+              }
+              break;
+            case 'loop_completed': // 循环完成
+              console.log('[Dify Service] Loop completed:', event.data);
+              if (onNodeEvent) {
+                try {
+                  onNodeEvent(event as any);
+                } catch (callbackError) {
+                  console.error('[Dify Service] Error in onNodeEvent callback (loop_completed):', callbackError);
                 }
               }
               break;

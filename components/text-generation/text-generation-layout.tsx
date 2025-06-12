@@ -182,7 +182,7 @@ export function TextGenerationLayout({ instanceId }: TextGenerationLayoutProps) 
   // --- 移动端布局 ---
   if (isMobile) {
     return (
-      <div className="h-[calc(100vh-2.5rem)] flex flex-col">
+      <div className="h-full flex flex-col overflow-hidden">
         {/* 全局错误提示 */}
         {error && (
           <ErrorBanner

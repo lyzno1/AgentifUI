@@ -205,7 +205,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
       <NavBar />
       
       {/* --- 主内容区域，为 NavBar 留出空间 --- */}
-      <div className="absolute top-12 left-0 right-0 bottom-0 overflow-hidden">
+      <div className="pt-12 h-full overflow-hidden">
         <WorkflowLayout instanceId={instanceId} />
       </div>
     </div>

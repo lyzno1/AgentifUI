@@ -616,4 +616,84 @@ Chatflow 执行进度条相关样式
   background: #78716c; /* stone-500 */
 }
 
+/* --- BEGIN COMMENT ---
+🎯 Chatflow Loop 层级指示样式
+与Iteration保持完全一致的样式和行为
+--- END COMMENT --- */
+
+/* 循环节点容器 */
+.loop-node {
+  position: relative;
+}
+
+/* 左侧装饰线 - 与iteration-node完全一致 */
+.loop-node::before {
+  content: '';
+  position: absolute;
+  left: -1px; /* 紧贴bar的左边框 */
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, 
+    rgba(168, 162, 158, 0.6), /* stone-400 半透明 */
+    rgba(168, 162, 158, 0.8)  /* stone-400 更不透明 */
+  );
+  border-radius: 6px 0 0 6px; /* 左侧圆角与bar的rounded-md匹配 */
+  transition: all 0.2s ease;
+}
+
+.dark .loop-node::before {
+  background: linear-gradient(to bottom, 
+    rgba(87, 83, 78, 0.6),  /* stone-600 半透明 */
+    rgba(87, 83, 78, 0.8)   /* stone-600 更不透明 */
+  );
+}
+
+/* 连接点 - 与iteration-node完全一致 */
+.loop-node::after {
+  content: '';
+  position: absolute;
+  left: -0.5px; /* 在装饰线中央 */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 8px;
+  background: #a8a29e; /* stone-400 */
+  border-radius: 1px;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.dark .loop-node::after {
+  background: #57534e; /* stone-600 */
+}
+
+/* 悬停效果 - 与iteration-node完全一致 */
+.loop-node:hover::before {
+  width: 4px;
+  left: -2px;
+  background: linear-gradient(to bottom, 
+    rgba(120, 113, 108, 0.8), /* stone-500 */
+    rgba(120, 113, 108, 1)    /* stone-500 完全不透明 */
+  );
+}
+
+.dark .loop-node:hover::before {
+  background: linear-gradient(to bottom, 
+    rgba(120, 113, 108, 0.8), /* stone-500 */
+    rgba(120, 113, 108, 1)    /* stone-500 完全不透明 */
+  );
+}
+
+.loop-node:hover::after {
+  width: 3px;
+  height: 10px;
+  left: -1.5px;
+  background: #78716c; /* stone-500 */
+}
+
+.dark .loop-node:hover::after {
+  background: #78716c; /* stone-500 */
+}
+
 

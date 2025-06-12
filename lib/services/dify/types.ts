@@ -215,6 +215,9 @@ export type DifySseEvent =
   | DifySseIterationCompletedEvent
   | DifySseParallelBranchStartedEvent
   | DifySseParallelBranchFinishedEvent
+  | DifySseLoopStartedEvent
+  | DifySseLoopNextEvent
+  | DifySseLoopCompletedEvent
   | DifySseErrorEvent
   | DifySsePingEvent
   | DifySseAgentMessageEvent;
@@ -297,6 +300,57 @@ export interface DifySseParallelBranchFinishedEvent extends DifySseBaseEvent {
     outputs?: Record<string, any>;
     error?: string;
     elapsed_time: number;
+    created_at: number;
+  };
+}
+
+// --- BEGIN COMMENT ---
+// 新增：循环(Loop)相关的SSE事件类型
+// Loop与Iteration的区别：
+// - Loop：基于条件判断的重复执行，可能无限循环或基于计数器
+// - Iteration：基于输入数据列表的遍历执行，有明确的结束条件
+// --- END COMMENT ---
+
+/** event: loop_started (循环开始) */
+export interface DifySseLoopStartedEvent extends DifySseBaseEvent {
+  event: 'loop_started';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    node_type: string;
+    title: string;
+    inputs: Record<string, any>;
+    metadata?: { loop_length?: number }; // 循环限制信息
+    created_at: number;
+  };
+}
+
+/** event: loop_next (循环下一轮) */
+export interface DifySseLoopNextEvent extends DifySseBaseEvent {
+  event: 'loop_next';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    node_type: string;
+    title: string;
+    index: number;
+    pre_loop_output?: Record<string, any>;
+    created_at: number;
+  };
+}
+
+/** event: loop_completed (循环完成) */
+export interface DifySseLoopCompletedEvent extends DifySseBaseEvent {
+  event: 'loop_completed';
+  workflow_run_id: string;
+  data: {
+    id: string;
+    node_id: string;
+    // 🎯 修复：实际数据中没有total_loops字段，需要从其他地方推断
+    outputs?: Record<string, any>;
+    elapsed_time?: number;
     created_at: number;
   };
 }
@@ -813,12 +867,18 @@ export type DifyWorkflowSseEvent =
   | DifyWorkflowSseFinishedEvent
   | DifyWorkflowSseNodeStartedEvent
   | DifyWorkflowSseNodeFinishedEvent
-  | DifyWorkflowSseErrorEvent;
+  | DifyWorkflowSseErrorEvent
+  | DifySseIterationStartedEvent
+  | DifySseIterationNextEvent
+  | DifySseIterationCompletedEvent
+  | DifySseLoopStartedEvent
+  | DifySseLoopNextEvent
+  | DifySseLoopCompletedEvent;
 
 /** Workflow 流式响应接口 */
 export interface DifyWorkflowStreamResponse {
-  // 节点执行进度流
-  progressStream: AsyncGenerator<DifyWorkflowSseNodeStartedEvent | DifyWorkflowSseNodeFinishedEvent, void, undefined>;
+  // 🎯 修复：节点执行进度流，支持所有 workflow 事件类型
+  progressStream: AsyncGenerator<DifyWorkflowSseEvent, void, undefined>;
   
   // 获取 workflow_run_id
   getWorkflowRunId: () => string | null;

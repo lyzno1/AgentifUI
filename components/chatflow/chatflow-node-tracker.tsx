@@ -31,16 +31,23 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
   const executionProgress = useChatflowExecutionStore(state => state.executionProgress)
   const error = useChatflowExecutionStore(state => state.error)
   const iterationExpandedStates = useChatflowExecutionStore(state => state.iterationExpandedStates)
+  const loopExpandedStates = useChatflowExecutionStore(state => state.loopExpandedStates)
   
-  // 🎯 过滤和分组节点：根据展开状态控制迭代中的节点显示
+  // 🎯 过滤和分组节点：根据展开状态控制迭代/循环中的节点显示
   const getVisibleNodes = () => {
     const visibleNodes = []
     
     for (const node of nodes) {
-      // 非迭代中的节点总是显示
-      if (!node.isInIteration) {
+      // 🎯 修复：容器节点（迭代/循环/并行分支）总是显示
+      if (node.isIterationNode || node.isLoopNode || node.isParallelNode) {
         visibleNodes.push(node)
-      } else {
+      }
+      // 非嵌套节点总是显示
+      else if (!node.isInIteration && !node.isInLoop) {
+        visibleNodes.push(node)
+      } 
+      // 迭代中的子节点：根据容器展开状态决定是否显示
+      else if (node.isInIteration) {
         // 迭代中的节点：需要找到对应的迭代容器节点
         const iterationNode = nodes.find(n => 
           n.isIterationNode && 
@@ -51,6 +58,21 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
         
         // 如果找到迭代容器节点且已展开，则显示此迭代中的节点
         if (iterationNode && iterationExpandedStates[iterationNode.id]) {
+          visibleNodes.push(node)
+        }
+      } 
+      // 循环中的子节点：根据容器展开状态决定是否显示
+      else if (node.isInLoop) {
+        // 循环中的节点：需要找到对应的循环容器节点
+        const loopNode = nodes.find(n => 
+          n.isLoopNode && 
+          n.id !== node.id && 
+          // 简单的判断：如果循环节点在当前节点之前，则认为是其容器
+          nodes.indexOf(n) < nodes.indexOf(node)
+        )
+        
+        // 如果找到循环容器节点且已展开，则显示此循环中的节点
+        if (loopNode && loopExpandedStates[loopNode.id]) {
           visibleNodes.push(node)
         }
       }
@@ -74,6 +96,8 @@ export function ChatflowNodeTracker({ isVisible, className }: ChatflowNodeTracke
     )}>
       <div className={cn(
         "rounded-lg border p-4 space-y-3",
+        // 限制实际宽度，避免与聊天内容冲突
+        "max-w-[320px] min-w-[280px]",
         isDark 
           ? "bg-stone-800/50 border-stone-700/50 backdrop-blur-sm" 
           : "bg-white/80 border-stone-200 backdrop-blur-sm"

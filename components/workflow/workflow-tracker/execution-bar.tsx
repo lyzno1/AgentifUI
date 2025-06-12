@@ -8,15 +8,9 @@ import {
   Clock, 
   CheckCircle, 
   XCircle, 
-  AlertCircle,
-  Zap,
-  GitBranch,
-  RotateCcw,
-  Code,
-  Search,
-  Filter
+  Search
 } from 'lucide-react'
-import type { WorkflowNode, WorkflowIteration, WorkflowParallelBranch } from '@lib/stores/workflow-execution-store'
+import type { WorkflowNode, WorkflowIteration, WorkflowLoop, WorkflowParallelBranch } from '@lib/stores/workflow-execution-store'
 import { useWorkflowExecutionStore } from '@lib/stores/workflow-execution-store'
 
 interface ExecutionBarProps {
@@ -43,8 +37,15 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   
   // 🎯 使用store中的展开状态和actions
-  const { iterationExpandedStates, toggleIterationExpanded } = useWorkflowExecutionStore()
-  const isExpanded = iterationExpandedStates[node.id] || false
+  const { 
+    iterationExpandedStates, 
+    loopExpandedStates, 
+    toggleIterationExpanded, 
+    toggleLoopExpanded 
+  } = useWorkflowExecutionStore()
+  
+  const isExpanded = (node.isIterationNode && iterationExpandedStates[node.id]) || 
+                     (node.isLoopNode && loopExpandedStates[node.id]) || false
   
   // 延迟显示动画
   useEffect(() => {
@@ -75,36 +76,15 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   }
   
   const getStatusIcon = () => {
-    // 🎯 优先显示节点类型图标，状态通过颜色体现
-    const getNodeTypeIcon = () => {
-      switch (node.type) {
-        case 'llm':
-          return <Zap className="h-4 w-4" />
-        case 'knowledge-retrieval':
-          return <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">知</span>
-        case 'question-classifier':
-          return <Filter className="h-4 w-4" />
-        case 'if-else':
-          return <GitBranch className="h-4 w-4" />
-        case 'code':
-          return <Code className="h-4 w-4" />
-        case 'iteration':
-        case 'loop':
-          return <RotateCcw className="h-4 w-4" />
-        case 'http-request':
-          return <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">HTTP</span>
-        case 'parallel':
-          return <GitBranch className="h-4 w-4" />
-        default:
-          // 如果没有类型，回退到状态图标
-          if (node.status === 'running') {
-            return <Loader2 className="h-4 w-4 animate-spin" />
-          }
-          return <Search className="h-4 w-4" />
+    // 🎯 保持workflow UI一致性：只使用两种图标 - 放大镜和spinner
+    const getSimpleIcon = () => {
+      if (node.status === 'running') {
+        return <Loader2 className="h-4 w-4 animate-spin" />
       }
+      return <Search className="h-4 w-4" />
     }
     
-    const icon = getNodeTypeIcon()
+    const icon = getSimpleIcon()
     
     // 根据状态设置颜色
     const colorClass = node.status === 'running'
@@ -130,6 +110,20 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
           return '迭代失败'
         default:
           return '等待迭代'
+      }
+    }
+    
+    // 🎯 循环节点显示特殊状态文本
+    if (node.isLoopNode) {
+      switch (node.status) {
+        case 'running':
+          return '正在循环'
+        case 'completed':
+          return '循环完成'
+        case 'failed':
+          return '循环失败'
+        default:
+          return '等待循环'
       }
     }
     
@@ -204,44 +198,57 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
   
   const getBarStyles = () => {
     const baseStyles = cn(
-      // 🎯 应用chatflow经验：细bar样式 + 悬停效果
+      // 🎯 保持workflow原有样式：细bar样式 + 悬停效果
       "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300",
-      "transform hover:scale-[1.02] hover:shadow-md font-serif",
-      isVisible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+      "transform font-serif",
+      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
     )
+    
+    // --- BEGIN COMMENT ---
+    // 🎯 关键修复：迭代/循环中的节点使用左侧指示条+连接点设计，提供清晰的层级视觉指示
+    // --- END COMMENT ---
+    const nestedStyles = (node.isInIteration || node.isInLoop) ? cn(
+      "relative ml-6 pl-4",
+      // 使用相应的指示条样式
+      node.isInIteration ? "iteration-node" : "loop-node",
+      // 轻微的背景色区分
+      isDark ? "bg-stone-800/20" : "bg-stone-50/40"
+    ) : ""
+    
+    const combinedBaseStyles = cn(baseStyles, nestedStyles)
     
     switch (node.status) {
       case 'running':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-700/50 border-stone-600 shadow-lg shadow-stone-900/30"
             : "bg-stone-200/50 border-stone-300 shadow-lg shadow-stone-200/50"
         )
       case 'completed':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-600/30 border-stone-500"
             : "bg-stone-100 border-stone-300"
         )
       case 'failed':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-red-900/20 border-red-700/50"
             : "bg-red-50 border-red-200"
         )
       case 'pending':
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-800/50 border-stone-700/50"
             : "bg-stone-50 border-stone-200"
         )
       default:
         return cn(
-          baseStyles,
+          combinedBaseStyles,
           isDark
             ? "bg-stone-800/50 border-stone-700/50"
             : "bg-stone-50 border-stone-200"
@@ -254,11 +261,19 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
       <div 
         className={cn(
           getBarStyles(),
-          // 🎯 所有bar都有悬停效果，只有迭代和并行分支节点才有cursor pointer
+          // 🎯 所有bar都有悬停效果，只有迭代、循环和并行分支节点才有cursor pointer
           "hover:scale-[1.02] hover:shadow-md transition-all duration-200",
-          (node.isIterationNode || node.isParallelNode) && "cursor-pointer"
+          (node.isIterationNode || node.isLoopNode || node.isParallelNode) && "cursor-pointer"
         )}
-        onClick={(node.isIterationNode || node.isParallelNode) ? () => toggleIterationExpanded(node.id) : undefined}
+        onClick={(node.isIterationNode || node.isLoopNode || node.isParallelNode) ? () => {
+          if (node.isIterationNode) {
+            toggleIterationExpanded(node.id)
+          } else if (node.isLoopNode) {
+            toggleLoopExpanded(node.id)
+          } else if (node.isParallelNode) {
+            toggleIterationExpanded(node.id) // 并行分支暂时使用迭代展开状态
+          }
+        } : undefined}
       >
         {/* 左侧：状态图标 */}
         <div className="flex-shrink-0">
@@ -280,13 +295,23 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
             
             {/* 🎯 状态标签行 - 右移一些距离让"执行完成"对齐 */}
             <div className="flex items-center gap-2 flex-shrink-0 ml-8">
-              {/* 迭代计数显示 */}
+              {/* 迭代计数显示 - 显示时加1，从1开始计数 */}
               {node.isIterationNode && node.totalIterations && (
                 <span className={cn(
                   "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
                   isDark && "bg-stone-700/50 text-stone-300"
                 )}>
-                  {node.currentIteration || 0}/{node.totalIterations}
+                  {(node.currentIteration || 0) + 1}/{node.totalIterations}
+                </span>
+              )}
+
+              {/* 🎯 循环计数显示 - 显示时加1，从1开始计数 */}
+              {node.isLoopNode && node.maxLoops && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-serif",
+                  isDark && "bg-stone-700/50 text-stone-300"
+                )}>
+                  {(node.currentLoop || 0) + 1}/{node.maxLoops}
                 </span>
               )}
                 
@@ -376,6 +401,53 @@ export function ExecutionBar({ node, index, delay = 0 }: ExecutionBarProps) {
                 {iteration.endTime && iteration.startTime && (
                   <span className={cn("text-xs font-serif", isDark ? "text-stone-400" : "text-stone-500")}>
                     {formatTime(iteration.endTime - iteration.startTime)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 🎯 循环详情展开区域 */}
+      {node.isLoopNode && node.loops && isExpanded && (
+        <div className="animate-in slide-in-from-top-2 fade-in duration-250">
+          {node.loops.map((loop, loopIndex) => (
+            <div
+              key={loop.id}
+              className={cn(
+                "relative ml-6 pl-4 loop-node",
+                isDark ? "bg-stone-800/30" : "bg-stone-50/30",
+                "flex items-center gap-3 px-3 py-2 rounded-md border transition-all duration-300 font-serif",
+                loop.status === 'running'
+                  ? isDark
+                    ? "bg-stone-700/50 border-stone-600"
+                    : "bg-stone-200/50 border-stone-300"
+                  : isDark
+                    ? "bg-stone-600/30 border-stone-500"
+                    : "bg-stone-100 border-stone-300"
+              )}
+            >
+              <div className="flex-shrink-0">
+                {loop.status === 'running' ? (
+                  <Loader2 className={cn("h-3 w-3 animate-spin", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : loop.status === 'completed' ? (
+                  <CheckCircle className={cn("h-3 w-3", isDark ? "text-stone-400" : "text-stone-600")} />
+                ) : (
+                  <XCircle className="h-3 w-3 text-red-500" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <span className={cn("text-sm font-serif", isDark ? "text-stone-200" : "text-stone-800")}>
+                  第 {loop.index + 1} 轮循环
+                </span>
+              </div>
+              
+              <div className="flex-shrink-0">
+                {loop.endTime && loop.startTime && (
+                  <span className={cn("text-xs font-serif", isDark ? "text-stone-400" : "text-stone-500")}>
+                    {formatTime(loop.endTime - loop.startTime)}
                   </span>
                 )}
               </div>

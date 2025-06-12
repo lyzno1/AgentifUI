@@ -22,7 +22,7 @@ import { usePendingConversationStore, PendingConversation } from '@lib/stores/pe
 import { streamDifyChat } from '@lib/services/dify/chat-service';
 import { DifyStreamResponse } from '@lib/services/dify/types';
 import { renameConversation } from '@lib/services/dify/conversation-service';
-import type { DifyChatRequestPayload, DifySseNodeStartedEvent, DifySseNodeFinishedEvent, DifySseIterationStartedEvent, DifySseIterationNextEvent, DifySseIterationCompletedEvent, DifySseParallelBranchStartedEvent, DifySseParallelBranchFinishedEvent } from '@lib/services/dify/types';
+import type { DifyChatRequestPayload, DifySseNodeStartedEvent, DifySseNodeFinishedEvent, DifySseIterationStartedEvent, DifySseIterationNextEvent, DifySseIterationCompletedEvent, DifySseParallelBranchStartedEvent, DifySseParallelBranchFinishedEvent, DifySseLoopStartedEvent, DifySseLoopNextEvent, DifySseLoopCompletedEvent } from '@lib/services/dify/types';
 import { useSupabaseAuth } from '@lib/supabase/hooks'; // For userId
 // import { useCurrentAppStore } from '@lib/stores/current-app-store'; // appId is passed as param
 import { createConversation } from '@lib/db'; // 使用新的优化版本
@@ -35,7 +35,7 @@ interface UseCreateConversationReturn {
     appId: string,
     userIdentifier: string,
     onDbIdCreated?: (difyId: string, dbId: string) => void,
-    onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent) => void // 🎯 新增：支持节点事件回调
+    onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent | DifySseLoopStartedEvent | DifySseLoopNextEvent | DifySseLoopCompletedEvent) => void // 🎯 新增：支持节点事件回调
   ) => Promise<{
     tempConvId: string;
     realConvId?: string; 
@@ -81,7 +81,7 @@ export function useCreateConversation(): UseCreateConversationReturn {
       appId: string,
       userIdentifier: string,
       onDbIdCreated?: (difyId: string, dbId: string) => void,
-      onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent) => void // 🎯 新增：支持节点事件回调
+      onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent | DifySseLoopStartedEvent | DifySseLoopNextEvent | DifySseLoopCompletedEvent) => void // 🎯 新增：支持节点事件回调
     ): Promise<{
       tempConvId: string;
       realConvId?: string;

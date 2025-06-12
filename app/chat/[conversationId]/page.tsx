@@ -226,7 +226,7 @@ export default function ChatPage() {
                 <ChatflowNodeTracker 
                   isVisible={showNodeTracker}
                   className={cn(
-                    "fixed bottom-40 right-6 z-30 max-w-sm",
+                    "fixed bottom-40 right-4 z-30 max-w-sm",
                     "transition-all duration-300"
                   )}
                 />

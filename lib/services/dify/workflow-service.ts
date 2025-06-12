@@ -118,7 +118,7 @@ export async function executeDifyWorkflow(
 export async function streamDifyWorkflow(
   payload: DifyWorkflowRequestPayload,
   appId: string,
-  onProgressUpdate?: (event: DifyWorkflowSseNodeStartedEvent | DifyWorkflowSseNodeFinishedEvent) => void
+  onProgressUpdate?: (event: DifyWorkflowSseEvent) => void
 ): Promise<DifyWorkflowStreamResponse> {
   console.log('[Dify Workflow Service] Starting workflow stream:', payload);
   
@@ -170,7 +170,7 @@ export async function streamDifyWorkflow(
     // --- BEGIN COMMENT ---
     // 创建进度流生成器
     // --- END COMMENT ---
-    async function* processProgressStream(): AsyncGenerator<DifyWorkflowSseNodeStartedEvent | DifyWorkflowSseNodeFinishedEvent, void, undefined> {
+    async function* processProgressStream(): AsyncGenerator<DifyWorkflowSseEvent, void, undefined> {
       try {
         for await (const result of parseSseStream(stream)) {
           if (result.type === 'error') {
@@ -217,6 +217,80 @@ export async function streamDifyWorkflow(
                   onProgressUpdate(event);
                 } catch (callbackError) {
                   console.error('[Dify Workflow Service] Error in onProgressUpdate callback:', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            // 🎯 新增：Loop 事件处理 - 关键修复！
+            case 'loop_started':
+              console.log('[Dify Workflow Service] Loop started:', event.data.node_id, event.data.title);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (loop_started):', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            case 'loop_next':
+              console.log('[Dify Workflow Service] Loop next:', event.data.node_id, 'index:', event.data.index);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (loop_next):', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            case 'loop_completed':
+              console.log('[Dify Workflow Service] Loop completed:', event.data.node_id);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (loop_completed):', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            // 🎯 新增：Iteration 事件处理
+            case 'iteration_started':
+              console.log('[Dify Workflow Service] Iteration started:', event.data.node_id, event.data.title);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (iteration_started):', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            case 'iteration_next':
+              console.log('[Dify Workflow Service] Iteration next:', event.data.node_id, 'index:', event.data.iteration_index);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (iteration_next):', callbackError);
+                }
+              }
+              yield event;
+              break;
+
+            case 'iteration_completed':
+              console.log('[Dify Workflow Service] Iteration completed:', event.data.node_id);
+              if (onProgressUpdate) {
+                try {
+                  onProgressUpdate(event);
+                } catch (callbackError) {
+                  console.error('[Dify Workflow Service] Error in onProgressUpdate callback (iteration_completed):', callbackError);
                 }
               }
               yield event;
