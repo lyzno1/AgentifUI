@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-every text css must add "font-serif"

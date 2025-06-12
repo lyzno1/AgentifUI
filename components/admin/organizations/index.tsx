@@ -701,10 +701,22 @@ export default function OrganizationsManagement() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-5 h-5 animate-spin text-stone-600" />
-          <span className="text-stone-600 font-serif">加载中...</span>
+      <div className="relative h-full min-h-screen">
+        {/* --- BEGIN COMMENT ---
+        页面级加载状态 - 与admin layout保持一致的设计
+        --- END COMMENT --- */}
+        <div className={cn(
+          "absolute inset-0 z-10 flex items-center justify-center",
+          "backdrop-blur-sm",
+          isDark ? "bg-stone-900/50" : "bg-white/50"
+        )}>
+          <div className={cn(
+            "flex items-center gap-3 px-6 py-3 rounded-lg border shadow-lg",
+            isDark ? "bg-stone-800 border-stone-700 text-stone-200" : "bg-white border-stone-200 text-stone-700"
+          )}>
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent" />
+            <span className="text-sm font-medium font-serif">正在加载组织数据...</span>
+          </div>
         </div>
       </div>
     )

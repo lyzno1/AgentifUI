@@ -3,50 +3,68 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Commenting Guidelines
+# Comment Rule
 
-This document outlines the rules for writing comments in this project's codebase. Consistent commenting improves code readability and maintainability.
+## Core Requirements
 
-## Language
+- **Language**: All comments MUST be in Simplified Chinese (中文)
+- **Purpose**: Explain *why*, not just *what* (unless complex)
+- **Style**: Concise and clear
 
--   **All comments MUST be written in Simplified Chinese (中文).** This ensures consistency and clarity for all team members.
+## Comment Separators
 
-## Format and Structure
+Use `---` separators for significant comment changes:
 
--   **Clarity is Key:** Write comments that explain the *why* behind the code, not just *what* the code does (unless the 'what' is particularly complex or non-obvious).
--   **Keep it Concise:** Be brief and to the point. Avoid overly long or rambling comments.
+```typescript
+// --- BEGIN COMMENT ---
+// 这里是重要的中文注释，解释复杂逻辑的原因
+// --- END COMMENT ---
+function complexFunction() {
+  // ... implementation ...
+}
+```
 
-## Adding or Modifying Comments
+## Tailwind CSS Comment Patterns
 
--   **Use Separators for Significant Changes:** When adding a new block of comments or making substantial modifications to existing ones, use triple hyphens (`---`) before and after the comment block to clearly delineate the change. This helps during code reviews to identify where comments have been added or altered significantly.
+### Class Grouping
+```tsx
+<div className={cn(
+  // 基础样式
+  "bg-white rounded-lg shadow-md",
+  
+  // 响应式布局
+  "flex flex-col md:flex-row lg:items-center",
+  
+  // 响应式间距
+  "p-4 md:p-6 lg:p-8",
+  
+  // 条件样式
+  isActive && "border-blue-500 border-2"
+)}>
+```
 
-    Example of adding a new comment block:
+### Responsive Breakpoint Comments
+```tsx
+{/* --- 响应式导航栏 --- */}
+{/* 移动端：垂直菜单，隐藏在汉堡菜单后 */}
+{/* 平板及以上：水平排列，直接显示 */}
+<nav className="flex flex-col md:flex-row">
+```
 
-    ```typescript
-    // --- BEGIN COMMENT ---
-    // 这里是一段重要的中文注释，解释了下面复杂逻辑的原因。
-    // 它涵盖了边界情况 X 和 Y。
-    // --- END COMMENT ---
-    function complexCalculation(a, b) {
-      // ... implementation ...
-    }
-    ```
+### Conditional Rendering
+```tsx
+{/* --- 仅在移动端显示的组件 --- */}
+{isMobileView && <MobileNavigation />}
 
-    Example of modifying an existing comment:
+{/* --- 仅在桌面端显示的组件 --- */}
+{!isMobileView && <DesktopNavigation />}
+```
 
-    ```typescript
-    // --- BEGIN MODIFIED COMMENT ---
-    // 原注释已被更新，以反映新的需求 Z。
-    // --- END MODIFIED COMMENT ---
-    // ~~ 原来的旧注释 ~~
-    ```
+## Placement Rules
 
--   **Minor Fixes:** For simple typo corrections or very minor clarifications within an existing comment, the `---` separators are not strictly required, but use your judgment.
-
-## Placement
-
--   Place comments on the line *before* the code they refer to, or sometimes at the end of a line for very short explanations.
--   Comment functions, complex logic blocks, and non-obvious parts of the code.
+- Place comments **before** the code they describe
+- Comment functions, complex logic, and non-obvious code
+- Use end-of-line comments sparingly for short explanations
 
 ## Goal
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Zap, Bot, Plus, EyeOff, Heart } from "lucide-react"
+import { Zap, Bot, Plus, HeartOff, Heart } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useCurrentApp } from "@lib/hooks/use-current-app"
 import { useChatStore } from "@lib/stores/chat-store"
@@ -238,7 +238,7 @@ export function SidebarFavoriteApps({ isDark, contentVisible }: SidebarFavoriteA
         </DropdownMenuV2.Item>
         <DropdownMenuV2.Divider />
         <DropdownMenuV2.Item
-          icon={<EyeOff className="w-3.5 h-3.5" />}
+          icon={<HeartOff className="w-3.5 h-3.5" />}
           onClick={() => {
             setOpenDropdownId(null)
             handleHideApp(app)

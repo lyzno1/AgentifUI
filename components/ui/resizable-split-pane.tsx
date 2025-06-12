@@ -145,7 +145,7 @@ export function ResizableSplitPane({
       </div>
       
       {/* 分割线和拖拽区域 */}
-      <div className="relative flex items-center justify-center group">
+      <div className="relative flex items-center justify-center group z-10">
         {/* 可视分割线 */}
         <div className={cn(
           "w-px h-full transition-all duration-200",

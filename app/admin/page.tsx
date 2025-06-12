@@ -10,7 +10,10 @@ import {
   BarChart3,
   Shield,
   ArrowRight,
-  Key
+  Key,
+  Building2,
+  Menu,
+  Bell
 } from 'lucide-react'
 
 interface AdminCardProps {
@@ -119,10 +122,24 @@ export default function AdminPage() {
       stats: `当前状态: ${apiConfigStatus}`
     },
     {
+      title: '关于与通知',
+      description: '管理About页面内容和系统通知推送',
+      icon: Bell,
+      href: '/admin/content',
+      stats: '功能可用'
+    },
+    {
       title: '用户管理',
       description: '管理用户账户、权限和访问控制',
       icon: Users,
       href: '/admin/users',
+      stats: '功能可用'
+    },
+    {
+      title: '组织管理',
+      description: '管理组织结构、部门和成员关系',
+      icon: Building2,
+      href: '/admin/organizations',
       stats: '功能可用'
     },
     {

@@ -3,7 +3,7 @@
 本文档详细描述了 AgentifUI 平台的数据库设计，包括表结构、关系、安全机制和特性。本文档与当前数据库状态完全同步，包含所有已应用的迁移文件。
 
 **文档更新日期**: 2025-06-12  
-**数据库版本**: 包含至 20250610180000_fix_organization_select_for_users.sql 的所有迁移
+**数据库版本**: 包含至 20250611103054_fix_security_definer_view_warning.sql 的所有迁移
 
 ## 目录
 
@@ -119,7 +119,7 @@
 | department | TEXT | 部门名称 | NOT NULL |
 | service_instance_id | UUID | 服务实例ID | 引用 service_instances(id)，NOT NULL |
 | is_enabled | BOOLEAN | 是否启用 | DEFAULT TRUE |
-| permission_level | TEXT | 权限级别 | DEFAULT 'full'，CHECK IN ('full', 'read_only', 'restricted') |
+| ~~permission_level~~ | ~~TEXT~~ | ~~权限级别~~ | ~~已移除，简化权限设计~~ |
 | usage_quota | INTEGER | 月度使用配额 | NULL表示无限制 |
 | used_count | INTEGER | 当月已使用次数 | DEFAULT 0 |
 | quota_reset_date | DATE | 配额重置日期 | DEFAULT CURRENT_DATE |
@@ -128,10 +128,10 @@
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
 | | | | UNIQUE(org_id, department, service_instance_id) |
 
-**权限级别说明：**
-- `full`: 完全访问权限
-- `read_only`: 只读权限
-- `restricted`: 受限权限
+**权限控制说明：**
+- **简化设计**: 移除了混淆的permission_level字段，采用更简洁的权限控制
+- **二元权限**: 通过is_enabled字段控制部门是否可以访问应用
+- **配额管理**: 通过usage_quota和used_count字段管理使用配额
 
 **权限配置原则：**
 - **手动配置**: 所有权限记录必须通过管理界面手动创建
@@ -144,10 +144,12 @@
 - `org_only`: 只有在department_app_permissions表中有启用权限记录的部门成员可见
 - `private`: 私有应用（预留功能）
 
-**最新迁移更新 (2025-06-10)**：
+**最新迁移更新 (2025-06-11)**：
+- **权限设计简化**: 移除混淆的permission_level字段，采用更简洁的二元权限控制
 - **多部门支持**: 用户可以在同一组织的多个部门任职
 - **权限精确控制**: 基于三元组(org_id + department + service_instance_id)的权限管理
 - **RLS策略修复**: 修复了普通用户无法查看组织信息的问题
+- **安全视图优化**: 修复security_definer视图警告，明确指定为SECURITY INVOKER
 - **管理员视图清理**: 移除了过时的admin_user_management_view，改用函数方式
 
 **索引优化：**
@@ -718,6 +720,80 @@ VALUES ('00000000-0000-0000-0000-000000000001');
 - `20250609213759_activate_organization_features.sql`: 激活组织功能
 - `20250610000000_add_safe_user_deletion.sql`: 添加安全用户删除
 - `20250610113034_add_auth_source_realtime_sync.sql`: 添加认证源实时同步
+- `20250610120000_add_org_app_permissions.sql`: 添加组织应用权限
+- `20250610120001_redesign_department_permissions.sql`: 重新设计部门权限
+- `20250610130000_add_department_permission_management.sql`: 添加部门权限管理
+- `20250610133559_simplify_department_permissions.sql`: 简化部门权限设计
+- `20250610140000_clean_virtual_department_permissions.sql`: 清理虚拟部门权限
+- `20250610160000_fix_organization_creation_policy.sql`: 修复组织创建策略
+- `20250610161000_fix_org_members_policy.sql`: 修复组织成员策略
+- `20250610162000_fix_infinite_recursion_policy.sql`: 修复无限递归策略
+- `20250610163000_completely_fix_recursion.sql`: 完全修复递归问题
+- `20250610164000_complete_rls_reset.sql`: 完整RLS重置
+- `20250610165000_final_cleanup_all_policies.sql`: 最终清理所有策略
+- `20250610165100_cleanup_remaining_policy.sql`: 清理剩余策略
+- `20250610170000_enable_multi_department_membership.sql`: 启用多部门成员资格
+- `20250610180000_fix_organization_select_for_users.sql`: 修复用户组织查询
+- `20250611103054_fix_security_definer_view_warning.sql`: 修复安全定义视图警告
+
+## 最新迁移详情
+
+### 2025-06-11 权限系统优化
+
+#### 20250611103054_fix_security_definer_view_warning.sql
+**目标**: 修复Supabase安全视图警告，优化权限控制机制
+
+**主要变更**:
+1. **视图安全优化**:
+   - 重新创建`user_organization_departments`视图，明确指定为`SECURITY INVOKER`
+   - 确保视图依赖底层表的RLS策略进行权限控制
+   - 管理员可查看所有数据，普通用户只能查看自己相关的组织信息
+
+2. **函数权限说明**:
+   - 确认`get_user_departments`函数的`SECURITY DEFINER`是必要的
+   - 该函数用于管理员查询任意用户的完整部门信息
+   - 包含明确的参数控制和权限检查
+
+#### 20250610180000_fix_organization_select_for_users.sql
+**目标**: 修复普通用户无法查看组织信息的问题
+
+**主要变更**:
+1. **RLS策略优化**:
+   - 删除过于严格的`simple_organizations_select`策略
+   - 创建新的`organizations_select_for_members`策略
+   - 管理员可以查看所有组织，普通用户可以查看自己所属的组织
+
+#### 20250610133559_simplify_department_permissions.sql
+**目标**: 简化部门权限设计，移除混淆的字段
+
+**主要变更**:
+1. **表结构简化**:
+   - 删除`permission_level`字段（造成混淆的根源）
+   - 采用更简洁的二元权限控制（is_enabled字段）
+   - 保留配额管理功能（usage_quota, used_count）
+
+2. **函数重构**:
+   - 重新创建`get_user_accessible_apps`函数，移除permission_level逻辑
+   - 重新创建`check_user_app_permission`函数，简化权限检查
+   - 重新创建`increment_app_usage`函数，优化使用量统计
+
+3. **权限逻辑优化**:
+   - **公开应用**: 所有人可见，无需权限检查
+   - **组织应用**: 需要部门权限且已启用（is_enabled = true）
+   - **私有应用**: 只有管理员可见
+
+### 2025-06-10 组织权限管理系统
+
+#### 多部门支持 (20250610170000)
+- 用户可以在同一组织的多个部门任职
+- 每个用户在同一组织的每个部门只能有一条记录
+- 权限检查时取用户的第一个部门记录
+
+#### RLS策略修复系列 (20250610160000-165100)
+- 修复了组织创建、成员管理的RLS策略
+- 解决了无限递归问题
+- 完整重置并重新设计了所有RLS策略
+- 确保管理员和普通用户的权限边界清晰
 
 ## 设计特点
 
@@ -799,7 +875,6 @@ SSO认证系统支持多种认证方式：
                      |  |                |       | department    |
                      |  |                |       | service_instance_id |
                      |  |                |       | is_enabled    |
-                     |  |                |       | permission_level |
                      |  |                |       | usage_quota   |
                      |  |                |       | used_count    |
                      |  |                |       | quota_reset_date |

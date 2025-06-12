@@ -86,25 +86,41 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     const now = Date.now();
     const state = get();
   
-    // 5分钟内不重复获取
-    if (now - state.lastFetchTime < CACHE_DURATION && state.apps.length > 0) {
+    // --- BEGIN COMMENT ---
+    // 🎯 修复缓存污染：先获取用户ID，检查用户变化
+    // --- END COMMENT ---
+    const { createClient } = await import('@lib/supabase/client');
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('用户未登录'); // 理论上不会发生，middleware会拦截
+    }
+
+    // 🔧 关键修复：如果用户ID变化，立即清除缓存
+    if (state.currentUserId !== user.id) {
+      set({ 
+        apps: [], 
+        lastFetchTime: 0,
+        currentUserId: user.id,
+        isLoading: true,
+        error: null
+      });
+      console.log(`[AppListStore] 检测到用户变化 (${state.currentUserId} → ${user.id})，清除缓存`);
+    }
+  
+    // 重新获取状态（可能已被清除）
+    const currentState = get();
+    
+    // 5分钟内不重复获取（现在是用户隔离的）
+    if (now - currentState.lastFetchTime < CACHE_DURATION && currentState.apps.length > 0) {
+      console.log(`[AppListStore] 用户 ${user.id} 缓存仍然有效，跳过获取`);
       return;
     }
   
     set({ isLoading: true, error: null });
   
     try {
-      // --- BEGIN COMMENT ---
-      // 🎯 统一使用权限管理API，支持组织权限
-      // middleware保证用户已登录，直接获取用户可访问的应用（public + org_only）
-      // --- END COMMENT ---
-      const { createClient } = await import('@lib/supabase/client');
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('用户未登录'); // 理论上不会发生，middleware会拦截
-      }
 
       // 🎯 使用权限管理API获取用户可访问的应用
       const { getUserAccessibleApps } = await import('@lib/db/department-app-permissions');
@@ -171,8 +187,35 @@ export const useAppListStore = create<AppListState>((set, get) => ({
     const now = Date.now();
     const state = get();
   
-    // 5分钟内不重复获取
-    if (now - state.lastFetchTime < CACHE_DURATION && state.apps.length > 0) {
+    // --- BEGIN COMMENT ---
+    // 🔧 管理员函数也需要用户隔离，避免缓存污染
+    // --- END COMMENT ---
+    const { createClient } = await import('@lib/supabase/client');
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('用户未登录');
+    }
+
+    // 🔧 如果用户ID变化，清除缓存
+    if (state.currentUserId !== user.id) {
+      set({ 
+        apps: [], 
+        lastFetchTime: 0,
+        currentUserId: user.id,
+        isLoading: true,
+        error: null
+      });
+      console.log(`[AppListStore] fetchAllApps检测到用户变化 (${state.currentUserId} → ${user.id})，清除缓存`);
+    }
+  
+    // 重新获取状态
+    const currentState = get();
+    
+    // 5分钟内不重复获取（现在是用户隔离的）
+    if (now - currentState.lastFetchTime < CACHE_DURATION && currentState.apps.length > 0) {
+      console.log(`[AppListStore] 管理员用户 ${user.id} 缓存仍然有效，跳过获取`);
       return;
     }
   
@@ -193,7 +236,8 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       set({ 
         apps, 
         isLoading: false, 
-        lastFetchTime: now 
+        lastFetchTime: now,
+        currentUserId: user.id
       });
       
       console.log(`[AppListStore] 成功获取 ${apps.length} 个应用（包括私有）`);
@@ -329,7 +373,7 @@ export const useAppListStore = create<AppListState>((set, get) => ({
       console.log('[AppListStore] 应用列表为空，先获取应用列表');
       
       // 🎯 直接使用fetchApps获取应用列表
-      await get().fetchApps();
+        await get().fetchApps();
     }
     
     const currentApps = get().apps;

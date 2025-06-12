@@ -1,0 +1,96 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Development Workflow Rule
+
+## Core Principles
+
+1. **Analyze First**: Understand the problem before coding
+2. **Risk Assessment**: Evaluate impact before changes
+3. **Minimal Changes**: Smallest safe modifications
+4. **Comprehensive Validation**: Multi-dimensional verification
+5. **Standard Commits**: Follow git-commit-rule
+
+## Standard Workflow
+
+### Phase 1: Problem Analysis
+- **Root Cause**: Understand the real issue, not just symptoms
+- **Impact Scope**: Identify affected modules and users
+- **Code Research**: Use `codebase_search` to find related implementations
+- **Solution Design**: Compare 2-3 approaches, choose lowest risk
+
+### Phase 2: Risk Assessment
+- **Direct Impact**: Files and functions directly affected
+- **Indirect Impact**: Dependent components and callers
+- **Breaking Changes**: API/interface compatibility
+- **Performance Impact**: Load time, memory, responsiveness
+- **Security Risk**: Permissions, data safety, XSS/CSRF
+
+### Phase 3: Implementation
+- **Minimal Scope**: Only necessary changes, avoid unrelated refactoring
+- **Interface Stability**: Preserve existing function signatures
+- **Type Safety**: Ensure TypeScript correctness
+- **Error Handling**: Comprehensive error management
+
+### Phase 4: Validation
+- **Function Test**: Core functionality works as expected
+- **Regression Test**: Existing features remain intact
+- **Type Check**: `npx tsc --noEmit`
+- **Build Test**: `pnpm run build`
+- **Cross-browser**: Test in major browsers
+
+### Phase 5: Documentation & Commit
+- **Update Docs**: API, component, architecture docs if needed
+- **Git Commit**: Follow git-commit-rule strictly
+- **Self Review**: Complete code review before submission
+
+## Special Scenarios
+
+### Bug Fixes
+1. **Reproduce**: Ensure stable reproduction
+2. **Root Cause**: Deep analysis, avoid surface fixes
+3. **Minimal Fix**: Lowest risk solution
+4. **Regression Check**: Verify complete fix
+
+### Feature Development
+1. **Requirements**: Deep understanding of user needs
+2. **Technical Design**: Consider scalability and maintainability
+3. **Phased Implementation**: Break into verifiable stages
+4. **User Testing**: Real user feedback
+
+## Quality Checklist
+
+### Pre-commit
+- [ ] TypeScript type check passes
+- [ ] Build succeeds
+- [ ] Core functionality tested
+- [ ] No regression issues
+- [ ] Code follows project standards
+- [ ] Commit message follows git-commit-rule
+
+## Important Notes
+
+### Development Server Usage
+**⚠️ DO NOT run `pnpm run dev` unless explicitly needed**
+- The developer is usually already running dev server
+- Only run if specifically requested or confirmed safe
+- Always ask before starting development server
+- Use build/type-check commands for validation instead
+
+### Common Commands
+```bash
+# Type checking (preferred for validation)
+npx tsc --noEmit
+
+# Build testing (safe to run)
+pnpm run build
+
+```
+
+## Continuous Improvement
+- Regular workflow review
+- Collect team feedback
+- Process optimization
+- Tool upgrades 

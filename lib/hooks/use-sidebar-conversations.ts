@@ -97,7 +97,7 @@ export function useSidebarConversations(limit: number = 5) {
           cache: true,
           cacheTTL: 2 * 60 * 1000, // 2分钟缓存
           subscribe: true,
-          subscriptionKey: SubscriptionKeys.userConversations(userId),
+          subscriptionKey: SubscriptionKeys.sidebarConversations(userId),
           onUpdate: (payload) => {
             // 实时更新处理
             console.log('[实时更新] 对话变化:', payload);
@@ -173,7 +173,7 @@ export function useSidebarConversations(limit: number = 5) {
   useEffect(() => {
     return () => {
       if (userId) {
-        realtimeService.unsubscribe(SubscriptionKeys.userConversations(userId));
+        realtimeService.unsubscribe(SubscriptionKeys.sidebarConversations(userId));
       }
     };
   }, [userId]);

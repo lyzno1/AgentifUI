@@ -94,7 +94,7 @@ export function useAllConversations() {
           cache: true,
           cacheTTL: 5 * 60 * 1000, // 5分钟缓存，比侧边栏缓存时间长
           subscribe: true,
-          subscriptionKey: SubscriptionKeys.userConversations(userId),
+          subscriptionKey: SubscriptionKeys.allConversations(userId),
           onUpdate: (payload) => {
             // 实时更新处理
             console.log('[实时更新] 所有对话变化:', payload);
@@ -155,7 +155,7 @@ export function useAllConversations() {
   useEffect(() => {
     return () => {
       if (userId) {
-        realtimeService.unsubscribe(SubscriptionKeys.userConversations(userId));
+        realtimeService.unsubscribe(SubscriptionKeys.allConversations(userId));
       }
     };
   }, [userId]);

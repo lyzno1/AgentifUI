@@ -88,6 +88,8 @@ export function DynamicTitle() {
           newTitle = '安全设置 | ' + baseTitle
         } else if (pathname === '/admin/analytics') {
           newTitle = '数据分析 | ' + baseTitle
+        } else if (pathname === '/admin/content') {
+          newTitle = '关于与通知 | ' + baseTitle
         } else {
           // 其他管理页面
           const adminSection = pathname.split('/').pop() || ''

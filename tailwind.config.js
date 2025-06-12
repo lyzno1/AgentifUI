@@ -14,18 +14,16 @@ module.exports = {
       },
       fontFamily: {
         // --- BEGIN COMMENT ---
-        // 🎯 Claude 风格的中英文字体配置
-        // sans: Inter + 思源黑体 - 现代简洁的界面字体
+        // 🎯 全局衬线字体配置 - 所有字体族都指向衬线字体
+        // sans: 现在也指向 Crimson Pro + 思源宋体，避免退化
         // serif: Crimson Pro + 思源宋体 - 优雅易读的阅读字体
-        // display: Playfair Display + 思源黑体 - 装饰性标题字体
+        // display: Playfair Display + 思源宋体 - 装饰性标题字体
         // --- END COMMENT ---
         sans: [
-          'var(--font-inter)', 
-          'var(--font-noto-sans)', 
-          '-apple-system', 
-          'BlinkMacSystemFont', 
-          'system-ui', 
-          'sans-serif'
+          'var(--font-crimson)', 
+          'var(--font-noto-serif)', 
+          'Georgia', 
+          'serif'
         ],
         serif: [
           'var(--font-crimson)', 
@@ -35,7 +33,7 @@ module.exports = {
         ], 
         display: [
           'var(--font-playfair)', 
-          'var(--font-noto-sans)', 
+          'var(--font-noto-serif)', 
           'serif'
         ],
         mono: ['ui-monospace', 'SFMono-Regular', 'Monaco', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace'],

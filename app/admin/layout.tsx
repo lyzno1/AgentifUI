@@ -18,7 +18,13 @@ import {
   BarChart3,
   PanelLeft,
   PanelLeftClose,
-  Building2
+  Building2,
+  Bell,
+  ShieldCheck,
+  Settings,
+  FileText,
+  Search,
+  Plus
 } from 'lucide-react'
 
 interface AdminLayoutProps {
@@ -45,6 +51,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [contentVisible, setContentVisible] = useState(false)
   const [hoverTimeoutId, setHoverTimeoutId] = useState<number | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  
+  // --- BEGIN COMMENT ---
+  // 导航状态管理 - 提供立即视觉反馈和加载状态
+  // --- END COMMENT ---
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+  const [isNavigating, setIsNavigating] = useState(false)
 
   // --- BEGIN COMMENT ---
   // 管理菜单项配置 - 包含管理主页
@@ -61,6 +73,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Key, 
       href: '/admin/api-config',
       description: '管理应用实例和配置参数'
+    },
+    { 
+      text: '关于与通知', 
+      icon: Bell, 
+      href: '/admin/content',
+      description: '管理About页面和系统通知推送'
     },
     { 
       text: '用户管理', 
@@ -107,7 +125,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [])
 
   // --- BEGIN COMMENT ---
-  // 处理内容显示逻辑
+  // 处理内容显示逻辑 - 优化响应速度
   // --- END COMMENT ---
   useEffect(() => {
     if (!isExpanded) {
@@ -115,15 +133,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       return
     }
     
+    // 🎯 减少内容显示延迟，提升响应速度
     const timer = setTimeout(() => {
       setContentVisible(true)
-    }, 50)
+    }, 20) // 从50ms减少到20ms
     
     return () => clearTimeout(timer)
   }, [isExpanded])
 
   // --- BEGIN COMMENT ---
-  // 处理悬停 - 简化逻辑，只有悬停展开/收起
+  // 处理悬停 - 优化响应速度，减少延迟
   // --- END COMMENT ---
   const handleSetHovering = (hovering: boolean) => {
     // 移动端忽略悬停
@@ -137,29 +156,49 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       setHoverTimeoutId(null)
     }
 
-    // 悬停进入
+    // 🎯 悬停进入 - 立即响应，无延迟
     if (hovering && !isExpanded) {
-      const timeoutId = window.setTimeout(() => {
-        setIsHovering(true)
-        setIsExpanded(true)
-      }, 10)
-      setHoverTimeoutId(timeoutId)
+      setIsHovering(true)
+      setIsExpanded(true)
       return
     }
 
-    // 悬停离开
+    // 🎯 悬停离开 - 减少延迟，提升响应速度
     if (!hovering && isHovering) {
       const timeoutId = window.setTimeout(() => {
         setIsHovering(false)
         setIsExpanded(false)
         setContentVisible(false)
-      }, 150)
+      }, 100) // 从150ms减少到100ms
       setHoverTimeoutId(timeoutId)
       return
     }
 
     setIsHovering(hovering)
   }
+
+  // --- BEGIN COMMENT ---
+  // 处理菜单项点击 - 提供立即视觉反馈和互斥选中
+  // --- END COMMENT ---
+  const handleMenuClick = (href: string) => {
+    // 如果已经在导航中，忽略重复点击
+    if (isNavigating) return
+    
+    // 立即设置导航状态
+    setNavigatingTo(href)
+    setIsNavigating(true)
+  }
+
+  // --- BEGIN COMMENT ---
+  // 监听路由变化，清除导航状态
+  // --- END COMMENT ---
+  useEffect(() => {
+    if (navigatingTo && pathname === navigatingTo) {
+      // 路由已经切换到目标页面，清除导航状态
+      setNavigatingTo(null)
+      setIsNavigating(false)
+    }
+  }, [pathname, navigatingTo])
 
   // --- BEGIN COMMENT ---
   // 清理定时器
@@ -177,6 +216,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       "min-h-screen font-serif relative",
       colors.mainBackground.tailwind
     )}>
+
+
       {/* --- BEGIN COMMENT ---
       顶部导航栏 - 固定在顶部，不受sidebar影响，使用与sidebar相同的配色，确保z-index在sidebar之上
       --- END COMMENT --- */}
@@ -248,7 +289,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <aside
         className={cn(
           "fixed top-0 left-0 bottom-0 flex flex-col border-r",
-          "transition-[width] duration-300 ease-in-out",
+          // 🎯 优化动画速度 - 从300ms减少到150ms，使用更快的缓动函数
+          "transition-[width] duration-150 ease-out",
           // 宽度设置 - 展开时64，收起时16
           isExpanded ? "w-64" : "w-16",
           // 移动端未挂载时隐藏
@@ -272,19 +314,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <div className="pt-16 px-3 pb-4">
             <div className="space-y-1">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+                // 🎯 重新设计选中逻辑，确保互斥
+                const isCurrentPage = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+                const isNavigatingToThis = navigatingTo === item.href
+                
+                // 🎯 选中状态：正在导航到此页面 OR (当前在此页面 AND 没有在导航到其他页面)
+                const isActive = isNavigatingToThis || (isCurrentPage && !navigatingTo)
+                
                 const Icon = item.icon
                 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => handleMenuClick(item.href)}
                     className={cn(
                       "relative flex items-center rounded-lg px-3 py-2 text-sm font-medium",
                       "transition-all duration-200 ease-in-out",
                       "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                       isDark ? "focus-visible:ring-blue-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
-                      "border border-transparent min-h-[2.75rem]",
+                      "border border-transparent h-10 min-h-[2.5rem]",
                       !isDark && [
                         "text-stone-600",
                         "hover:bg-stone-300 hover:shadow-md",
@@ -308,7 +357,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       {isExpanded && contentVisible && (
                         <div className={cn(
                           "ml-2 flex-1 min-w-0 truncate font-serif",
-                          "flex items-center leading-none"
+                          "flex items-center leading-snug"
                         )}>
                           {item.text}
                         </div>
@@ -326,8 +375,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       主内容区域 - 顶部留出navbar空间，左侧始终留出slim sidebar空间
       --- END COMMENT --- */}
       <main className={cn(
-        "pt-12 ml-16 transition-all duration-300 ease-in-out min-h-screen"
+        // 🎯 优化主内容区域过渡动画速度
+        "pt-12 ml-16 transition-all duration-150 ease-out min-h-screen relative"
       )}>
+        {/* --- BEGIN COMMENT ---
+        导航加载状态覆盖层 - 仅覆盖主内容区域
+        --- END COMMENT --- */}
+        {isNavigating && (
+          <div className={cn(
+            "absolute inset-0 z-10 flex items-center justify-center",
+            "backdrop-blur-sm",
+            isDark ? "bg-stone-900/50" : "bg-white/50"
+          )}>
+            <div className={cn(
+              "flex items-center gap-3 px-6 py-3 rounded-lg border shadow-lg",
+              isDark ? "bg-stone-800 border-stone-700 text-stone-200" : "bg-white border-stone-200 text-stone-700"
+            )}>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent" />
+              <span className="text-sm font-medium">正在加载...</span>
+            </div>
+          </div>
+        )}
+        
         {children}
       </main>
     </div>
