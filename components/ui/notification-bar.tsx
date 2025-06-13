@@ -16,7 +16,7 @@ const colorMap = {
   success: 'bg-green-500 border-green-600',
   error: 'bg-red-500 border-red-600',
   warning: 'bg-yellow-500 border-yellow-600',
-  info: 'bg-blue-500 border-blue-600',
+  info: 'bg-stone-500 border-stone-600',
 };
 
 export const NotificationBar: React.FC = () => {

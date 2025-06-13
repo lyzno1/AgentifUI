@@ -1,6 +1,7 @@
 "use client"
 
-import React, { ReactNode, useEffect, useState } from 'react'
+import React, { ReactNode, useEffect, useState, useMemo } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useApiConfigStore, ServiceInstance } from '@lib/stores/api-config-store'
 import { useTheme } from '@lib/hooks/use-theme'
 import { cn } from '@lib/utils'
@@ -14,6 +15,7 @@ import {
   StarOff,
   Key
 } from 'lucide-react'
+import { InstanceFilterSelector } from '@components/admin/api-config/instance-filter-selector'
 
 interface ApiConfigLayoutProps {
   children: ReactNode
@@ -21,10 +23,14 @@ interface ApiConfigLayoutProps {
 
 export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
   const { isDark } = useTheme()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   
   const {
     serviceInstances: instances,
     apiKeys,
+    providers,
     isLoading: instancesLoading,
     loadConfigData: loadInstances,
     deleteAppInstance: deleteInstance,
@@ -35,6 +41,13 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
+  
+  // --- BEGIN COMMENT ---
+  // 从URL查询参数获取筛选状态
+  // --- END COMMENT ---
+  const [filterProviderId, setFilterProviderId] = useState<string | null>(() => {
+    return searchParams.get('provider') || null
+  })
 
   // --- BEGIN COMMENT ---
   // 初始化数据加载
@@ -46,6 +59,59 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
       })
     }
   }, [hasInitiallyLoaded, loadInstances])
+
+  // --- BEGIN COMMENT ---
+  // 处理筛选变化并同步URL
+  // --- END COMMENT ---
+  const handleFilterChange = (providerId: string | null) => {
+    // 如果值没有变化，直接返回
+    if (providerId === filterProviderId) return;
+    
+    setFilterProviderId(providerId)
+    
+    // 立即更新URL查询参数，不使用startTransition避免延迟
+    const params = new URLSearchParams(searchParams.toString())
+    if (providerId) {
+      params.set('provider', providerId)
+    } else {
+      params.delete('provider')
+    }
+    
+    const newUrl = `${pathname}?${params.toString()}`
+    router.replace(newUrl, { scroll: false })
+    
+    // --- BEGIN COMMENT ---
+    // 通知page组件筛选状态变化，用于新建应用时自动设置提供商
+    // --- END COMMENT ---
+    window.dispatchEvent(new CustomEvent('filterChanged', {
+      detail: { providerId }
+    }))
+  }
+
+  // --- BEGIN COMMENT ---
+  // 监听URL变化同步筛选状态（优化避免循环）
+  // --- END COMMENT ---
+  useEffect(() => {
+    const urlProviderId = searchParams.get('provider')
+    // 只在真正不同时才更新，避免循环
+    if (urlProviderId !== filterProviderId) {
+      setFilterProviderId(urlProviderId)
+      // 同步通知page组件
+      window.dispatchEvent(new CustomEvent('filterChanged', {
+        detail: { providerId: urlProviderId }
+      }))
+    }
+  }, [searchParams]) // 移除filterProviderId依赖，避免循环
+
+  // --- BEGIN COMMENT ---
+  // 🎯 根据筛选条件过滤应用实例
+  // --- END COMMENT ---
+  const filteredInstances = useMemo(() => {
+    if (!filterProviderId) {
+      return instances; // 显示全部
+    }
+    return instances.filter(instance => instance.provider_id === filterProviderId);
+  }, [instances, filterProviderId]);
 
   // --- BEGIN COMMENT ---
   // 监听page组件的状态变化，完全同步page的表单状态
@@ -83,16 +149,23 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
       loadInstances()
     }
 
+    const handleReloadProviders = () => {
+      // 重新加载providers数据
+      loadInstances() // 这会同时加载providers和instances
+    }
+
     window.addEventListener('addFormToggled', handleAddFormToggled as EventListener)
     window.addEventListener('setInstanceAsDefault', handleSetInstanceAsDefault as EventListener)
     window.addEventListener('directSetDefault', handleDirectSetDefault as EventListener)
     window.addEventListener('reloadInstances', handleReloadInstances)
+    window.addEventListener('reloadProviders', handleReloadProviders)
     
     return () => {
       window.removeEventListener('addFormToggled', handleAddFormToggled as EventListener)
       window.removeEventListener('setInstanceAsDefault', handleSetInstanceAsDefault as EventListener)
       window.removeEventListener('directSetDefault', handleDirectSetDefault as EventListener)
       window.removeEventListener('reloadInstances', handleReloadInstances)
+      window.removeEventListener('reloadProviders', handleReloadProviders)
     }
   }, [])
 
@@ -187,14 +260,17 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
           isDark ? "border-stone-700 bg-stone-800" : "border-stone-200 bg-stone-100"
         )}>
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <h2 className={cn(
-                "font-bold text-sm font-serif",
-                isDark ? "text-stone-100" : "text-stone-900"
-              )}>
-                应用实例
-              </h2>
-            </div>
+            {/* --- BEGIN COMMENT ---
+            使用新的筛选选择器替换原有的标题
+            --- END COMMENT --- */}
+            <InstanceFilterSelector
+              providers={providers}
+              selectedProviderId={filterProviderId}
+              onFilterChange={handleFilterChange}
+              instanceCount={filteredInstances.length}
+              isLoading={!hasInitiallyLoaded && instancesLoading}
+            />
+            
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('toggleAddForm'))
@@ -217,12 +293,6 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
               )} />
             </button>
           </div>
-          <div className={cn(
-            "text-xs font-serif",
-            isDark ? "text-stone-400" : "text-stone-600"
-          )}>
-            共 {instances.length} 个应用
-          </div>
         </div>
         
         {/* 列表：独立滚动区域 */}
@@ -240,14 +310,14 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
                 加载应用实例中...
               </p>
             </div>
-          ) : instances.length === 0 ? (
+          ) : filteredInstances.length === 0 ? (
             <div className="p-4 text-center">
               <Database className="h-12 w-12 mx-auto mb-3 text-stone-400" />
               <p className={cn(
                 "text-sm font-serif",
                 isDark ? "text-stone-400" : "text-stone-600"
               )}>
-                暂无应用实例
+                {filterProviderId ? '该提供商暂无应用实例' : '暂无应用实例'}
               </p>
               <button
                 onClick={() => {
@@ -263,7 +333,7 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
             </div>
           ) : (
             <div className="p-2">
-              {instances.map((instance) => (
+              {filteredInstances.map((instance) => (
                 <div
                   key={instance.instance_id}
                   className={cn(

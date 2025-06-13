@@ -48,7 +48,7 @@ export function SidebarContent() {
     if (isExpanded && !isMobile) {
       const timer = setTimeout(() => {
         showContent()
-      }, 50) // 桌面端保留延迟动画
+      }, 20) // 桌面端保留延迟动画
       return () => clearTimeout(timer)
     }
   }, [isExpanded, isMobile, updateContentVisibility, showContent])

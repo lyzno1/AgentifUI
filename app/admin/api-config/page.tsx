@@ -31,6 +31,9 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { DifyAppTypeSelector } from '@components/admin/api-config/dify-app-type-selector';
+import { ProviderManagementModal } from '@components/admin/api-config/provider-management-modal';
+import { CustomProviderSelector } from '@components/admin/api-config/custom-provider-selector';
+
 import { validateDifyFormData } from '@lib/services/dify/validation';
 import type { DifyAppType } from '@lib/types/dify-app-types';
 import { getDifyAppParameters } from '@lib/services/dify/app-service';
@@ -94,7 +97,8 @@ const InstanceForm = ({
   onSave, 
   onCancel, 
   isProcessing,
-  showFeedback
+  showFeedback,
+  defaultProviderId
 }: {
   instance: Partial<ServiceInstance> | null
   isEditing: boolean
@@ -102,9 +106,33 @@ const InstanceForm = ({
   onCancel: () => void
   isProcessing: boolean
   showFeedback: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void
+  defaultProviderId?: string | null
 }) => {
   const { isDark } = useTheme();
-  const { serviceInstances, apiKeys } = useApiConfigStore();
+  const { serviceInstances, apiKeys, providers } = useApiConfigStore();
+  
+  // --- BEGIN COMMENT ---
+  // 新建模式下的提供商选择状态
+  // --- END COMMENT ---
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  
+  // --- BEGIN COMMENT ---
+  // 监听提供商选择变化，自动更新API URL
+  // --- END COMMENT ---
+  useEffect(() => {
+    if (!isEditing && selectedProviderId) {
+      const selectedProvider = providers.find(p => p.id === selectedProviderId);
+      if (selectedProvider && selectedProvider.base_url) {
+        setFormData(prev => ({
+          ...prev,
+          config: {
+            ...prev.config,
+            api_url: selectedProvider.base_url
+          }
+        }));
+      }
+    }
+  }, [selectedProviderId, providers, isEditing]);
   
   // --- 获取当前实例的最新状态 ---
   const currentInstance = instance ? serviceInstances.find(inst => inst.id === instance.id) : null;
@@ -240,6 +268,16 @@ const InstanceForm = ({
     };
     
     if (instance) {
+      // --- BEGIN COMMENT ---
+      // 编辑模式：如果API URL为空，使用提供商的base_url
+      // --- END COMMENT ---
+      if (!newData.config.api_url && instance.provider_id) {
+        const currentProvider = providers.find(p => p.id === instance.provider_id);
+        if (currentProvider && currentProvider.base_url) {
+          newData.config.api_url = currentProvider.base_url;
+        }
+      }
+      
       setFormData(newData);
       setBaselineData(newData);
       // --- BEGIN COMMENT ---
@@ -247,6 +285,28 @@ const InstanceForm = ({
       // --- END COMMENT ---
       validateInstanceId(newData.instance_id);
     } else {
+      // --- BEGIN COMMENT ---
+      // 新建模式：初始化默认提供商选择
+      // 优先使用筛选的提供商，其次是Dify，最后是第一个活跃的提供商
+      // --- END COMMENT ---
+      const getInitialProviderId = () => {
+        const activeProviders = providers.filter(p => p.is_active);
+        if (activeProviders.length === 0) return '';
+        
+        // 如果有筛选的提供商且该提供商是活跃的，优先使用
+        if (defaultProviderId) {
+          const filteredProvider = activeProviders.find(p => p.id === defaultProviderId);
+          if (filteredProvider) return filteredProvider.id;
+        }
+        
+        if (activeProviders.length === 1) return activeProviders[0].id;
+        const difyProvider = activeProviders.find(p => p.name.toLowerCase() === 'dify');
+        return difyProvider ? difyProvider.id : activeProviders[0].id;
+      };
+      
+      const initialProviderId = getInitialProviderId();
+      setSelectedProviderId(initialProviderId);
+      
       const emptyData = {
         instance_id: '',
         display_name: '',
@@ -270,7 +330,7 @@ const InstanceForm = ({
       // --- END COMMENT ---
       setInstanceIdError('');
     }
-  }, [instance]);
+  }, [instance, providers]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,7 +370,11 @@ const InstanceForm = ({
           is_marketplace_app: formData.config.app_metadata.app_type === 'marketplace'
         }
       },
-      setAsDefault
+      setAsDefault,
+      // --- BEGIN COMMENT ---
+      // 新建模式下传递选择的提供商ID
+      // --- END COMMENT ---
+      selectedProviderId: isEditing ? undefined : selectedProviderId
     };
     
     onSave(dataToSave);
@@ -677,6 +741,54 @@ const InstanceForm = ({
           </div>
         </div>
         
+                {/* --- BEGIN COMMENT ---
+        服务提供商选择/显示区域
+        --- END COMMENT --- */}
+        <div className={cn(
+          "mb-6 p-4 rounded-lg border",
+          isDark ? "bg-stone-700/50 border-stone-600" : "bg-stone-50 border-stone-200"
+        )}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className={cn(
+                "text-sm font-medium font-serif",
+                isDark ? "text-stone-200" : "text-stone-800"
+              )}>
+                服务提供商
+              </h3>
+              <p className={cn(
+                "text-xs mt-1 font-serif",
+                isDark ? "text-stone-400" : "text-stone-600"
+              )}>
+                {isEditing ? '当前应用的服务提供商（不可修改）' : '选择服务提供商'}
+              </p>
+            </div>
+            
+            {isEditing ? (
+              // 编辑模式：只显示，不可修改
+              <div className={cn(
+                "px-3 py-1.5 rounded-md text-sm font-serif",
+                isDark ? "bg-stone-600 text-stone-200" : "bg-stone-200 text-stone-700"
+              )}>
+                {(() => {
+                  const currentProvider = providers.find(p => p.id === instance?.provider_id);
+                  return currentProvider ? currentProvider.name : '未知提供商';
+                })()}
+              </div>
+            ) : (
+              // 新建模式：可选择
+              <div className="w-48">
+                <CustomProviderSelector
+                  providers={providers}
+                  selectedProviderId={selectedProviderId}
+                  onProviderChange={setSelectedProviderId}
+                  placeholder="请选择提供商"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
@@ -786,13 +898,33 @@ const InstanceForm = ({
                     ? "bg-stone-700 border-stone-600 text-stone-100 placeholder-stone-400" 
                     : "bg-white border-stone-300 text-stone-900 placeholder-stone-500"
                 )}
-                placeholder="https://api.dify.ai/v1"
+                placeholder={(() => {
+                  if (isEditing && instance) {
+                    const currentProvider = providers.find(p => p.id === instance.provider_id);
+                    return currentProvider?.base_url || 'https://api.dify.ai/v1';
+                  } else {
+                    const selectedProvider = providers.find(p => p.id === selectedProviderId);
+                    return selectedProvider?.base_url || 'https://api.dify.ai/v1';
+                  }
+                })()}
               />
               <p className={cn(
                 "text-xs mt-1 font-serif",
                 isDark ? "text-stone-400" : "text-stone-500"
               )}>
-                留空将使用默认URL: https://api.dify.ai/v1
+                {(() => {
+                  if (isEditing && instance) {
+                    const currentProvider = providers.find(p => p.id === instance.provider_id);
+                    return `当前提供商默认URL: ${currentProvider?.base_url || '未知'}`;
+                  } else {
+                    const selectedProvider = providers.find(p => p.id === selectedProviderId);
+                    if (selectedProvider) {
+                      return `已自动填充提供商URL: ${selectedProvider.base_url}`;
+                    } else {
+                      return '请先选择服务提供商';
+                    }
+                  }
+                })()}
               </p>
             </div>
 
@@ -1363,6 +1495,8 @@ export default function ApiConfigPage() {
     severity: 'info'
   })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showProviderModal, setShowProviderModal] = useState(false)
+  const [currentFilterProviderId, setCurrentFilterProviderId] = useState<string | null>(null)
 
   useEffect(() => {
     const handleSelectInstance = (event: CustomEvent) => {
@@ -1401,16 +1535,23 @@ export default function ApiConfigPage() {
       }, 100)
     }
 
+    const handleFilterChanged = (event: CustomEvent) => {
+      const { providerId } = event.detail
+      setCurrentFilterProviderId(providerId)
+    }
+
     window.addEventListener('selectInstance', handleSelectInstance as EventListener)
     window.addEventListener('toggleAddForm', handleToggleAddForm)
     window.addEventListener('instanceDeleted', handleInstanceDeleted as EventListener)
     window.addEventListener('defaultInstanceChanged', handleDefaultInstanceChanged as EventListener)
+    window.addEventListener('filterChanged', handleFilterChanged as EventListener)
     
     return () => {
       window.removeEventListener('selectInstance', handleSelectInstance as EventListener)
       window.removeEventListener('toggleAddForm', handleToggleAddForm)
       window.removeEventListener('instanceDeleted', handleInstanceDeleted as EventListener)
       window.removeEventListener('defaultInstanceChanged', handleDefaultInstanceChanged as EventListener)
+      window.removeEventListener('filterChanged', handleFilterChanged as EventListener)
     }
   }, [showAddForm, selectedInstance])
 
@@ -1433,6 +1574,15 @@ export default function ApiConfigPage() {
     }))
   }
 
+  // --- BEGIN COMMENT ---
+  // Provider管理相关处理函数
+  // --- END COMMENT ---
+  const handleProviderChange = () => {
+    // 重新加载providers数据
+    window.dispatchEvent(new CustomEvent('reloadProviders'))
+    showFeedback('提供商配置已更新', 'success')
+  }
+
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('addFormToggled', {
       detail: { 
@@ -1444,23 +1594,60 @@ export default function ApiConfigPage() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* --- 管理提供商按钮 --- */}
+      <div className="px-6 pt-6 pb-3 flex justify-end">
+        <button
+          onClick={() => setShowProviderModal(true)}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
+            "focus:outline-none focus:ring-2 focus:ring-offset-2",
+            "border shadow-sm",
+            isDark 
+              ? "bg-stone-600 hover:bg-stone-500 text-stone-100 hover:text-white border-stone-500 focus:ring-stone-400 shadow-stone-900/20" 
+              : "bg-stone-200 hover:bg-stone-300 text-stone-800 hover:text-stone-900 border-stone-300 focus:ring-stone-500 shadow-stone-200/50"
+          )}
+        >
+          <Settings className="w-4 h-4" />
+          <span className="font-serif">管理提供商</span>
+        </button>
+      </div>
+
       {showAddForm ? (
         <div className="flex-1 overflow-y-auto p-6 min-h-0">
           <InstanceForm
             instance={null}
             isEditing={false}
+            defaultProviderId={currentFilterProviderId}
             onSave={(data) => {
               setIsProcessing(true)
-              const defaultProviderId = providers.find(p => p.name === 'Dify')?.id || 
-                                      providers[0]?.id || 
-                                      '1'
-              
               // --- 提取setAsDefault状态和其他数据 ---
               const { setAsDefault, ...instanceData } = data
               
+              // --- 使用用户选择的提供商 ---
+              const providerId = data.selectedProviderId;
+              if (!providerId) {
+                showFeedback('请选择服务提供商', 'error');
+                setIsProcessing(false);
+                return;
+              }
+              
+              // 验证选择的提供商是否有效
+              const selectedProvider = providers.find(p => p.id === providerId);
+              if (!selectedProvider) {
+                showFeedback('选择的服务提供商无效', 'error');
+                setIsProcessing(false);
+                return;
+              }
+              
+              if (!selectedProvider.is_active) {
+                showFeedback('选择的服务提供商未激活', 'error');
+                setIsProcessing(false);
+                return;
+              }
+              
               addInstance({
                 ...instanceData,
-                provider_id: defaultProviderId
+                provider_id: providerId
               }, data.apiKey)
                 .then((newInstance) => {
                   showFeedback('应用实例创建成功', 'success')
@@ -1570,6 +1757,13 @@ export default function ApiConfigPage() {
       )}
       
       <Toast feedback={feedback} onClose={handleCloseFeedback} />
+      
+      {/* --- Provider管理模态框 --- */}
+      <ProviderManagementModal
+        open={showProviderModal}
+        onOpenChange={setShowProviderModal}
+        onProviderChange={handleProviderChange}
+      />
     </div>
   )
 }

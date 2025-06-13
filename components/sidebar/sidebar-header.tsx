@@ -45,7 +45,7 @@ export function SidebarHeader() {
           "relative flex items-center rounded-lg px-3 py-2 text-sm font-medium",
           "transition-all duration-200 ease-in-out cursor-pointer",
           "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-          isDark ? "focus-visible:ring-blue-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
+          isDark ? "focus-visible:ring-stone-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
           "border border-transparent",
           "h-10 min-h-[2.5rem]",
           isDark ? [

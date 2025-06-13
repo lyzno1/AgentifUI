@@ -76,7 +76,7 @@ export function SidebarListButton({
         // 焦点状态样式
         // --- END COMMENT ---
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        isDark ? "focus-visible:ring-blue-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
+        isDark ? "focus-visible:ring-stone-500 focus-visible:ring-offset-gray-900" : "focus-visible:ring-primary focus-visible:ring-offset-background",
         
         // --- BEGIN COMMENT ---
         // 边框样式
