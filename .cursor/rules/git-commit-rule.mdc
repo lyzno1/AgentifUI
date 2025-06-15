@@ -30,13 +30,27 @@ alwaysApply: false
 ## Scope (Optional)
 
 - **api**: Backend API-related changes
-- **ui**: User interface components
+- **ui**: Generic UI components (buttons, inputs, etc.)
+- **chat**: Chat-related components and functionality
+- **sidebar**: Sidebar components and navigation
+- **auth**: Authentication/authorization components and logic
+- **admin**: Admin panel components
+- **workflow**: Workflow-related components
+- **settings**: Settings and configuration components
+- **mobile**: Mobile-specific components and responsive design
+- **embed**: Embedded components and integrations
+- **nav**: Navigation components (nav-bar, etc.)
+- **home**: Home page components
 - **db**: Database-related changes
-- **auth**: Authentication/authorization
 - **config**: Configuration changes
 - **deps**: Dependency updates
 - **core**: Core functionality
 - **route**: Routing changes
+- **hooks**: Custom React hooks
+- **store**: State management (Zustand stores)
+- **utils**: Utility functions and helpers
+- **types**: TypeScript type definitions
+- **style**: Styling and CSS changes
 - **all**: Multiple parts of the codebase
 
 ## Subject Rules
@@ -53,6 +67,9 @@ alwaysApply: false
 ```bash
 git commit -m "feat(api): 添加用户登录API"
 git commit -m "fix(ui): 修复按钮在IE11中的样式问题"
+git commit -m "feat(chat): 添加消息发送功能"
+git commit -m "fix(sidebar): 修复移动端侧边栏显示问题"
+git commit -m "chore(deps): 更新React到最新版本"
 git commit -m "docs: 更新开发环境配置文档"
 ```
 
@@ -81,6 +98,14 @@ git commit -m "feat(auth): 重构用户认证系统" \
 - **Second `-m`**: Empty string `""` for blank line between subject and body
 - **Subsequent `-m`**: Detailed explanations, reasons, impacts
 - **Last `-m`**: Footer information (issue references, breaking changes)
+
+## Scope Selection Guidelines
+
+- **Component-specific**: Use specific component scopes (chat, sidebar, auth) for changes to those areas
+- **Generic UI**: Use `ui` for reusable UI components like buttons, inputs, modals
+- **Cross-cutting**: Use `core` for changes affecting multiple components
+- **Infrastructure**: Use `config`, `deps`, `utils` for non-feature changes
+- **Multiple areas**: Use `all` when changes span multiple unrelated areas
 
 ## Usage Guidelines
 

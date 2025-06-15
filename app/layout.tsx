@@ -8,7 +8,7 @@ import "../styles/markdown-variables.css";
 import "../styles/markdown.css";
 import "../styles/prism-custom.css"; // 导入自定义Prism样式
 import { NotificationBar } from '@components/ui/notification-bar';
-import { ClientLayout } from "./layouts/client-layout";
+import { ClientLayout } from "../components/layouts/client-layout";
 import { cn } from "@lib/utils";
 import { Providers } from "./providers"; // 确保导入 Providers 组件
 import { DynamicTitle } from "@components/ui/dynamic-title"; // 导入动态标题组件
