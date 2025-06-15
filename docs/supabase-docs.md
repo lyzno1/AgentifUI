@@ -2,8 +2,8 @@
 
 本文档记录了AgentifUI项目中的数据库结构、功能和使用方法。本文档与当前数据库状态完全同步。
 
-**文档更新日期**: 2025-06-12  
-**数据库版本**: 包含至 20250611103054_fix_security_definer_view_warning.sql 的所有迁移
+**文档更新日期**: 2025-06-15  
+**数据库版本**: 包含至 20250615204425_fix_sso_provider_id_type_issue.sql 的所有迁移
 
 ## 当前系统状态
 
@@ -24,9 +24,11 @@
 ### 用户和身份管理
 
 1. `profiles` 表：
-   - 主要字段：`id`, `full_name`, `username`, `avatar_url`, `role`, `status`, `created_at`, `updated_at`, `last_login`, `auth_source`, `sso_provider_id`
+   - 主要字段：`id`, `full_name`, `username`, `avatar_url`, `email`, `phone`, `role`, `status`, `created_at`, `updated_at`, `last_login`, `auth_source`, `sso_provider_id`
+   - `email` 和 `phone` 字段从 `auth.users` 表同步，确保数据一致性
    - `role` 字段类型为 `user_role` 枚举，可能的值为 `'admin'`, `'manager'`, `'user'`，默认值为 `'user'`
    - `status` 字段类型为 `account_status` 枚举，可能的值为 `'active'`, `'suspended'`, `'pending'`，默认值为 `'active'`
+   - `auth_source` 字段支持多种认证方式：`email`, `google`, `github`, `phone` 等，默认值为 `'email'`
 
 2. `user_preferences` 表：
    - 主要字段：`id`, `user_id`, `theme`, `language`, `notification_settings`, `ai_preferences`, `updated_at`
@@ -183,8 +185,10 @@ CREATE POLICY "管理员可以查看所有执行记录" ON app_executions
 ### API 密钥管理
 
 1. `providers` 表：
-   - 主要字段：`id`, `name`, `type`, `base_url`, `auth_type`, `is_active`, `created_at`, `updated_at`
+   - 主要字段：`id`, `name`, `type`, `base_url`, `auth_type`, `is_active`, `is_default`, `created_at`, `updated_at`
    - 存储 API 服务提供商信息，如 Dify
+   - **默认提供商管理**：通过 `is_default` 字段和唯一约束确保系统中只有一个默认提供商
+   - **自动管理机制**：触发器自动维护默认提供商的唯一性和删除保护
 
 2. `service_instances` 表：
    - 主要字段：`id`, `provider_id`, `name`, `display_name`, `description`, `instance_id`, `api_path`, `is_default`, `visibility`, `config`, `created_at`, `updated_at`

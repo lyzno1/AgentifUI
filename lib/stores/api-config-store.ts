@@ -397,7 +397,8 @@ export const useApiConfigStore = create<ApiConfigState>((set, get) => ({
           type: 'llm',
           base_url: newApiUrl,
           auth_type: 'api_key',
-          is_active: true
+          is_active: true,
+          is_default: false
         });
           
         const newProvider = handleResult(newProviderResult, '创建 Dify 提供商');

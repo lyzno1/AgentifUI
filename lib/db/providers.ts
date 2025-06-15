@@ -16,6 +16,29 @@ import { Provider } from '../types/database';
 const supabase = createClient();
 
 /**
+ * 获取所有服务提供商（优化版本）
+ * @returns 服务提供商列表的Result
+ */
+export async function getAllProviders(): Promise<Result<Provider[]>> {
+  return dataService.findMany<Provider>(
+    'providers',
+    {},
+    { column: 'name', ascending: true },
+    undefined,
+    {
+      cache: true,
+      cacheTTL: 15 * 60 * 1000, // 15分钟缓存，提供商信息变化较少
+      subscribe: true,
+      subscriptionKey: SubscriptionKeys.providers(),
+      onUpdate: () => {
+        // 提供商信息更新时清除缓存
+        cacheService.deletePattern('providers:*');
+      }
+    }
+  );
+}
+
+/**
  * 获取所有活跃的服务提供商（优化版本）
  * @returns 服务提供商列表的Result
  */

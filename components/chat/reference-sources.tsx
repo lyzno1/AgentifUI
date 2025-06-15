@@ -9,7 +9,7 @@ interface RetrieverResource {
   content: string
   score: number
   position: number
-  word_count: number
+  word_count?: number // 改为可选字段，兼容不同Dify应用
   page?: number | null
   dataset_id?: string
   segment_id?: string
@@ -160,12 +160,14 @@ export function ReferenceSources({
                         )}>
                           {resource.dataset_name}
                         </span>
-                        <span className={cn(
-                          "text-xs font-serif",
-                          isDark ? "text-stone-400" : "text-stone-600"
-                        )}>
-                          {resource.word_count.toLocaleString()} 字
-                        </span>
+                        {resource.word_count && (
+                          <span className={cn(
+                            "text-xs font-serif",
+                            isDark ? "text-stone-400" : "text-stone-600"
+                          )}>
+                            {resource.word_count.toLocaleString()} 字
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -14,7 +14,7 @@ import { cn } from '@lib/utils';
 import { useTheme } from '@lib/hooks/use-theme';
 import { Provider } from '@lib/types/database';
 import { 
-  getActiveProviders, 
+  getAllProviders, 
   createProvider, 
   updateProvider, 
   deleteProvider 
@@ -49,6 +49,7 @@ interface ProviderFormData {
   base_url: string;
   auth_type: string;
   is_active: boolean;
+  is_default: boolean;
 }
 
 interface ProviderManagementModalProps {
@@ -72,7 +73,8 @@ export function ProviderManagementModal({
     type: 'llm',
     base_url: '',
     auth_type: 'api_key',
-    is_active: true
+    is_active: true,
+    is_default: false
   });
   const [errors, setErrors] = useState<Partial<ProviderFormData>>({});
 
@@ -82,7 +84,7 @@ export function ProviderManagementModal({
   const loadProviders = async () => {
     setLoading(true);
     try {
-      const result = await getActiveProviders();
+      const result = await getAllProviders();
       if (result.success) {
         setProviders(result.data);
       } else {
@@ -147,7 +149,8 @@ export function ProviderManagementModal({
       type: 'llm',
       base_url: '',
       auth_type: 'api_key',
-      is_active: true
+      is_active: true,
+      is_default: false
     });
     setErrors({});
     setEditingProvider(null);
@@ -171,7 +174,8 @@ export function ProviderManagementModal({
       type: provider.type,
       base_url: provider.base_url,
       auth_type: provider.auth_type,
-      is_active: provider.is_active
+      is_active: provider.is_active,
+      is_default: provider.is_default
     });
     setEditingProvider(provider);
     setIsCreating(false);
@@ -326,6 +330,16 @@ export function ProviderManagementModal({
                       )}>
                         {provider.is_active ? '已启用' : '已禁用'}
                       </span>
+                      {provider.is_default && (
+                        <span className={cn(
+                          "px-2 py-1 text-xs rounded-full font-serif",
+                          isDark
+                            ? "bg-stone-500/50 text-stone-200 border border-stone-400"
+                            : "bg-stone-200 text-stone-800"
+                        )}>
+                          默认提供商
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -466,6 +480,24 @@ export function ProviderManagementModal({
                       {formData.is_active ? '已启用' : '已禁用'}
                     </span>
                   </div>
+                </div>
+
+                {/* --- 是否设为默认 --- */}
+                <div className="space-y-2">
+                  <Label htmlFor="is_default">默认提供商</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_default"
+                      checked={formData.is_default}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_default: checked }))}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {formData.is_default ? '设为默认' : '非默认'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    系统中只能有一个默认提供商，设置后其他提供商的默认状态将被自动清除
+                  </p>
                 </div>
               </div>
 

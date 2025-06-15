@@ -59,6 +59,7 @@ export {
 
 // 服务提供商相关函数
 export {
+  getAllProviders,
   getActiveProviders,
   getProviderById,
   getProviderByName,

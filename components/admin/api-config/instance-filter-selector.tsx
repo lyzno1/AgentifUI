@@ -60,6 +60,16 @@ export const InstanceFilterSelector = memo(function InstanceFilterSelector({
           )}>
             {selectedProvider ? `${selectedProvider.name}应用` : '全部应用'}
           </h2>
+          {selectedProvider?.is_default && (
+            <span className={cn(
+              "px-1.5 py-0.5 text-xs rounded font-serif",
+              isDark
+                ? "bg-stone-500/50 text-stone-200"
+                : "bg-stone-200 text-stone-800"
+            )}>
+              默认
+            </span>
+          )}
         </div>
         
         <div className={cn(
@@ -155,7 +165,19 @@ export const InstanceFilterSelector = memo(function InstanceFilterSelector({
                       : "hover:bg-stone-200/40 text-stone-700"
                 )}
               >
-                <span className="truncate">{provider.name}</span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="truncate">{provider.name}</span>
+                  {provider.is_default && (
+                    <span className={cn(
+                      "px-1.5 py-0.5 text-xs rounded font-serif flex-shrink-0",
+                      isDark
+                        ? "bg-stone-500/50 text-stone-200"
+                        : "bg-stone-200 text-stone-800"
+                    )}>
+                      默认
+                    </span>
+                  )}
+                </div>
                 
                 {selectedProviderId === provider.id && (
                   <Check className="w-4 h-4 flex-shrink-0" />

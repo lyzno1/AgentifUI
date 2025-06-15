@@ -164,7 +164,19 @@ export function CustomProviderSelector({
                   )}
                 >
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="truncate font-medium">{provider.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium">{provider.name}</span>
+                      {provider.is_default && (
+                        <span className={cn(
+                          "px-1.5 py-0.5 text-xs rounded font-serif",
+                          isDark
+                            ? "bg-stone-500/50 text-stone-200"
+                            : "bg-stone-200 text-stone-800"
+                        )}>
+                          默认
+                        </span>
+                      )}
+                    </div>
                     <span className={cn(
                       "text-xs truncate",
                       isDark ? "text-stone-400" : "text-stone-500"

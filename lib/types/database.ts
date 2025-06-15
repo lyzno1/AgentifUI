@@ -151,6 +151,7 @@ export interface Provider {
   base_url: string;
   auth_type: string;
   is_active: boolean;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -2,8 +2,8 @@
 
 本文档详细描述了 AgentifUI 平台的数据库设计，包括表结构、关系、安全机制和特性。本文档与当前数据库状态完全同步，包含所有已应用的迁移文件。
 
-**文档更新日期**: 2025-06-12  
-**数据库版本**: 包含至 20250611103054_fix_security_definer_view_warning.sql 的所有迁移
+**文档更新日期**: 2025-06-15  
+**数据库版本**: 包含至 20250615204425_fix_sso_provider_id_type_issue.sql 的所有迁移
 
 ## 目录
 
@@ -40,12 +40,14 @@
 | full_name | TEXT | 用户全名 | |
 | username | TEXT | 用户名 | 唯一 |
 | avatar_url | TEXT | 头像URL | |
+| email | TEXT | 用户邮箱 | 从 auth.users 同步 |
+| phone | TEXT | 用户手机号 | 从 auth.users 同步 |
 | role | user_role | 用户角色 | DEFAULT 'user'::user_role |
 | status | account_status | 账号状态 | DEFAULT 'active'::account_status |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
 | last_login | TIMESTAMP WITH TIME ZONE | 最后登录时间 | |
-| auth_source | TEXT | 认证来源 | DEFAULT 'password' |
+| auth_source | TEXT | 认证来源 | DEFAULT 'email'，支持 email/google/github/phone |
 | sso_provider_id | UUID | SSO提供商ID | 引用 sso_providers(id) |
 
 **枚举类型定义：**
@@ -205,8 +207,16 @@
 | base_url | TEXT | 基础URL | NOT NULL |
 | auth_type | TEXT | 认证类型 | NOT NULL |
 | is_active | BOOLEAN | 是否激活 | DEFAULT TRUE |
+| is_default | BOOLEAN | 是否默认提供商 | DEFAULT FALSE |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT NOW() |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT NOW() |
+| | | | UNIQUE INDEX: 系统中只能有一个默认提供商 |
+
+**默认提供商管理特性：**
+- **唯一性约束**：通过部分唯一索引确保系统中只有一个默认提供商（`is_default = TRUE`）
+- **自动管理**：触发器自动确保设置新默认提供商时，其他提供商的默认状态被清除
+- **删除保护**：删除默认提供商时，自动将第一个活跃提供商设为新的默认提供商
+- **数据完整性**：确保系统始终有且仅有一个默认提供商（当存在活跃提供商时）
 
 #### service_instances
 
