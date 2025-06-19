@@ -16,7 +16,10 @@ interface FileAttachmentDisplayProps {
 }
 
 // 根据MIME类型获取相应图标
-const getFileIcon = (mimeType: string) => {
+const getFileIcon = (mimeType: string | undefined) => {
+  // --- 类型安全检查 ---
+  if (!mimeType || typeof mimeType !== 'string') return FileIcon
+  
   if (mimeType.startsWith('image/')) return FileImageIcon
   if (mimeType.startsWith('audio/')) return FileMusicIcon
   if (mimeType.startsWith('video/')) return FileVideoIcon

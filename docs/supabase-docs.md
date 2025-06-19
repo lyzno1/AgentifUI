@@ -2,18 +2,24 @@
 
 本文档记录了AgentifUI项目中的数据库结构、功能和使用方法。本文档与当前数据库状态完全同步。
 
-**文档更新日期**: 2025-06-15  
-**数据库版本**: 包含至 20250615204425_fix_sso_provider_id_type_issue.sql 的所有迁移
+**文档更新日期**: 2025-06-18  
+**数据库版本**: 包含至 20250618160000_fix_sso_uuid_type_conversion.sql 的所有迁移
 
 ## 当前系统状态
 
 - ✅ **组织权限管理**: 完整的部门级应用权限控制系统，简化权限设计
 - ✅ **多部门支持**: 用户可在同组织多个部门任职
-- ✅ **RLS安全策略**: 修复了所有权限问题，普通用户可正常查看组织信息
+- ✅ **RLS安全策略**: 完全修复了所有权限问题和无限递归问题，系统稳定运行
 - ✅ **安全视图优化**: 修复security_definer视图警告，明确权限控制
 - ✅ **用户管理**: 使用函数方式替代了过时的管理员视图
 - ✅ **中间件权限**: 前端路由级别的管理员权限验证
 - ✅ **应用访问控制**: 基于权限的应用可见性管理，二元权限控制
+- ✅ **北信科SSO集成**: 完整的CAS 2.0单点登录系统，支持统一认证
+- ✅ **学工号管理**: 支持北信科学工号字段和身份验证，类型定义完整
+- ✅ **SSO用户管理**: 自动创建SSO用户账户，安全的身份映射
+- ✅ **SSO函数修复**: 修复了数据库函数返回类型不匹配问题，确保SSO登录正常工作
+- ✅ **SSO类型转换修复**: 修复了create_sso_user函数中的UUID类型转换问题，确保SSO用户创建功能正常
+- ✅ **数据库稳定性**: 修复了profiles表RLS策略无限递归问题，确保系统正常运行
 
 ## 数据库概述
 
@@ -24,11 +30,12 @@
 ### 用户和身份管理
 
 1. `profiles` 表：
-   - 主要字段：`id`, `full_name`, `username`, `avatar_url`, `email`, `phone`, `role`, `status`, `created_at`, `updated_at`, `last_login`, `auth_source`, `sso_provider_id`
+   - 主要字段：`id`, `full_name`, `username`, `avatar_url`, `email`, `phone`, `role`, `status`, `created_at`, `updated_at`, `last_login`, `auth_source`, `sso_provider_id`, `employee_number`
    - `email` 和 `phone` 字段从 `auth.users` 表同步，确保数据一致性
    - `role` 字段类型为 `user_role` 枚举，可能的值为 `'admin'`, `'manager'`, `'user'`，默认值为 `'user'`
    - `status` 字段类型为 `account_status` 枚举，可能的值为 `'active'`, `'suspended'`, `'pending'`，默认值为 `'active'`
-   - `auth_source` 字段支持多种认证方式：`email`, `google`, `github`, `phone` 等，默认值为 `'email'`
+   - `auth_source` 字段支持多种认证方式：`email`, `google`, `github`, `phone`, `bistu_sso` 等，默认值为 `'email'`
+   - `employee_number` 字段：北京信息科技大学学工号，唯一约束，用于SSO身份识别
 
 2. `user_preferences` 表：
    - 主要字段：`id`, `user_id`, `theme`, `language`, `notification_settings`, `ai_preferences`, `updated_at`
@@ -334,10 +341,30 @@ CREATE POLICY "组织管理员可以管理部门应用权限" ON department_app_
 
 1. `sso_providers` 表：
    - 主要字段：`id`, `name`, `protocol`, `settings`, `client_id`, `client_secret`, `metadata_url`, `enabled`, `created_at`, `updated_at`
-   - `protocol` 字段可能的值为 `'SAML'`, `'OAuth2'` 或 `'OIDC'`
+   - `protocol` 字段可能的值为 `'SAML'`, `'OAuth2'`, `'OIDC'`, `'CAS'`
+   - 支持多种单点登录协议，包括北信科的CAS 2.0认证系统
+   - `settings` 字段存储协议特定配置，如CAS服务器地址、回调URL等
 
 2. `domain_sso_mappings` 表：
    - 主要字段：`id`, `domain`, `sso_provider_id`, `enabled`, `created_at`, `updated_at`
+
+#### SSO用户管理函数
+
+**`find_user_by_employee_number(emp_num TEXT)`**
+- 根据学工号查找用户信息，专用于北信科SSO登录
+- 返回用户的完整profile信息，包括正确的枚举类型和TEXT类型字段
+- 使用SECURITY DEFINER模式确保权限安全
+- **最新修复**: 修正了返回类型中status字段的枚举类型匹配问题
+
+**`create_sso_user(emp_number TEXT, user_name TEXT, sso_provider_uuid UUID)`**
+- 为首次SSO登录用户创建账户
+- 自动设置认证来源为bistu_sso（TEXT类型）
+- 生成唯一用户名和完整用户信息
+- **最新修复 (2025-06-18)**: 
+  - 修复了sso_provider_id字段的UUID类型转换问题
+  - 直接使用UUID类型值而非错误的TEXT转换
+  - 解决了"column sso_provider_id is of type uuid but expression is of type text"错误
+  - 确保所有字段的数据类型正确匹配数据库表结构
 
 ## 行级安全策略 (RLS)
 
@@ -653,6 +680,18 @@ if (!isAdmin) return <AccessDenied />;
 - `/supabase/migrations/20250610120001_redesign_department_permissions.sql`: 重新设计的部门级权限系统，实现精确的部门级应用权限控制
 - `/supabase/migrations/20250610130000_add_department_permission_management.sql`: 添加部门权限管理函数和同步工具
 - `/supabase/migrations/20250610140000_clean_virtual_department_permissions.sql`: **清空虚拟权限数据，确保只有手动配置的权限记录**
+
+### 北信科SSO集成 (2025-06-17)
+- `/supabase/migrations/20250617185201_fix_enum_transaction_issue.sql`: 修复PostgreSQL枚举类型事务问题，添加CAS协议支持到sso_protocol枚举
+- `/supabase/migrations/20250617185202_add_bistu_sso_data.sql`: 北信科SSO完整集成，包括：
+  - 在profiles表添加employee_number字段（学工号）
+  - 创建find_user_by_employee_number函数用于SSO用户查找
+  - 创建create_sso_user函数用于自动创建SSO用户
+  - 插入北京信息科技大学CAS提供商配置数据
+- `/supabase/migrations/20250617190000_drop_sso_views.sql`: 清理SSO统计视图，简化数据库对象
+
+### 2025-06-18 SSO类型修复 - UUID类型转换问题
+- `/supabase/migrations/20250618160000_fix_sso_uuid_type_conversion.sql`: 修复create_sso_user函数中的UUID类型转换问题，确保SSO用户创建功能正常工作
 
 ## 迁移文件说明
 

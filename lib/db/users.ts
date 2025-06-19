@@ -34,6 +34,7 @@ export interface EnhancedUser {
   status: AccountStatus;
   auth_source?: string;
   sso_provider_id?: string;
+  employee_number?: string | null; // 新增：学工号字段（可选，仅SSO用户有值）
   profile_created_at: string;
   profile_updated_at: string;
   last_login?: string;
@@ -221,6 +222,7 @@ export async function getUserList(filters: UserFilters = {}): Promise<Result<{
         status: profile.status,
         auth_source: profile.auth_source,
         sso_provider_id: profile.sso_provider_id,
+        employee_number: profile.employee_number, // 新增：包含学工号数据
         profile_created_at: profile.created_at,
         profile_updated_at: profile.updated_at,
         last_login: profile.last_login,

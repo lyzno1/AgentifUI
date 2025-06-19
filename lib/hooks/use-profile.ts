@@ -14,6 +14,7 @@ export interface Profile {
   role: UserRole;
   updated_at: string | null;
   created_at: string | null;
+  employee_number?: string | null; // 新增：学工号字段（可选，仅SSO用户有值）
   // --- BEGIN COMMENT ---
   // 企业组织信息：包含企业基本信息、用户在组织中的角色和部门信息
   // --- END COMMENT ---
@@ -209,6 +210,7 @@ export function useProfile(userId?: string): UseProfileResult {
         role: profileData.role,
         created_at: profileData.created_at,
         updated_at: profileData.updated_at,
+        employee_number: profileData.employee_number, // 新增：包含学工号数据
         // --- BEGIN COMMENT ---
         // 组织信息：使用和管理界面相同的处理逻辑
         // --- END COMMENT ---

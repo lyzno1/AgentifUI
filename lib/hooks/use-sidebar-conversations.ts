@@ -103,7 +103,7 @@ export function useSidebarConversations(limit: number = 5) {
             console.log('[实时更新] 对话变化:', payload);
             
             // 清除缓存并重新加载
-            cacheService.deletePattern(`conversations:*${userId}*`);
+            cacheService.deletePattern(`conversations:*`);
             
             // 延迟重新加载，避免频繁更新
             setTimeout(() => {
@@ -155,7 +155,7 @@ export function useSidebarConversations(limit: number = 5) {
   const refresh = useCallback(() => {
     if (userId) {
       // 清除缓存
-      cacheService.deletePattern(`conversations:*${userId}*`);
+      cacheService.deletePattern(`conversations:*`);
       loadConversations(true);
     }
   }, [userId, loadConversations]);
@@ -193,7 +193,7 @@ export function useSidebarConversations(limit: number = 5) {
         setTotal(prev => prev - 1);
         
         // 清除相关缓存
-        cacheService.deletePattern(`conversations:*${userId}*`);
+        cacheService.deletePattern(`conversations:*`);
         cacheService.delete(CacheKeys.conversation(conversationId));
         
         return true;
@@ -235,7 +235,7 @@ export function useSidebarConversations(limit: number = 5) {
         ));
         
         // 清除相关缓存
-        cacheService.deletePattern(`conversations:*${userId}*`);
+        cacheService.deletePattern(`conversations:*`);
         cacheService.delete(CacheKeys.conversation(conversationId));
         
         return true;
@@ -266,7 +266,7 @@ export function useSidebarConversations(limit: number = 5) {
     // 缓存控制
     clearCache: () => {
       if (userId) {
-        cacheService.deletePattern(`conversations:*${userId}*`);
+        cacheService.deletePattern(`conversations:*`);
       }
     }
   };

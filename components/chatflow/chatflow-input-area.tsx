@@ -558,19 +558,24 @@ export function ChatflowInputArea({
 function extractFilesFromFormData(formData: Record<string, any>): any[] {
   const files: any[] = []
   
+  console.log('[extractFilesFromFormData] 输入的formData:', formData)
+  
   Object.values(formData).forEach(value => {
     if (Array.isArray(value)) {
       // 检查是否是文件数组
       value.forEach(item => {
         if (item && typeof item === 'object' && (item.file || item.upload_file_id)) {
+          console.log('[extractFilesFromFormData] 找到文件数组中的文件:', item)
           files.push(item)
         }
       })
     } else if (value && typeof value === 'object' && (value.file || value.upload_file_id)) {
       // 单个文件对象
+      console.log('[extractFilesFromFormData] 找到单个文件对象:', value)
       files.push(value)
     }
   })
   
+  console.log('[extractFilesFromFormData] 提取的文件列表:', files)
   return files
 } 

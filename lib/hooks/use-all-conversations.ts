@@ -100,7 +100,7 @@ export function useAllConversations() {
             console.log('[实时更新] 所有对话变化:', payload);
             
             // 清除缓存并重新加载
-            cacheService.deletePattern(`conversations:*${userId}*`);
+            cacheService.deletePattern(`conversations:*`);
             
             // 延迟重新加载，避免频繁更新
             setTimeout(() => {
@@ -137,7 +137,7 @@ export function useAllConversations() {
   const refresh = useCallback(() => {
     if (userId) {
       // 清除缓存
-      cacheService.deletePattern(`conversations:*${userId}*`);
+      cacheService.deletePattern(`conversations:*`);
       loadAllConversations(true);
     }
   }, [userId, loadAllConversations]);
@@ -175,7 +175,7 @@ export function useAllConversations() {
         setTotal(prev => prev - 1);
         
         // 清除相关缓存
-        cacheService.deletePattern(`conversations:*${userId}*`);
+        cacheService.deletePattern(`conversations:*`);
         
         return true;
       } else {
@@ -216,7 +216,7 @@ export function useAllConversations() {
         ));
         
         // 清除相关缓存
-        cacheService.deletePattern(`conversations:*${userId}*`);
+        cacheService.deletePattern(`conversations:*`);
         
         return true;
       } else {

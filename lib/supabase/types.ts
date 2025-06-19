@@ -24,6 +24,7 @@ export interface Database {
           status: 'active' | 'suspended' | 'pending'
           auth_source: string | null
           sso_provider_id: string | null
+          employee_number: string | null
         }
         Insert: {
           id: string
@@ -39,6 +40,7 @@ export interface Database {
           status?: 'active' | 'suspended' | 'pending'
           auth_source?: string | null
           sso_provider_id?: string | null
+          employee_number?: string | null
         }
         Update: {
           id?: string
@@ -54,6 +56,7 @@ export interface Database {
           status?: 'active' | 'suspended' | 'pending'
           auth_source?: string | null
           sso_provider_id?: string | null
+          employee_number?: string | null
         }
       }
       organizations: {

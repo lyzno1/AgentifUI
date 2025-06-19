@@ -109,6 +109,10 @@ export function FileUploadField({ config, value, onChange, error, label, instanc
         type: getDifyFileType(file),
         transfer_method: 'local_file' as const,
         upload_file_id: file.uploadedId as string,
+        // --- 添加用于消息显示的额外字段 ---
+        name: file.name,
+        size: file.size,
+        mime_type: file.type,
       }))
     
     // 只有在成功文件列表实际发生变化时才调用onChange

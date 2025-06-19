@@ -116,7 +116,7 @@ export function RegisterForm() {
           "mt-2 text-sm font-serif",
           isDark ? "text-gray-400" : "text-gray-600"
         )}>
-          加入 AgentifUI，开启 AI 教育之旅
+          加入 AgentifUI，开启 AI 智能之旅
         </p>
       </div>
 

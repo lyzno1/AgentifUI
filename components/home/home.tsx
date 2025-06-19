@@ -111,7 +111,7 @@ export function Home() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className={`text-xl md:text-2xl ${colors.textColor} max-w-3xl mx-auto font-light`}
             >
-              探索AI教育的无限可能，打造智能学习新体验
+              探索AI的无限可能，打造智能新体验
             </motion.p>
           </div>
           

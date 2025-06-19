@@ -16,20 +16,28 @@ export async function getAllDifyApps(): Promise<Array<{
   visibility?: string;
 }>> {
   try {
-    // 获取Dify提供商
-    const providerResult = await getProviderByName('Dify');
-    if (!providerResult.success || !providerResult.data) {
-      throw new Error('未找到Dify提供商');
-    }
-
-    // 获取所有Dify服务实例（包括visibility字段）
+    // --- BEGIN COMMENT ---
+    // 🎯 重构：支持多提供商，获取所有活跃提供商的应用实例
+    // --- END COMMENT ---
     const { createClient } = await import('@lib/supabase/client');
     const supabase = createClient();
     
     const { data: instances, error } = await supabase
       .from('service_instances')
-      .select('id, instance_id, display_name, description, config, visibility')
-      .eq('provider_id', providerResult.data.id)
+      .select(`
+        id, 
+        instance_id, 
+        display_name, 
+        description, 
+        config, 
+        visibility,
+        providers!inner(
+          id,
+          name,
+          is_active
+        )
+      `)
+      .eq('providers.is_active', true)
       .order('display_name');
       
     if (error) {
@@ -47,7 +55,7 @@ export async function getAllDifyApps(): Promise<Array<{
     })) || [];
     
   } catch (error) {
-    console.error('获取Dify应用列表失败:', error);
+    console.error('获取应用列表失败:', error);
     throw error;
   }
 }
@@ -66,20 +74,28 @@ export async function getPublicDifyApps(): Promise<Array<{
   visibility?: string;
 }>> {
   try {
-    // 获取Dify提供商
-    const providerResult = await getProviderByName('Dify');
-    if (!providerResult.success || !providerResult.data) {
-      throw new Error('未找到Dify提供商');
-    }
-
-    // 只获取公开的Dify服务实例
+    // --- BEGIN COMMENT ---
+    // 🎯 重构：支持多提供商，获取所有活跃提供商的公开应用实例
+    // --- END COMMENT ---
     const { createClient } = await import('@lib/supabase/client');
     const supabase = createClient();
     
     const { data: instances, error } = await supabase
       .from('service_instances')
-      .select('id, instance_id, display_name, description, config, visibility')
-      .eq('provider_id', providerResult.data.id)
+      .select(`
+        id, 
+        instance_id, 
+        display_name, 
+        description, 
+        config, 
+        visibility,
+        providers!inner(
+          id,
+          name,
+          is_active
+        )
+      `)
+      .eq('providers.is_active', true)
       .in('visibility', ['public']) // 只获取公开应用
       .order('display_name');
       
@@ -98,7 +114,7 @@ export async function getPublicDifyApps(): Promise<Array<{
     })) || [];
     
   } catch (error) {
-    console.error('获取公开Dify应用列表失败:', error);
+    console.error('获取公开应用列表失败:', error);
     throw error;
   }
 }
@@ -389,18 +405,29 @@ export async function getDifyAppParametersWithConfig(
     throw new Error('API URL 和 API Key 都是必需的');
   }
   
-  // 构造直接的Dify API URL
-  const targetUrl = `${apiUrl}/parameters`;
+  // --- BEGIN COMMENT ---
+  // 🎯 架构修复：通过临时代理方式调用，避免直接调用外部API
+  // 创建一个临时的服务实例配置，通过代理服务器调用
+  // --- END COMMENT ---
   
   try {
-    console.log(`[Dify App Service] 使用表单配置同步参数: ${appId}`);
+    console.log(`[Dify App Service] 使用表单配置通过代理同步参数: ${appId}`);
     
-    const response = await fetch(targetUrl, {
-      method: 'GET',
+    // 通过代理服务器调用，但使用特殊的临时配置方式
+    const slug = 'parameters';
+    const proxyUrl = `/api/dify/${appId}/${slug}`;
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST', // 使用POST传递临时配置
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      }
+      },
+      body: JSON.stringify({
+        _temp_config: {
+          apiUrl,
+          apiKey
+        }
+      })
     });
 
     if (!response.ok) {
@@ -462,18 +489,29 @@ export async function getDifyAppInfoWithConfig(
     throw new Error('API URL 和 API Key 都是必需的');
   }
   
-  // 构造直接的Dify API URL
-  const targetUrl = `${apiUrl}/info`;
+  // --- BEGIN COMMENT ---
+  // 🎯 架构修复：通过临时代理方式调用，避免直接调用外部API
+  // 创建一个临时的服务实例配置，通过代理服务器调用
+  // --- END COMMENT ---
   
   try {
-    console.log(`[Dify App Service] 使用表单配置同步基本信息: ${appId}`);
+    console.log(`[Dify App Service] 使用表单配置通过代理同步基本信息: ${appId}`);
     
-    const response = await fetch(targetUrl, {
-      method: 'GET',
+    // 通过代理服务器调用，但使用特殊的临时配置方式
+    const slug = 'info';
+    const proxyUrl = `/api/dify/${appId}/${slug}`;
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST', // 使用POST传递临时配置
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      }
+      },
+      body: JSON.stringify({
+        _temp_config: {
+          apiUrl,
+          apiKey
+        }
+      })
     });
 
     if (!response.ok) {

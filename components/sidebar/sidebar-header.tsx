@@ -9,6 +9,7 @@ import { useChatStore } from "@lib/stores/chat-store"
 import { useChatInputStore } from "@lib/stores/chat-input-store"
 import { useChatTransitionStore } from "@lib/stores/chat-transition-store"
 import { Grid3x3, AppWindow, Blocks } from "lucide-react"
+import { useChatInterface } from "@lib/hooks/use-chat-interface"
 
 export function SidebarHeader() {
   const { isExpanded, isLocked, toggleSidebar } = useSidebarStore()
@@ -20,6 +21,51 @@ export function SidebarHeader() {
   const setIsWaitingForResponse = useChatStore(state => state.setIsWaitingForResponse)
   const { setIsWelcomeScreen } = useChatInputStore()
   const { setIsTransitioningToWelcome } = useChatTransitionStore()
+  const { clearConversationState } = useChatInterface()
+
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：新对话处理函数
+  // --- END COMMENT ---
+  const handleNewChat = () => {
+    const isAlreadyOnNewChat = window.location.pathname === '/chat/new';
+    if (isAlreadyOnNewChat) {
+      return;
+    }
+    
+    const { isHovering, setHovering } = useSidebarStore.getState();
+    if (isHovering) {
+      setHovering(false);
+    }
+    
+    console.log('[SidebarHeader] 开始新对话，清理所有状态');
+    
+    // 立即路由到新对话页面
+    router.push('/chat/new');
+    
+    // 延迟清理状态，确保路由完成
+    setTimeout(() => {
+      // 清理chatStore状态
+      useChatStore.getState().clearMessages();
+      clearMessages();
+      setCurrentConversationId(null);
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 新增：清理use-chat-interface中的对话状态
+      // 这确保difyConversationId、dbConversationUUID、conversationAppId都被正确清理
+      // --- END COMMENT ---
+      clearConversationState();
+      
+      // 清理其他UI状态
+      setIsWelcomeScreen(true);
+      setIsTransitioningToWelcome(true);
+      setIsWaitingForResponse(false);
+      
+      const { selectItem } = useSidebarStore.getState();
+      selectItem('chat', null, true);
+      
+      console.log('[SidebarHeader] 状态清理完成');
+    }, 100);
+  };
 
   return (
     <div className={cn(
@@ -90,29 +136,7 @@ export function SidebarHeader() {
             : "text-stone-100"
         )} />}
         disableLockBehavior={true}
-        onClick={() => {
-          const isAlreadyOnNewChat = window.location.pathname === '/chat/new';
-          if (isAlreadyOnNewChat) {
-            return;
-          }
-          
-          const { isHovering, setHovering } = useSidebarStore.getState();
-          if (isHovering) {
-            setHovering(false);
-          }
-          
-          router.push('/chat/new');
-          
-          useChatStore.getState().clearMessages();
-          clearMessages();
-          setCurrentConversationId(null);
-          setIsWelcomeScreen(true);
-          setIsTransitioningToWelcome(true);
-          setIsWaitingForResponse(false);
-          
-          const { selectItem } = useSidebarStore.getState();
-          selectItem('chat', null, true);
-        }}
+        onClick={handleNewChat}
         aria-label="发起新对话"
         className={cn(
           "group font-medium transition-all duration-200",

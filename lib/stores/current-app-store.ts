@@ -1,7 +1,7 @@
 // lib/stores/current-app-store.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { getProviderByName, getDefaultServiceInstance } from '@lib/db';
+import { getProviderByName, getDefaultServiceInstance, getDefaultProvider } from '@lib/db';
 import { Result } from '@lib/types/result';
 import type { ServiceInstance, Provider } from '@lib/types/database';
 import { clearDifyConfigCache } from '@lib/config/dify-config'; // 新增：导入缓存清除函数
@@ -23,10 +23,20 @@ interface CurrentAppState {
 }
 
 // --- BEGIN COMMENT ---
-// 定义 Dify 提供商在数据库中的确切名称
-// 这个值必须与 'providers' 表中的 'name' 字段匹配
+// 🎯 重构：完全移除硬编码，仅依赖数据库的 is_default 字段
+// 获取默认提供商的辅助函数，支持多提供商环境
 // --- END COMMENT ---
-const DIFY_PROVIDER_NAME = 'Dify'; 
+async function getDefaultProviderForApp(): Promise<Provider> {
+  // 获取系统默认提供商（基于 is_default 字段）
+  const defaultProviderResult = await getDefaultProvider();
+  
+  if (defaultProviderResult.success && defaultProviderResult.data) {
+    return defaultProviderResult.data;
+  }
+  
+  // 如果没有设置默认提供商，抛出错误要求管理员配置
+  throw new Error('未找到默认提供商。请在管理面板中设置一个提供商为默认提供商。');
+}
 
 export const useCurrentAppStore = create<CurrentAppState>()(
   persist(
@@ -77,19 +87,12 @@ export const useCurrentAppStore = create<CurrentAppState>()(
         
         try {
           // --- BEGIN COMMENT ---
-          // 使用新版本的数据库接口，支持Result类型和错误处理
+          // 🎯 重构：使用默认提供商替代硬编码的 Dify 提供商
+          // 支持多提供商环境，优先使用系统默认提供商
           // --- END COMMENT ---
-          const providerResult = await getProviderByName(DIFY_PROVIDER_NAME);
-          
-          if (!providerResult.success) {
-            throw new Error(`获取提供商"${DIFY_PROVIDER_NAME}"失败: ${providerResult.error.message}`);
-          }
-          
-          if (!providerResult.data) {
-            throw new Error(`数据库中未找到提供商"${DIFY_PROVIDER_NAME}"`);
-          }
+          const provider = await getDefaultProviderForApp();
 
-          const defaultInstanceResult = await getDefaultServiceInstance(providerResult.data.id);
+          const defaultInstanceResult = await getDefaultServiceInstance(provider.id);
           
           if (!defaultInstanceResult.success) {
             throw new Error(`获取默认服务实例失败: ${defaultInstanceResult.error.message}`);
@@ -104,11 +107,11 @@ export const useCurrentAppStore = create<CurrentAppState>()(
             });
           } else {
             // --- BEGIN COMMENT ---
-            // 如果数据库中没有配置默认的 Dify 应用实例，这是一个需要处理的场景。
+            // 如果数据库中没有配置默认的服务实例，这是一个需要处理的场景。
             // UI 层应该提示用户选择一个应用，或者管理员需要配置一个默认应用。
             // 当前我们将 appId 设为 null，并记录错误。
             // --- END COMMENT ---
-            const errorMessage = `未找到提供商"${DIFY_PROVIDER_NAME}"的默认服务实例。请配置一个默认的 Dify 应用。`;
+            const errorMessage = `未找到提供商"${provider.name}"的默认服务实例。请配置一个默认的应用实例。`;
             console.warn(errorMessage);
             set({ 
               currentAppId: null, 
@@ -218,28 +221,28 @@ export const useCurrentAppStore = create<CurrentAppState>()(
           
           console.log('[validateAndRefreshConfig] 开始验证配置有效性...');
           
-          // 获取提供商信息
-          const providerResult = await getProviderByName(DIFY_PROVIDER_NAME);
-          
-          if (!providerResult.success || !providerResult.data) {
-            console.warn('[validateAndRefreshConfig] 提供商不存在，清除当前配置');
-            get().clearCurrentApp();
-            return;
-          }
-          
           // 🎯 修改：支持验证特定app实例，而不仅仅是默认app
           let targetInstance: any = null;
           
           if (targetAppId) {
-            // 如果指定了targetAppId，查找该特定实例
+            // 🎯 重构：在所有活跃提供商中查找指定的应用实例
+            // 支持多提供商环境下的应用验证
             const { createClient } = await import('../supabase/client');
             const supabase = createClient();
             
             const { data: specificInstance, error: specificError } = await supabase
               .from('service_instances')
-              .select('*')
-              .eq('provider_id', providerResult.data.id)
+              .select(`
+                *,
+                providers!inner(
+                  id,
+                  name,
+                  is_active,
+                  is_default
+                )
+              `)
               .eq('instance_id', targetAppId)
+              .eq('providers.is_active', true)
               .single();
               
             if (specificError || !specificInstance) {
@@ -248,21 +251,32 @@ export const useCurrentAppStore = create<CurrentAppState>()(
             
             targetInstance = specificInstance;
           } else {
-            // 如果没有指定targetAppId，验证当前app是否仍然存在
+            // 🎯 重构：验证当前应用时也支持多提供商查找
+            // 如果当前应用不存在，fallback到默认提供商的默认应用
             const { createClient } = await import('../supabase/client');
             const supabase = createClient();
             
             const { data: currentInstance, error: currentError } = await supabase
               .from('service_instances')
-              .select('*')
-              .eq('provider_id', providerResult.data.id)
+              .select(`
+                *,
+                providers!inner(
+                  id,
+                  name,
+                  is_active,
+                  is_default
+                )
+              `)
               .eq('instance_id', currentState.currentAppId)
+              .eq('providers.is_active', true)
               .single();
               
             if (currentError || !currentInstance) {
-              // 当前app不存在，fallback到默认app
+              // 当前app不存在，fallback到默认提供商的默认app
               console.warn(`[validateAndRefreshConfig] 当前app ${currentState.currentAppId} 不存在，fallback到默认app`);
-              const defaultInstanceResult = await getDefaultServiceInstance(providerResult.data.id);
+              
+              const provider = await getDefaultProviderForApp();
+              const defaultInstanceResult = await getDefaultServiceInstance(provider.id);
               
               if (!defaultInstanceResult.success || !defaultInstanceResult.data) {
                 console.warn('[validateAndRefreshConfig] 默认服务实例也不存在，清除当前配置');
@@ -288,9 +302,7 @@ export const useCurrentAppStore = create<CurrentAppState>()(
           if (hasInstanceChanged) {
             console.log('[validateAndRefreshConfig] 配置已变更，更新为最新配置');
             
-            // --- BEGIN COMMENT ---
             // 🎯 配置变更时清除Dify配置缓存，确保API调用使用最新配置
-            // --- END COMMENT ---
             if (currentState.currentAppId) {
               clearDifyConfigCache(currentState.currentAppId);
             }
@@ -311,26 +323,22 @@ export const useCurrentAppStore = create<CurrentAppState>()(
           
         } catch (error) {
           console.error('[validateAndRefreshConfig] 验证配置时出错:', error);
-          // --- BEGIN COMMENT ---
           // 🎯 错误恢复机制：验证失败时不清除配置，只记录错误
           // 这确保即使数据库暂时不可用，用户仍能使用缓存的配置
-          // --- END COMMENT ---
           const errorMessage = error instanceof Error ? error.message : String(error);
           set({ 
             errorLoadingAppId: `配置验证失败: ${errorMessage}。当前使用缓存配置，请检查网络连接。`,
             lastValidatedAt: Date.now() // 即使失败也更新时间戳，避免频繁重试
           });
         } finally {
-          // --- BEGIN COMMENT ---
           // 🎯 清除所有验证状态
-          // --- END COMMENT ---
           set({ isValidating: false, isValidatingForMessage: false });
         }
       },
 
       // --- BEGIN COMMENT ---
       // 新增：切换到指定app的方法
-      // 支持切换到任意app，而不仅仅是默认app
+      // 🎯 重构：支持多提供商，在所有活跃提供商中查找应用实例
       // --- END COMMENT ---
       switchToApp: async (appId: string) => {
         console.log(`[switchToApp] 开始切换到app: ${appId}`);
@@ -338,23 +346,26 @@ export const useCurrentAppStore = create<CurrentAppState>()(
         set({ isLoadingAppId: true, errorLoadingAppId: null });
         
         try {
-          // 获取提供商信息
-          const providerResult = await getProviderByName(DIFY_PROVIDER_NAME);
+          // 🎯 重构：在所有活跃提供商中查找应用实例，而不仅仅是默认提供商
+          // 这样可以支持来自不同提供商的应用切换
+          const { createClient } = await import('../supabase/client');
+          const supabase = createClient();
           
-          if (!providerResult.success || !providerResult.data) {
-            throw new Error(`获取提供商"${DIFY_PROVIDER_NAME}"失败`);
-          }
-          
-                // 查找指定的app实例
-      const { createClient } = await import('../supabase/client');
-      const supabase = createClient();
-      
-      const { data: targetInstance, error: targetError } = await supabase
-        .from('service_instances')
-        .select('*')
-        .eq('provider_id', providerResult.data.id)
-        .eq('instance_id', appId)  // 使用instance_id查找，因为传入的是业务标识符
-        .single();
+          // 首先在所有活跃提供商中查找指定的应用实例
+          const { data: targetInstance, error: targetError } = await supabase
+            .from('service_instances')
+            .select(`
+              *,
+              providers!inner(
+                id,
+                name,
+                is_active,
+                is_default
+              )
+            `)
+            .eq('instance_id', appId)
+            .eq('providers.is_active', true)
+            .single();
             
           if (targetError || !targetInstance) {
             throw new Error(`未找到app实例: ${appId}`);
@@ -376,7 +387,7 @@ export const useCurrentAppStore = create<CurrentAppState>()(
             lastValidatedAt: Date.now()
           });
           
-          console.log(`[switchToApp] 成功切换到app: ${appId}`);
+          console.log(`[switchToApp] 成功切换到app: ${appId}，提供商: ${targetInstance.providers?.name}`);
           
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);

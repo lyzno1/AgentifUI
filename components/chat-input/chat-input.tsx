@@ -107,6 +107,11 @@ export const ChatInput = ({
     isDark
   } = useChatInputStore()
   
+  // --- BEGIN COMMENT ---
+  // 🎯 新增：本地提交状态，防止重复点击
+  // --- END COMMENT ---
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false)
+  
   // 附件状态
   const { files: attachments, addFiles, clearFiles: clearAttachments, updateFileStatus, updateFileUploadedId } = useAttachmentStore()
   // 本地状态，存储附件栏和文本框的各自高度
@@ -216,6 +221,10 @@ export const ChatInput = ({
       clearMessage();
       clearAttachments();
       useChatScrollStore.getState().scrollToBottom('smooth');
+      // --- BEGIN COMMENT ---
+      // 🎯 重置本地提交状态，因为已进入等待响应状态
+      // --- END COMMENT ---
+      setIsLocalSubmitting(false);
     }
     
     // 更新previous值
@@ -224,11 +233,25 @@ export const ChatInput = ({
 
   // 提交消息（修复清空时机：通过监听isWaiting状态变化来清空）
   const handleLocalSubmit = async () => {
+    // --- BEGIN COMMENT ---
+    // 🎯 防重复点击：如果已经在提交中，直接返回
+    // --- END COMMENT ---
+    if (isLocalSubmitting) {
+      console.log("[ChatInput] 检测到重复点击，忽略此次提交");
+      return;
+    }
+
     // --- BEGIN 中文注释 --- 状态暂存与恢复逻辑 ---
     let savedMessage = "";
     let savedAttachments: AttachmentFile[] = [];
     // --- END 中文注释 ---
+    
     try {
+      // --- BEGIN COMMENT ---
+      // 🎯 立即设置本地提交状态，防止重复点击
+      // --- END COMMENT ---
+      setIsLocalSubmitting(true);
+      
       // 1. 暂存当前状态 (在调用 onSubmit 前)
       savedMessage = message;
       savedAttachments = useAttachmentStore.getState().files;
@@ -284,6 +307,11 @@ export const ChatInput = ({
         3000 // 持续 3 秒
       );
       // --- END 中文注释 ---
+    } finally {
+      // --- BEGIN COMMENT ---
+      // 🎯 无论成功还是失败，都重置本地提交状态
+      // --- END COMMENT ---
+      setIsLocalSubmitting(false);
     }
   };
 
@@ -307,6 +335,7 @@ export const ChatInput = ({
       // --- BEGIN 中文注释 ---
       // 在回车提交前，进行与按钮禁用逻辑完全一致的检查
       const shouldBlockSubmit = 
+        isLocalSubmitting || // 🎯 新增：正在本地提交中
         isWaiting || // 正在等待响应
         isValidatingAppConfig || // 🎯 新增：正在验证配置
         isProcessing || // 正在处理上一条消息
@@ -535,7 +564,7 @@ export const ChatInput = ({
             {showModelSelector && <AppSelectorButton />}
             <ChatButton
               icon={
-                isWaiting || isValidatingConfig ? (
+                isLocalSubmitting || isWaiting || isValidatingConfig ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : isProcessing ? (
                   <Square className="h-5 w-5" />
@@ -544,8 +573,9 @@ export const ChatInput = ({
                 )
               }
               variant="submit"
-              onClick={isWaiting || isValidatingConfig ? undefined : (isProcessing ? onStop : handleLocalSubmit)}
+              onClick={isLocalSubmitting || isWaiting || isValidatingConfig ? undefined : (isProcessing ? onStop : handleLocalSubmit)}
               disabled={
+                isLocalSubmitting || // 🎯 新增：本地提交期间禁用按钮
                 isWaiting ||
                 isValidatingConfig || // 🎯 新增：验证期间禁用按钮
                 isUploading ||
@@ -555,6 +585,7 @@ export const ChatInput = ({
               }
               isDark={isDark}
               ariaLabel={
+                isLocalSubmitting ? "正在发送消息..." :
                 isValidatingConfig ? "正在验证应用配置..." : 
                 isProcessing ? "停止生成" : 
                 isUploading ? "正在上传..." : 
@@ -566,7 +597,7 @@ export const ChatInput = ({
                 ) :
                 "发送消息"
               }
-              forceActiveStyle={isWaiting || isValidatingConfig}
+              forceActiveStyle={isLocalSubmitting || isWaiting || isValidatingConfig}
             />
           </div>
         </ChatButtonArea>

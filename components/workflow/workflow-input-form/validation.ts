@@ -29,7 +29,7 @@ export function validateFormData(
     const isEmpty = isFileField 
       ? (!value || 
          (Array.isArray(value) && value.length === 0) ||
-         (typeof value === 'object' && !value.upload_file_id))
+         (typeof value === 'object' && !Array.isArray(value) && !value.upload_file_id))
       : isNumberField
         ? (value === '' || value === null || value === undefined)
         : (!value || (typeof value === 'string' && value.trim() === ''))

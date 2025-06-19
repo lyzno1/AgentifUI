@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Trash2 } from "lucide-react"
+import { Search, Plus, Trash2, Loader2 } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useTheme } from "@lib/hooks/use-theme"
 import { useThemeColors } from "@lib/hooks/use-theme-colors"
@@ -16,6 +16,7 @@ import { RecentsSelectionBar } from "./recents-selection-bar"
 import { useChatWidth } from "@lib/hooks/use-chat-width"
 import { conversationEvents } from "@lib/hooks/use-combined-conversations"
 import { ConfirmDialog } from "@components/ui"
+import { useChatInterface } from '@lib/hooks/use-chat-interface'
 
 // --- BEGIN COMMENT ---
 // 历史对话页面组件
@@ -184,8 +185,10 @@ export function Recents() {
   }
   
   // --- BEGIN COMMENT ---
-  // 处理新对话按钮点击
+  // 🎯 新增：新对话处理函数，统一管理状态清理
   // --- END COMMENT ---
+  const { clearConversationState } = useChatInterface()
+  
   const handleNewChat = () => {
     // 跳转到新对话页面
     router.push('/chat/new')
@@ -195,6 +198,14 @@ export function Recents() {
       // 清理消息和重置状态
       useChatStore.getState().clearMessages()
       useChatStore.getState().setCurrentConversationId(null)
+      
+      // --- BEGIN COMMENT ---
+      // 🎯 新增：清理use-chat-interface中的对话状态
+      // 这确保difyConversationId、dbConversationUUID、conversationAppId都被正确清理
+      // --- END COMMENT ---
+      clearConversationState()
+      
+      // 清理其他UI状态
       useChatInputStore.getState().setIsWelcomeScreen(true)
       useChatTransitionStore.getState().setIsTransitioningToWelcome(true)
       useChatStore.getState().setIsWaitingForResponse(false)

@@ -43,6 +43,18 @@ import { getConversationByExternalId } from '@lib/db/conversations';
 // --- END COMMENT ---
 const CHUNK_APPEND_INTERVAL = 30; 
 
+// --- BEGIN COMMENT ---
+// 🎯 多提供商支持：聊天接口现在支持多提供商环境
+// ensureAppReady 和 validateConfig 方法已更新为使用默认提供商 fallback
+// 在 /chat/new 发送消息时会自动选择合适的提供商和应用
+// --- END COMMENT ---
+
+interface ConversationState {
+  difyConversationId: string | null;
+  dbConversationUUID: string | null;
+  conversationAppId: string | null;
+}
+
 export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent | DifySseNodeFinishedEvent | DifySseIterationStartedEvent | DifySseIterationNextEvent | DifySseIterationCompletedEvent | DifySseParallelBranchStartedEvent | DifySseParallelBranchFinishedEvent | DifySseLoopStartedEvent | DifySseLoopNextEvent | DifySseLoopCompletedEvent) => void) {
   const router = useRouter();
   const currentPathname = usePathname();
@@ -266,10 +278,15 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
     setIsWaitingForResponse(true);
     
     const messageAttachments = Array.isArray(files) && files.length > 0 
-      ? files.map(file => ({
-          id: file.upload_file_id, name: file.name, size: file.size,
-          type: file.mime_type, upload_file_id: file.upload_file_id
-        }))
+      ? files.map(file => {
+          return {
+            id: file.upload_file_id, 
+            name: file.name, 
+            size: file.size,
+            type: file.mime_type, 
+            upload_file_id: file.upload_file_id
+          }
+        })
       : undefined;
     
     // --- BEGIN COMMENT ---
@@ -472,6 +489,22 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
             console.error(`[handleSubmit] 查询现有对话的数据库ID失败:`, dbError);
             finalDbConvUUID = null;
           }
+        }
+        
+        // --- BEGIN COMMENT ---
+        // 🎯 关键修复：历史对话中提前保存用户消息
+        // 解决用户点击停止时消息丢失的问题
+        // 在流式处理开始前就保存用户消息，确保不会因停止操作而丢失
+        // --- END COMMENT ---
+        if (finalDbConvUUID && userMessage && userMessage.persistenceStatus !== 'saved') {
+          console.log(`[handleSubmit] 历史对话提前保存用户消息，ID=${userMessage.id}, 数据库对话ID=${finalDbConvUUID}`);
+          
+          // 立即保存用户消息，不等待流式响应
+          saveMessage(userMessage, finalDbConvUUID).then(() => {
+            console.log(`[handleSubmit] 历史对话用户消息提前保存成功，ID=${userMessage.id}`);
+          }).catch(err => {
+            console.error(`[handleSubmit] 历史对话用户消息提前保存失败，ID=${userMessage.id}:`, err);
+          });
         }
         
         // 为现有对话构造一个不包含 user 的基础 payload，因为 DifyChatRequestPayload 会单独添加
@@ -743,12 +776,14 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
       if (currentDbConvId) {
         console.log(`[handleSubmit] 流式响应结束，开始保存消息，数据库对话ID=${currentDbConvId}`);
         
-        // 保存用户消息
-        if (userMessage && userMessage.persistenceStatus !== 'saved') {
-          console.log(`[handleSubmit] 保存用户消息，ID=${userMessage.id}, 数据库对话ID=${currentDbConvId}`);
+        // 保存用户消息（检查是否已经保存过）
+        if (userMessage && userMessage.persistenceStatus !== 'saved' && !userMessage.db_id) {
+          console.log(`[handleSubmit] 流式响应结束后保存用户消息，ID=${userMessage.id}, 数据库对话ID=${currentDbConvId}`);
           saveMessage(userMessage, currentDbConvId).catch(err => {
-            console.error('[handleSubmit] 保存用户消息失败:', err);
+            console.error('[handleSubmit] 流式响应结束后保存用户消息失败:', err);
           });
+        } else if (userMessage) {
+          console.log(`[handleSubmit] 用户消息已保存，跳过重复保存，ID=${userMessage.id}, db_id=${userMessage.db_id}, status=${userMessage.persistenceStatus}`);
         }
         
         // 保存助手消息
@@ -1052,7 +1087,14 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
             });
           }
           
-          console.log(`[handleStopProcessing] 僵尸流式状态已修复，停止操作完成`);
+          console.log(`[handleStopProcessing] 僵尸流式状态已修复`);
+          
+          // --- BEGIN COMMENT ---
+          // 🎯 修复：僵尸状态修复后也需要重置关键状态，避免按钮失效
+          // 确保用户可以重新提交，但不影响消息保存逻辑
+          // --- END COMMENT ---
+          isSubmittingRef.current = false;
+          console.log('[handleStopProcessing] 僵尸状态修复完成，用户可以重新提交');
           return; // 修复完成，无需继续停止操作
         }
       }
@@ -1197,10 +1239,14 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
       }
     }
     
-    // 更新UI状态
-    if (state.isWaitingForResponse && state.streamingMessageId === currentStreamingId) {
-        setIsWaitingForResponse(false);
-    }
+    // --- BEGIN COMMENT ---
+    // 🎯 修复：停止操作后重置关键状态，确保用户可以重新提交
+    // 无条件重置，避免状态不一致导致的按钮失效问题
+    // --- END COMMENT ---
+    setIsWaitingForResponse(false);
+    isSubmittingRef.current = false;
+    
+    console.log('[handleStopProcessing] 正常停止流程完成，用户可以重新提交');
   }, [
     currentUserId,
     currentAppId, // 🎯 修改：直接使用currentAppId和currentAppInstance
@@ -1310,6 +1356,15 @@ export function useChatInterface(onNodeEvent?: (event: DifySseNodeStartedEvent |
     appConfigError: errorLoadingAppId,
     isUserLoggedIn: !!currentUserId, // 方便 UI 判断用户是否登录
     difyConversationId, // 暴露 Dify 对话 ID
-    conversationAppId // 暴露历史对话的原始appId，用于调试和UI显示
+    conversationAppId, // 暴露历史对话的原始appId，用于调试和UI显示
+    // --- BEGIN COMMENT ---
+    // 🎯 新增：暴露状态清理函数，用于新对话按钮和应用切换时清理对话状态
+    // --- END COMMENT ---
+    clearConversationState: useCallback(() => {
+      console.log('[useChatInterface] 清理对话状态');
+      setDifyConversationId(null);
+      setDbConversationUUID(null);
+      setConversationAppId(null);
+    }, [])
   };
 }

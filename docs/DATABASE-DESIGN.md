@@ -2,8 +2,8 @@
 
 本文档详细描述了 AgentifUI 平台的数据库设计，包括表结构、关系、安全机制和特性。本文档与当前数据库状态完全同步，包含所有已应用的迁移文件。
 
-**文档更新日期**: 2025-06-15  
-**数据库版本**: 包含至 20250615204425_fix_sso_provider_id_type_issue.sql 的所有迁移
+**文档更新日期**: 2025-06-18  
+**数据库版本**: 包含至 20250618160000_fix_sso_uuid_type_conversion.sql 的所有迁移
 
 ## 目录
 
@@ -47,8 +47,9 @@
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
 | last_login | TIMESTAMP WITH TIME ZONE | 最后登录时间 | |
-| auth_source | TEXT | 认证来源 | DEFAULT 'email'，支持 email/google/github/phone |
+| auth_source | TEXT | 认证来源 | DEFAULT 'email'，支持 email/google/github/phone/bistu_sso |
 | sso_provider_id | UUID | SSO提供商ID | 引用 sso_providers(id) |
+| employee_number | TEXT | 学工号 | 北京信息科技大学统一身份标识，唯一约束 |
 
 **枚举类型定义：**
 - `user_role`: ENUM ('admin', 'manager', 'user')
@@ -264,7 +265,7 @@
 
 #### sso_providers
 
-存储SSO提供商信息。
+存储SSO提供商信息，支持多种单点登录协议。
 
 | 字段名 | 类型 | 描述 | 约束 |
 |--------|------|------|------|
@@ -278,6 +279,28 @@
 | enabled | BOOLEAN | 是否启用 | DEFAULT TRUE |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
+
+**枚举类型定义：**
+- `sso_protocol`: ENUM ('OIDC', 'SAML', 'CAS')
+
+**协议支持说明：**
+- `OIDC`: OpenID Connect 协议
+- `SAML`: SAML 2.0 协议  
+- `CAS`: CAS 2.0/3.0 协议（支持北京信息科技大学统一认证）
+
+**北信科CAS配置示例：**
+```json
+{
+  "base_url": "https://sso.bistu.edu.cn",
+  "login_endpoint": "/login",
+  "logout_endpoint": "/logout", 
+  "validate_endpoint": "/serviceValidate",
+  "validate_endpoint_v3": "/p3/serviceValidate",
+  "version": "2.0",
+  "attributes_enabled": true,
+  "support_attributes": ["employeeNumber", "log_username"]
+}
+```
 
 #### domain_sso_mappings
 
@@ -570,6 +593,56 @@ SELECT public.initialize_admin('admin@example.com');
 - 验证用户存在性
 - 提供操作确认通知
 
+#### SSO用户管理
+
+**函数：** `find_user_by_employee_number(emp_num TEXT)`
+
+根据学工号查找用户信息，专用于北信科SSO登录：
+
+```sql
+SELECT * FROM find_user_by_employee_number('2021011221');
+```
+
+**返回字段：**
+- `user_id`: 用户UUID
+- `full_name`: 用户全名
+- `username`: 用户名
+- `employee_number`: 学工号
+- `last_login`: 最后登录时间
+- `auth_source`: 认证来源（TEXT类型）
+- `status`: 账户状态（account_status枚举类型）
+
+**安全特性：**
+- 使用 `SECURITY DEFINER` 模式
+- 只返回活跃状态用户
+- 验证学工号格式
+
+**最新修复 (2025-06-18)**：
+- 修正了函数返回类型定义中的数据类型不匹配问题
+- `auth_source` 字段使用正确的TEXT类型
+- `status` 字段使用正确的account_status枚举类型
+- 解决了PostgreSQL返回类型检查错误
+
+**函数：** `create_sso_user(emp_number TEXT, user_name TEXT, sso_provider_uuid UUID)`
+
+为SSO用户创建新账户，用于首次登录：
+
+```sql
+SELECT create_sso_user('2021011221', 'zhang.san', '10000000-0000-0000-0000-000000000001');
+```
+
+**特性：**
+- 自动处理用户名冲突（添加数字后缀）
+- 验证学工号唯一性
+- 自动设置认证来源为 'bistu_sso'（TEXT类型值）
+- 设置初始登录时间
+
+**最新修复 (2025-06-18)**：
+- **UUID类型转换修复**: 修正了sso_provider_id字段的类型转换问题，直接使用UUID类型而非错误的TEXT转换
+- **INSERT语句优化**: 确保所有字段的数据类型正确匹配数据库表结构
+- **类型安全保证**: auth_source使用TEXT值，枚举字段正确转换，UUID字段直接使用UUID类型
+- **错误解决**: 彻底解决了"column sso_provider_id is of type uuid but expression is of type text"错误
+
 ### 数据库安全最佳实践
 
 1. **最小权限原则**：
@@ -591,6 +664,42 @@ SELECT public.initialize_admin('admin@example.com');
    - 使用 RLS (Row Level Security) 策略
    - 视图级别的权限控制
    - 敏感数据的访问控制
+
+### RLS策略优化和修复
+
+#### profiles表RLS策略重构 (2025-06-18)
+
+**问题背景**：
+- profiles表的RLS策略存在无限递归问题
+- 复杂的表间依赖导致策略执行时循环查询
+- 影响系统稳定性和性能
+
+**解决方案**：
+1. **策略简化**：移除所有复杂的表间依赖策略
+2. **超简单策略**：采用最基础的权限控制逻辑
+3. **避免递归**：确保策略不会产生循环查询
+
+**当前策略设计**：
+
+```sql
+-- 查看策略：所有认证用户可查看所有资料
+CREATE POLICY "simple_profiles_select" ON profiles
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- 插入策略：用户只能插入自己的资料
+CREATE POLICY "simple_profiles_insert" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- 更新策略：用户只能更新自己的资料
+CREATE POLICY "simple_profiles_update" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+```
+
+**策略特点**：
+- **简单有效**：避免复杂的子查询和表间依赖
+- **性能优化**：减少数据库查询负载
+- **兼容性保持**：确保现有功能正常工作
+- **管理员友好**：管理员可以正常访问所有用户数据
 
 ## 初始数据
 
@@ -724,6 +833,16 @@ VALUES ('00000000-0000-0000-0000-000000000001');
 - `20250609174230_fix_enum_reference.sql`: 修复枚举引用
 - `20250609214000_add_admin_user_functions.sql`: 添加管理员用户函数
 - `20250609214100_fix_org_members_foreign_key.sql`: 修复组织成员外键
+
+### 2025-06-17 SSO集成更新 - 北京信息科技大学CAS认证
+- `20250617185201_fix_enum_transaction_issue.sql`: 修复PostgreSQL枚举类型事务问题，添加CAS协议支持
+- `20250617185202_add_bistu_sso_data.sql`: 北信科SSO集成数据迁移，添加学工号字段、SSO函数和配置
+- `20250617190000_drop_sso_views.sql`: 清理SSO统计视图，简化数据库对象
+
+### 2025-06-18 数据库稳定性修复 - RLS策略无限递归问题和SSO类型修复
+- `20250618110000_fix_profiles_infinite_recursion.sql`: 完全修复profiles表RLS策略无限递归问题，确保系统稳定运行
+- `20250618150000_fix_sso_function_types.sql`: 修复SSO数据库函数返回类型不匹配问题，确保北信科SSO登录正常工作
+- `20250618160000_fix_sso_uuid_type_conversion.sql`: 修复create_sso_user函数中的UUID类型转换问题，确保SSO用户创建正常工作
 - `20250609214200_remove_deprecated_admin_views.sql`: 移除过时管理员视图
 - `20250609214300_fix_admin_users_function_types.sql`: 修复管理员用户函数类型
 - `20250609214400_fix_phone_column_type.sql`: 修复手机号列类型

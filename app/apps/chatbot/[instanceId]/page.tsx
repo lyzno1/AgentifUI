@@ -118,6 +118,8 @@ export default function AppDetailPage() {
   // 🎯 关键修复：使用useLayoutEffect确保在路由切换时立即清理状态
   // 这比useEffect更早执行，能在渲染前清理状态，避免显示错误内容
   // --- END COMMENT ---
+  const { clearConversationState } = useChatInterface()
+  
   useLayoutEffect(() => {
     // --- BEGIN COMMENT ---
     // 🎯 修复：正确判断当前是否在chatbot页面
@@ -132,6 +134,12 @@ export default function AppDetailPage() {
       // 设置当前对话 ID 为 null
       setCurrentConversationId(null)
       
+      // --- BEGIN COMMENT ---
+      // 🎯 新增：清理use-chat-interface中的对话状态
+      // 这确保difyConversationId、dbConversationUUID、conversationAppId都被正确清理
+      // --- END COMMENT ---
+      clearConversationState()
+      
       // 强制设置欢迎屏幕状态为 true
       setIsWelcomeScreen(true)
       
@@ -140,7 +148,7 @@ export default function AppDetailPage() {
       
       console.log('[AppDetail] 聊天状态清理完成')
     }
-  }, [pathname, instanceId, clearMessages, setCurrentConversationId, setIsWelcomeScreen])
+  }, [pathname, instanceId, clearMessages, setCurrentConversationId, setIsWelcomeScreen, clearConversationState])
   
   // --- BEGIN COMMENT ---
   // 页面初始化：切换到目标应用并同步sidebar选中状态

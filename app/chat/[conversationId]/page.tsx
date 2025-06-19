@@ -179,10 +179,11 @@ export default function ChatPage() {
           1. 新聊天页面且没有消息
           2. 或者欢迎状态且没有消息且不在提交中
           --- END COMMENT --- */}
+          {/*暂时使用全名来替代username（昵称），因为username可能为空*/}
           {isNewChat && messages.length === 0 ? (
-            <WelcomeScreen username={profile?.username} />
+            <WelcomeScreen username={profile?.full_name} />
           ) : messages.length === 0 && !isSubmitting && isWelcomeScreen ? (
-            <WelcomeScreen username={profile?.username} />
+            <WelcomeScreen username={profile?.full_name} />
           ) : (
             <div 
               ref={setScrollRef}
