@@ -11,6 +11,10 @@ import { ChevronDown, ChevronUp, Edit, Trash, Star, Blocks } from 'lucide-react'
 import { ConfirmDialog, InputDialog } from '@components/ui';
 import { useAppListStore } from '@lib/stores/app-list-store';
 import { useFavoriteAppsStore } from '@lib/stores/favorite-apps-store';
+// --- BEGIN COMMENT ---
+// 导入聊天接口Hook以获取对话关联的应用ID
+// --- END COMMENT ---
+import { useChatInterface } from '@lib/hooks/use-chat-interface';
 
 interface ConversationTitleButtonProps {
   className?: string;
@@ -32,6 +36,11 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   // --- END COMMENT ---
   const { apps } = useAppListStore();
   const { favoriteApps, addFavoriteApp, removeFavoriteApp, isFavorite } = useFavoriteAppsStore();
+  
+  // --- BEGIN COMMENT ---
+  // 获取对话关联的应用ID，用于显示应用名称标签
+  // --- END COMMENT ---
+  const { conversationAppId } = useChatInterface();
   
   // --- BEGIN COMMENT ---
   // 模态框状态管理
@@ -89,10 +98,32 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   const finalConversation = currentConversation;
   
   // --- BEGIN COMMENT ---
+  // 🎯 新增：获取当前对话关联的应用信息，用于显示应用名称标签
+  // 优先使用对话记录中的app_id，其次使用conversationAppId（用于创建中的对话）
+  // --- END COMMENT ---
+  const currentConversationApp = React.useMemo(() => {
+    if (!finalConversation && !conversationAppId) return null;
+    
+    // 获取应用ID：优先使用对话记录中的app_id，其次使用conversationAppId
+    const appId = finalConversation?.app_id || conversationAppId;
+    if (!appId) return null;
+    
+    // 在应用列表中查找对应的应用
+    return apps.find(app => 
+      app.instance_id === appId || 
+      app.id === appId
+    ) || null;
+  }, [finalConversation, conversationAppId, apps]);
+  
+  // --- BEGIN COMMENT ---
   // 🎯 支持打字机效果的标题显示，与sidebar逻辑保持一致
+  // 🎯 修复：当finalConversation为空但conversationAppId存在时，显示"创建中..."
   // --- END COMMENT ---
   const getDisplayTitle = () => {
-    if (!finalConversation) return '新对话';
+    // 🎯 新增：处理对话创建中的状态
+    if (!finalConversation) {
+      return conversationAppId ? '创建中...' : '新对话';
+    }
     
     // 检查是否需要显示打字机效果
     if (finalConversation.isPending && finalConversation.titleTypewriterState) {
@@ -129,7 +160,11 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   };
 
   const handleRenameConfirm = async (newTitle: string) => {
-    if (!currentConversationId || !finalConversation) return;
+    if (!currentConversationId || !finalConversation) {
+      alert("对话正在创建中，请稍后再试。");
+      setShowRenameDialog(false);
+      return;
+    }
     
     const supabasePK = finalConversation?.supabase_pk;
     if (!supabasePK) {
@@ -180,7 +215,11 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
   };
 
   const handleDeleteConfirm = async () => {
-    if (!currentConversationId || !finalConversation) return;
+    if (!currentConversationId || !finalConversation) {
+      alert("对话正在创建中，请稍后再试。");
+      setShowDeleteDialog(false);
+      return;
+    }
     
     const supabasePK = finalConversation?.supabase_pk;
     if (!supabasePK) {
@@ -338,15 +377,16 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
 
   // --- BEGIN COMMENT ---
   // 历史对话页面渲染：只在历史对话页面且有当前对话ID时显示
+  // 🎯 修复：当conversationAppId存在时（对话创建中），即使finalConversation为空也应该显示
   // --- END COMMENT ---
-  if (!isHistoricalChatPage || !currentConversationId || !finalConversation) {
+  if (!isHistoricalChatPage || !currentConversationId || (!finalConversation && !conversationAppId)) {
     return null;
   }
 
   return (
     <>
       <div className={cn(
-        "relative transition-all duration-300 ease-in-out",
+        "relative flex items-center gap-2 transition-all duration-300 ease-in-out",
         // --- BEGIN COMMENT ---
         // 动态隐藏策略：悬停时透明度降为0并稍微向左移动
         // --- END COMMENT ---
@@ -358,16 +398,16 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
         --- END COMMENT --- */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          disabled={isOperating}
+          disabled={isOperating || !finalConversation}
           className={cn(
             "flex items-center space-x-1 px-2 py-1 rounded-md text-sm font-serif",
             "transition-all duration-200 ease-in-out",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "h-8 min-h-[2rem]",
             // --- BEGIN MODIFIED COMMENT ---
-            // cursor控制：只有在下拉框关闭且未操作时显示pointer
+            // cursor控制：只有在下拉框关闭且未操作且对话已存在时显示pointer
             // --- END MODIFIED COMMENT ---
-            !isOpen && !isOperating ? "cursor-pointer" : "",
+            !isOpen && !isOperating && finalConversation ? "cursor-pointer" : "",
             isDark 
               ? "hover:bg-stone-700/50 hover:shadow-stone-800/20 hover:shadow-sm text-stone-300 active:bg-stone-600/50" 
               : "hover:bg-stone-200/80 hover:shadow-stone-300/50 hover:shadow-sm text-stone-600 active:bg-stone-300/50"
@@ -404,6 +444,21 @@ export function ConversationTitleButton({ className }: ConversationTitleButtonPr
             )}
           </div>
         </button>
+        
+        {/* --- BEGIN COMMENT ---
+        🎯 修改：应用名称标签移到按钮外部，避免悬停时一起被选中
+        --- END COMMENT --- */}
+        {currentConversationApp && (
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-xs font-serif flex-shrink-0",
+            "transition-colors duration-200",
+            isDark 
+              ? "bg-stone-700/80 text-stone-300 border border-stone-600/50" 
+              : "bg-stone-200/80 text-stone-700 border border-stone-300/50"
+          )}>
+            {currentConversationApp.display_name || currentConversationApp.instance_id}
+          </span>
+        )}
 
         {/* --- BEGIN COMMENT ---
         下拉菜单：完全模仿app-selector的样式
