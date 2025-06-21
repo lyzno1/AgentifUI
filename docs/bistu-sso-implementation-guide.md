@@ -27,7 +27,7 @@ BISTU_SSO_BASE_URL=https://sso.bistu.edu.cn
 BISTU_CAS_VERSION=2.0
 
 # 北信科专用模式（仅显示SSO登录选项）
-NEXT_PUBLIC_BISTU_ONLY_MODE=false
+NEXT_PUBLIC_SSO_ONLY_MODE=false
 ```
 
 ### 3. 运行数据库迁移
@@ -134,7 +134,7 @@ const allowedReturnUrls = [
 如需启用仅SSO登录模式，设置环境变量：
 
 ```bash
-NEXT_PUBLIC_BISTU_ONLY_MODE=true
+NEXT_PUBLIC_SSO_ONLY_MODE=true
 ```
 
 启用后登录页面将：
@@ -430,7 +430,7 @@ const { data: authUser, error: authError } = await adminSupabase.auth.admin.crea
 
 1. **保持现有登录方式**：
    ```bash
-   NEXT_PUBLIC_BISTU_ONLY_MODE=false
+   NEXT_PUBLIC_SSO_ONLY_MODE=false
    ```
 
 2. **添加用户来源识别**：

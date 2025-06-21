@@ -1089,7 +1089,7 @@ NEXT_PUBLIC_APP_URL=https://your-domain.com
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 BISTU_SSO_BASE_URL=https://sso.bistu.edu.cn
 BISTU_CAS_VERSION=2.0
-NEXT_PUBLIC_BISTU_ONLY_MODE=false
+NEXT_PUBLIC_SSO_ONLY_MODE=false
 ```
 
 ### 2. 数据库部署

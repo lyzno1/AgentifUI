@@ -24,7 +24,7 @@ BISTU_CAS_VERSION=2.0
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 # 北信科专用模式（可选，设为true则只显示SSO登录）
-NEXT_PUBLIC_BISTU_ONLY_MODE=false
+NEXT_PUBLIC_SSO_ONLY_MODE=false
 ```
 
 ## Supabase配置要求
@@ -83,7 +83,7 @@ supabase db push
    - 默认值：`2.0`
    - 可选值：`2.0` 或 `3.0`
 
-3. **NEXT_PUBLIC_BISTU_ONLY_MODE**
+3. **NEXT_PUBLIC_SSO_ONLY_MODE**
    - 北信科专用模式开关
    - 设为 `true` 时仅显示SSO登录选项
    - 设为 `false` 时显示所有登录方式
