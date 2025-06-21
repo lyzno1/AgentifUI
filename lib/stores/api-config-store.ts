@@ -326,16 +326,47 @@ export const useApiConfigStore = create<ApiConfigState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
+      console.time('[API Config] 总加载时间');
+      
       // 使用数据库函数获取所有提供商
+      console.time('[API Config] 获取提供商');
       const providersResult = await getActiveProviders();
       const providers = handleResult(providersResult, '获取活跃提供商');
+      console.timeEnd('[API Config] 获取提供商');
       
-      // 获取每个提供商的服务实例
+      // --- BEGIN COMMENT ---
+      // 🚀 优化：并行获取每个提供商的服务实例
+      // 从串行查询改为并行查询，显著提升性能
+      // --- END COMMENT ---
+      console.time('[API Config] 并行获取服务实例');
+      const instancePromises = providers.map(provider => 
+        getServiceInstancesByProvider(provider.id)
+          .then(result => ({
+            provider,
+            result,
+            instances: result.success ? result.data : []
+          }))
+          .catch(error => {
+            console.warn(`获取提供商 ${provider.name} 的服务实例失败:`, error);
+            return {
+              provider,
+              result: { success: false, error },
+              instances: []
+            };
+          })
+      );
+      
+      const instanceResults = await Promise.all(instancePromises);
+      console.timeEnd('[API Config] 并行获取服务实例');
+      
+      // 合并所有服务实例并处理错误
       const serviceInstances: ServiceInstance[] = [];
-      for (const provider of providers) {
-        const providerInstancesResult = await getServiceInstancesByProvider(provider.id);
-        const providerInstances = handleResult(providerInstancesResult, `获取提供商 ${provider.name} 的服务实例`);
-        serviceInstances.push(...providerInstances);
+      for (const { provider, result, instances } of instanceResults) {
+        if (result.success) {
+          serviceInstances.push(...instances);
+        } else {
+          console.error(`获取提供商 ${provider.name} 的服务实例失败:`, result.error);
+        }
       }
       
       // 按显示名称排序
@@ -343,15 +374,44 @@ export const useApiConfigStore = create<ApiConfigState>((set, get) => ({
         (a.display_name || a.instance_id).localeCompare(b.display_name || b.instance_id)
       );
       
-      // 获取每个服务实例的API密钥
+      // --- BEGIN COMMENT ---
+      // 🚀 优化：并行获取每个服务实例的API密钥
+      // 从串行查询改为并行查询，显著提升性能
+      // --- END COMMENT ---
+      console.time('[API Config] 并行获取API密钥');
+      const keyPromises = sortedServiceInstances.map(instance => 
+        getApiKeyByServiceInstance(instance.id)
+          .then(result => ({
+            instance,
+            result,
+            apiKey: result.success ? result.data : null
+          }))
+          .catch(error => {
+            console.warn(`获取服务实例 ${instance.display_name || instance.instance_id} 的 API 密钥失败:`, error);
+            return {
+              instance,
+              result: { success: false, error },
+              apiKey: null
+            };
+          })
+      );
+      
+      const keyResults = await Promise.all(keyPromises);
+      console.timeEnd('[API Config] 并行获取API密钥');
+      
+      // 筛选有效的API密钥并处理错误
       const apiKeys: ApiKey[] = [];
-      for (const instance of sortedServiceInstances) {
-        const apiKeyResult = await getApiKeyByServiceInstance(instance.id);
-        const apiKey = handleResult(apiKeyResult, `获取服务实例 ${instance.display_name || instance.instance_id} 的 API 密钥`);
-        if (apiKey) {
+      for (const { instance, result, apiKey } of keyResults) {
+        if (result.success && apiKey) {
           apiKeys.push(apiKey);
+        } else if (!result.success) {
+          console.error(`获取服务实例 ${instance.display_name || instance.instance_id} 的 API 密钥失败:`, result.error);
         }
+        // 如果 result.success 为 true 但 apiKey 为 null，说明该实例没有配置API密钥，这是正常情况
       }
+      
+      console.timeEnd('[API Config] 总加载时间');
+      console.log(`[API Config] 加载完成 - 提供商: ${providers.length}, 服务实例: ${sortedServiceInstances.length}, API密钥: ${apiKeys.length}`);
       
       // 更新状态
       set({ 
