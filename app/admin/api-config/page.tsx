@@ -668,7 +668,7 @@ const InstanceForm = ({
                       return // 已经是默认应用，无需操作
                     }
                     
-                    if (confirm(`确定要将"${formData.display_name || formData.instance_id}"设置为默认应用吗？`)) {
+                    if (confirm(`确定要将"${formData.display_name || '此应用'}"设置为默认应用吗？`)) {
                       // 直接调用store的方法
                       if (instance.id) {
                         useApiConfigStore.getState().setDefaultInstance(instance.id)
