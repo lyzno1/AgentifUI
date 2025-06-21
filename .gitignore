@@ -61,3 +61,4 @@ scripts
 .env
 .env.local
 .env.*.local
+scripts/test_dify_proxy_streaming.py

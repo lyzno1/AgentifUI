@@ -181,9 +181,9 @@ export default function ChatPage() {
           --- END COMMENT --- */}
           {/*暂时使用全名来替代username（昵称），因为username可能为空*/}
           {isNewChat && messages.length === 0 ? (
-            <WelcomeScreen username={profile?.full_name} />
+            <WelcomeScreen username={profile?.username} />
           ) : messages.length === 0 && !isSubmitting && isWelcomeScreen ? (
-            <WelcomeScreen username={profile?.full_name} />
+            <WelcomeScreen username={profile?.username} />
           ) : (
             <div 
               ref={setScrollRef}

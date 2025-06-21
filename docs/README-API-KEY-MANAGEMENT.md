@@ -64,7 +64,7 @@ API_ENCRYPTION_KEY=your_random_32_byte_hex_string
 运行以下命令，将环境变量中的 Dify 配置迁移到数据库：
 
 ```bash
-npm run migrate-dify
+pnpm run migrate-dify
 ```
 
 ## 使用方法

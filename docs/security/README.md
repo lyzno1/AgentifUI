@@ -25,7 +25,7 @@
 
 ## 自动化安全检查
 项目配置了 GitHub Actions 自动安全检查工作流：
-- **依赖扫描**：每日自动检查npm包漏洞
+- **依赖扫描**：每日自动检查pnpm包漏洞
 - **代码安全**：ESLint安全规则检查
 - **环境检查**：防止敏感信息泄露
 - **Supabase安全**：数据库迁移安全验证
@@ -33,7 +33,7 @@
 ## 快速安全检查
 ```bash
 # 运行安全检查
-npm audit
+pnpm audit
 supabase db lint --level error
 
 # 手动触发GitHub Actions安全检查

@@ -406,7 +406,7 @@ node scripts/test_reset_password.js
 #### 1. 准备测试环境
 ```bash
 # 启动开发服务器
-npm run dev
+pnpm run dev
 
 # 启动本地Supabase（如果使用）
 supabase start

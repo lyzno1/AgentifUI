@@ -163,12 +163,28 @@ export interface DifySsePingEvent extends DifySseBaseEvent {
   event: 'ping';
 }
 
-/** event: agent_message (模型思考过程/中间步骤) */
+/** event: agent_thought (Agent 思考过程) */
+export interface DifySseAgentThoughtEvent extends DifySseBaseEvent {
+  event: 'agent_thought';
+  id: string; // Agent 思考消息 ID
+  message_id: string; // 消息 ID
+  position: number; // 位置序号
+  thought: string; // 思考过程的文本内容
+  observation: string; // 观察结果
+  tool: string; // 使用的工具
+  tool_labels: Record<string, any>; // 工具标签
+  tool_input: string; // 工具输入
+  message_files: any[]; // 消息文件
+  created_at: number; // 创建时间戳
+}
+
+/** event: agent_message (Agent 应用的流式回答内容) */
 export interface DifySseAgentMessageEvent extends DifySseBaseEvent {
   event: 'agent_message';
-  id?: string; // Agent 消息可能没有稳定 ID
-  answer: string; // 思考过程的文本块
-  created_at?: number; // 可能没有创建时间
+  id: string; // Agent 消息 ID
+  message_id: string; // 消息 ID
+  answer: string; // Agent 回答的文本块
+  created_at: number; // 创建时间戳
 }
 
 /** Dify 模型用量信息 */
@@ -220,6 +236,7 @@ export type DifySseEvent =
   | DifySseLoopCompletedEvent
   | DifySseErrorEvent
   | DifySsePingEvent
+  | DifySseAgentThoughtEvent
   | DifySseAgentMessageEvent;
 
 // --- BEGIN COMMENT ---

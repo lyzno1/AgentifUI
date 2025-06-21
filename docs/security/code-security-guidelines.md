@@ -140,13 +140,13 @@ try {
 
 ```bash
 # 定期检查安全漏洞
-npm audit
+pnpm audit
 
 # 修复已知漏洞
-npm audit fix
+pnpm audit --fix
 
 # 更新依赖包
-npm update
+pnpm update
 ```
 
 ### 2. 依赖选择原则
@@ -202,7 +202,7 @@ NODE_ENV=production
 
 ```bash
 # ESLint 安全规则
-npm install --save-dev eslint-plugin-security
+pnpm add -D eslint-plugin-security
 
 # TypeScript 严格模式
 "strict": true,
@@ -214,10 +214,10 @@ npm install --save-dev eslint-plugin-security
 
 ```bash
 # 安全测试
-npm run test:security
+pnpm run test:security
 
 # 依赖漏洞扫描
-npm audit
+pnpm audit
 ```
 
 ## 应急响应

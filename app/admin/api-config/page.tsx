@@ -668,7 +668,7 @@ const InstanceForm = ({
                       return // 已经是默认应用，无需操作
                     }
                     
-                    if (confirm(`确定要将"${formData.display_name || formData.instance_id}"设置为默认应用吗？`)) {
+                    if (confirm(`确定要将"${formData.display_name || '此应用'}"设置为默认应用吗？`)) {
                       // 直接调用store的方法
                       if (instance.id) {
                         useApiConfigStore.getState().setDefaultInstance(instance.id)
@@ -959,30 +959,33 @@ const InstanceForm = ({
           {/* 🎯 API配置字段 - 移动到描述字段之前 */}
           {/* --- END COMMENT --- */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* --- BEGIN COMMENT ---
+            API URL 输入框 - 禁用修改，显示供应商绑定逻辑
+            --- END COMMENT --- */}
             <div>
-              <label className={cn(
-                "block text-sm font-medium mb-2 font-serif",
-                isDark ? "text-stone-300" : "text-stone-700"
-              )}>
-                API URL (config.api_url)
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className={cn(
+                  "text-sm font-medium font-serif",
+                  isDark ? "text-stone-300" : "text-stone-700"
+                )}>
+                  API URL (config.api_url)
+                </label>
+                
+                {/* 供应商绑定提示标签 */}
+                <span className={cn(
+                  "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium font-serif",
+                  isDark
+                    ? "bg-blue-900/20 border-blue-700/30 text-blue-300 border"
+                    : "bg-blue-50 border-blue-200 text-blue-700 border"
+                )}>
+                  <Globe className="h-3 w-3" />
+                  供应商绑定
+                </span>
+              </div>
+              
               <input
                 type="url"
-                value={formData.config.api_url}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  config: {
-                    ...prev.config,
-                    api_url: e.target.value
-                  }
-                }))}
-                className={cn(
-                  "w-full px-3 py-2 rounded-lg border font-serif",
-                  isDark 
-                    ? "bg-stone-700 border-stone-600 text-stone-100 placeholder-stone-400" 
-                    : "bg-white border-stone-300 text-stone-900 placeholder-stone-500"
-                )}
-                placeholder={(() => {
+                value={formData.config.api_url || (() => {
                   if (isEditing && instance) {
                     const currentProvider = providers.find(p => p.id === instance.provider_id);
                     return currentProvider?.base_url || 'https://api.dify.ai/v1';
@@ -991,25 +994,37 @@ const InstanceForm = ({
                     return selectedProvider?.base_url || 'https://api.dify.ai/v1';
                   }
                 })()}
+                disabled={true}  // 禁用 URL 修改
+                className={cn(
+                  "w-full px-3 py-2 rounded-lg border font-serif",
+                  // 禁用状态样式
+                  "cursor-not-allowed opacity-75",
+                  isDark 
+                    ? "bg-stone-800/50 border-stone-600 text-stone-300" 
+                    : "bg-stone-100/50 border-stone-300 text-stone-600"
+                )}
+                placeholder="URL 将自动使用所选供应商的配置"
               />
-              <p className={cn(
-                "text-xs mt-1 font-serif",
-                isDark ? "text-stone-400" : "text-stone-500"
+              
+              <div className={cn(
+                "text-xs mt-2 p-2 rounded-md font-serif",
+                isDark ? "bg-stone-800/50 text-stone-400" : "bg-stone-50 text-stone-600"
               )}>
-                {(() => {
-                  if (isEditing && instance) {
-                    const currentProvider = providers.find(p => p.id === instance.provider_id);
-                    return `当前提供商默认URL: ${currentProvider?.base_url || '未知'}`;
-                  } else {
-                    const selectedProvider = providers.find(p => p.id === selectedProviderId);
-                    if (selectedProvider) {
-                      return `已自动填充提供商URL: ${selectedProvider.base_url}`;
-                    } else {
-                      return '请先选择服务提供商';
-                    }
-                  }
-                })()}
-              </p>
+                <div className="flex items-start gap-2">
+                  <Globe className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <ul className="space-y-1 text-xs">
+                      <li>• URL 与服务供应商绑定，修改请在"管理提供商"中操作</li>
+                      {isEditing && instance && (
+                        <li>• 当前供应商: {(() => {
+                          const currentProvider = providers.find(p => p.id === instance.provider_id);
+                          return currentProvider ? currentProvider.name : '未知供应商';
+                        })()}</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>

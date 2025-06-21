@@ -150,10 +150,21 @@ export async function streamDifyChat(
           // 根据事件类型处理
           // --- END COMMENT ---
           switch (event.event) {
-            case 'agent_message': // Dify 返回的思考过程或中间消息
-              // 可以选择性地处理或忽略 agent_message
-              // console.log('[Dify Service] Agent Message:', event.answer);
-              // yield event.answer; // 如果需要显示思考过程，可以 yield
+            case 'agent_thought': // Agent 思考过程
+              // --- BEGIN COMMENT ---
+              // agent_thought 事件包含 Agent 的思考过程，但通常 thought 字段为空
+              // 这个事件主要用于标记思考阶段的开始，不需要 yield 内容
+              // --- END COMMENT ---
+              console.log('[Dify Service] Agent thought event received');
+              break;
+            case 'agent_message': // Agent 应用的流式回答内容
+              if (event.answer) {
+                // --- BEGIN COMMENT ---
+                // 🎯 关键修复：agent_message 事件包含 Agent 应用的实际回答内容
+                // 应该像 message 事件一样 yield 出来，供前端显示
+                // --- END COMMENT ---
+                yield event.answer;
+              }
               break;
             case 'node_started': // 节点开始执行
               console.log('[Dify Service] Node started:', event.data);

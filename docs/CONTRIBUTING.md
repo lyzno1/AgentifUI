@@ -6,9 +6,9 @@
 
 开始前，请确保你的系统上已安装：
 
-- Node.js 18+
-- npm 9+
-- Git
+- Node.js 18+ (推荐 22.15.0+)
+- pnpm 9+ (推荐 10.11.0+)
+- Git 2.30+
 
 ## 环境设置步骤
 
@@ -16,11 +16,11 @@
 
 ```bash
 # 克隆代码库
-git clone [https://github.com/lyzno1/AgentifUI.git](https://github.com/lyzno1/AgentifUI.git)
+git clone [https://github.com/ifLabX/AgentifUI.git](https://github.com/ifLabX/AgentifUI.git)
 cd AgentifUI
 
 # 安装依赖
-npm install
+pnpm install
 ```
 
 ### 2\. 设置环境变量
@@ -45,7 +45,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key # 服务角色密钥（仅服务
 ### 3\. 启动开发服务器
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 访问 [http://localhost:3000](http://localhost:3000) 查看应用程序。

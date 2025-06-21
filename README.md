@@ -54,10 +54,12 @@ Supabase Client
 
 ## 快速开始
 
+> 📋 **完整环境配置**: 请先查看 [环境配置要求文档](./docs/SETUP-REQUIREMENTS.md) 了解所需工具和详细安装步骤
+
 1. 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. 配置环境变量（参考 `.env.local.example`）
@@ -65,7 +67,7 @@ npm install
 3. 启动开发服务器
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 4. 访问 http://localhost:3000

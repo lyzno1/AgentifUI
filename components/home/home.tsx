@@ -175,7 +175,7 @@ export function Home() {
             className={`text-center ${colors.textColor} text-sm`}
           >
             <p>
-              © <span suppressHydrationWarning>{new Date().getFullYear()}</span> AgentifUI. 探索AI教育的未来。
+              © <span suppressHydrationWarning>{new Date().getFullYear()}</span> AgentifUI. 探索AI的无限可能。
             </p>
           </motion.div>
         </motion.div>

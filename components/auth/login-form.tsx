@@ -18,7 +18,7 @@ export function LoginForm() {
   // --- BEGIN COMMENT ---
   // 检查是否启用北信科专用模式
   // --- END COMMENT ---
-  const bistuOnlyMode = process.env.NEXT_PUBLIC_BISTU_ONLY_MODE === 'true';
+  const ssoOnlyMode = process.env.NEXT_PUBLIC_SSO_ONLY_MODE === 'true';
   
   const [formData, setFormData] = useState({
     email: '',
@@ -100,7 +100,7 @@ export function LoginForm() {
         {/* --- BEGIN COMMENT --- */}
         {/* 条件渲染：仅在非北信科专用模式下显示其他登录选项 */}
         {/* --- END COMMENT --- */}
-        {!bistuOnlyMode && (
+        {!ssoOnlyMode && (
           <>
             {/* --- BEGIN COMMENT --- */}
             {/* 社交登录区域 */}
@@ -132,7 +132,7 @@ export function LoginForm() {
         {/* --- BEGIN COMMENT --- */}
         {/* 条件渲染：仅在非北信科专用模式下显示邮箱密码登录 */}
         {/* --- END COMMENT --- */}
-        {!bistuOnlyMode && (
+        {!ssoOnlyMode && (
           <>
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-5">

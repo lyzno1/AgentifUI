@@ -13,12 +13,58 @@ import {
   Loader2,
   Star,
   StarOff,
-  Key
+  Key,
+  Bot,
+  MessageSquare,
+  Workflow,
+  Zap,
+  FileText,
+  Settings
 } from 'lucide-react'
 import { InstanceFilterSelector } from '@components/admin/api-config/instance-filter-selector'
 
 interface ApiConfigLayoutProps {
   children: ReactNode
+}
+
+// --- BEGIN COMMENT ---
+// 根据Dify应用类型获取对应图标
+// --- END COMMENT ---
+const getAppTypeIcon = (difyAppType?: string) => {
+  switch (difyAppType) {
+    case 'chatbot':
+      return MessageSquare
+    case 'agent':
+      return Bot
+    case 'chatflow':
+      return Workflow
+    case 'workflow':
+      return Settings
+    case 'text-generation':
+      return FileText
+    default:
+      return Globe
+  }
+}
+
+// --- BEGIN COMMENT ---
+// 根据Dify应用类型获取类型标签和颜色
+// --- END COMMENT ---
+const getAppTypeInfo = (difyAppType?: string) => {
+  switch (difyAppType) {
+    case 'chatbot':
+      return { label: '聊天助手', color: 'emerald' }
+    case 'agent':
+      return { label: '智能代理', color: 'violet' }
+    case 'chatflow':
+      return { label: '对话流', color: 'amber' }
+    case 'workflow':
+      return { label: '工作流', color: 'rose' }
+    case 'text-generation':
+      return { label: '文本生成', color: 'cyan' }
+    default:
+      return { label: '应用', color: 'stone' }
+  }
 }
 
 export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
@@ -223,7 +269,7 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
       return // 已经是默认应用，无需操作
     }
 
-    if (!confirm(`确定要将"${instanceToSet.display_name || instanceToSet.instance_id}"设置为默认应用吗？`)) {
+    if (!confirm(`确定要将"${instanceToSet.display_name || '此应用'}"设置为默认应用吗？`)) {
       return
     }
 
@@ -332,118 +378,154 @@ export default function ApiConfigLayout({ children }: ApiConfigLayoutProps) {
               </button>
             </div>
           ) : (
-            <div className="p-2">
-              {filteredInstances.map((instance) => (
-                <div
-                  key={instance.instance_id}
-                  className={cn(
-                    "p-2.5 rounded-lg mb-2 cursor-pointer group",
-                    "transition-colors duration-150 ease-in-out",
-                    "focus:outline-none focus:ring-2",
-                    selectedInstanceId === instance.instance_id
-                    ? isDark
-                      ? "bg-stone-600 border border-stone-500 focus:ring-stone-500"
-                      : "bg-stone-300 border border-stone-400"
-                    : isDark
-                      ? "hover:bg-stone-700 focus:ring-stone-600"
-                      : "hover:bg-stone-200 focus:ring-stone-300"
-                  
-                  )}
-                  onClick={() => {
-                    // --- BEGIN COMMENT ---
-                    // 只发送事件给page组件，不在layout中设置状态
-                    // --- END COMMENT ---
-                    window.dispatchEvent(new CustomEvent('selectInstance', {
-                      detail: instance
-                    }))
-                  }}
-                  tabIndex={0}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Globe className={cn(
-                          "h-3.5 w-3.5 flex-shrink-0",
-                          isDark ? "text-stone-400" : "text-stone-500"
-                        )} />
-                        <h3 className={cn(
-                          "font-medium text-sm truncate font-serif",
-                          isDark ? "text-stone-200" : "text-stone-800"
-                        )}>
-                          {instance.display_name}
-                        </h3>
-                        
-                        {/* --- 默认应用标签 --- */}
-                        {instance.is_default && (
-                          <span className={cn(
-                            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium font-serif",
-                            isDark
-                              ? "bg-stone-600/30 text-stone-300 border border-stone-600"
-                              : "bg-stone-700/10 text-stone-700 border border-stone-700/20"
+            <div className="p-2 space-y-2">
+              {filteredInstances.map((instance) => {
+                const difyAppType = instance.config?.app_metadata?.dify_apptype
+                const AppIcon = getAppTypeIcon(difyAppType)
+                const typeInfo = getAppTypeInfo(difyAppType)
+                const provider = providers.find(p => p.id === instance.provider_id)
+                
+                return (
+                  <div
+                    key={instance.instance_id}
+                    className={cn(
+                      "relative p-3 rounded-xl cursor-pointer group",
+                      "transition-all duration-200 ease-in-out",
+                      "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                      "border backdrop-blur-sm",
+                      // 固定高度保持一致性
+                      "h-20 flex flex-col justify-between",
+                      selectedInstanceId === instance.instance_id
+                        ? isDark
+                          ? "bg-stone-700/80 border-stone-400 shadow-xl focus:ring-stone-400"
+                          : "bg-white border-stone-400 shadow-lg focus:ring-stone-300"
+                        : isDark
+                          ? "bg-stone-800/70 border-stone-600/70 hover:bg-stone-700/80 hover:border-stone-500 hover:shadow-lg focus:ring-stone-500"
+                          : "bg-white/90 border-stone-300/80 hover:bg-white hover:border-stone-400 hover:shadow-md focus:ring-stone-300"
+                    )}
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('selectInstance', {
+                        detail: instance
+                      }))
+                    }}
+                    tabIndex={0}
+                  >
+                    {/* 主要内容区域 */}
+                    <div className="flex items-start justify-between h-full">
+                      <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                        {/* 顶部：应用名称和图标 */}
+                        <div className="flex items-center gap-2">
+                          <AppIcon className={cn(
+                            "h-4 w-4 flex-shrink-0",
+                            isDark ? "text-stone-300" : "text-stone-600"
+                          )} />
+                          <h3 className={cn(
+                            "font-medium text-sm truncate font-serif",
+                            isDark ? "text-stone-100" : "text-stone-900"
                           )}>
-                            <Star className="h-2.5 w-2.5" />
-                            默认
-                          </span>
-                        )}
+                            {instance.display_name}
+                          </h3>
+                          
+                          {/* 默认应用标签 */}
+                          {instance.is_default && (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium font-serif",
+                              isDark
+                                ? "bg-amber-900/30 text-amber-300 border border-amber-800/40"
+                                : "bg-amber-100 text-amber-800 border border-amber-200"
+                            )}>
+                              <Star className="h-2.5 w-2.5" />
+                              默认
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* 底部：类型和提供商信息（低调显示） */}
+                        <div className="flex items-center gap-2 text-xs">
+                          {/* 应用类型原始值 */}
+                          {difyAppType && (
+                            <span className={cn(
+                              "font-serif",
+                              isDark ? "text-stone-500" : "text-stone-500"
+                            )}>
+                              {difyAppType}
+                            </span>
+                          )}
+                          
+                          {/* 分隔符 */}
+                          {difyAppType && provider && (
+                            <span className={cn(
+                              "text-stone-500"
+                            )}>
+                              ·
+                            </span>
+                          )}
+                          
+                          {/* 提供商信息 */}
+                          {provider && (
+                            <span className={cn(
+                              "font-serif",
+                              isDark ? "text-stone-500" : "text-stone-500"
+                            )}>
+                              {provider.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className={cn(
-                        "text-xs truncate font-serif",
-                        isDark ? "text-stone-400" : "text-stone-600"
-                      )}>
-                        {instance.description || instance.instance_id}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {/* --- 设置默认应用按钮 --- */}
-                      {!instance.is_default && (
+                      
+                      {/* 右侧操作按钮 */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                        {/* 设置默认应用按钮 */}
+                        {!instance.is_default && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSetDefaultInstance(instance.id)
+                            }}
+                            disabled={isProcessing}
+                            className={cn(
+                              "p-1.5 rounded-lg transition-colors cursor-pointer",
+                              "focus:outline-none focus:ring-2 focus:ring-offset-1",
+                              isDark 
+                                ? "hover:bg-stone-600 text-stone-400 hover:text-amber-300 focus:ring-amber-500" 
+                                : "hover:bg-amber-100 text-stone-500 hover:text-amber-700 focus:ring-amber-300",
+                              isProcessing && "opacity-50 cursor-not-allowed"
+                            )}
+                            title="设为默认应用"
+                          >
+                            <StarOff className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        
+                        {/* 删除按钮 */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleSetDefaultInstance(instance.id)
+                            handleDeleteInstance(instance.instance_id)
                           }}
-                          disabled={isProcessing}
+                          disabled={isProcessing || instance.is_default}
                           className={cn(
-                            "p-1 rounded transition-colors cursor-pointer",
-                            "focus:outline-none focus:ring-2 focus:ring-stone-500",
-                            isDark 
-                              ? "hover:bg-stone-700 text-stone-400 hover:text-stone-200" 
-                              : "hover:bg-stone-200 text-stone-600 hover:text-stone-900",
-                            isProcessing && "opacity-50 cursor-not-allowed"
+                            "p-1.5 rounded-lg transition-colors",
+                            "focus:outline-none focus:ring-2 focus:ring-offset-1",
+                            instance.is_default
+                              ? "opacity-30 cursor-not-allowed text-stone-400"
+                              : cn(
+                                  "cursor-pointer",
+                                  isDark 
+                                    ? "hover:bg-red-900/40 text-stone-400 hover:text-red-300 focus:ring-red-500" 
+                                    : "hover:bg-red-100 text-stone-500 hover:text-red-700 focus:ring-red-300"
+                                ),
+                            (isProcessing && !instance.is_default) && "opacity-50 cursor-not-allowed"
                           )}
-                          title="设为默认应用"
+                          title={instance.is_default ? "默认应用不可删除" : "删除"}
                         >
-                          <StarOff className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      )}
-                      
-                      {/* --- 删除按钮 --- */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteInstance(instance.instance_id)
-                        }}
-                        disabled={isProcessing || instance.is_default}
-                        className={cn(
-                          "p-1 rounded transition-colors",
-                          "focus:outline-none focus:ring-2 focus:ring-red-500",
-                          instance.is_default
-                            ? "opacity-50 cursor-not-allowed text-stone-400"
-                            : cn(
-                                "cursor-pointer",
-                                isDark 
-                                  ? "hover:bg-red-900/30 text-red-400 hover:text-red-300" 
-                                  : "hover:bg-red-100 text-red-600 hover:text-red-700"
-                              ),
-                          (isProcessing && !instance.is_default) && "opacity-50 cursor-not-allowed"
-                        )}
-                        title={instance.is_default ? "默认应用不可删除" : "删除"}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

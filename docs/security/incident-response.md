@@ -189,7 +189,7 @@ vercel --prod
 # 轮换所有API密钥和访问令牌
 
 # 4. 监控异常活动
-npm run logs:security
+pnpm run logs:security
 ```
 
 ### API安全事件
@@ -300,7 +300,7 @@ supabase logs --type api --filter "method=POST" --limit 1000
 echo "=== 每日安全检查 ==="
 
 # 1. 检查依赖漏洞
-npm audit
+pnpm audit
 
 # 2. 检查数据库安全
 supabase db lint --level error

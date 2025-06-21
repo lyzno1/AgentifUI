@@ -2,8 +2,8 @@
 
 本文档记录了AgentifUI项目中的数据库结构、功能和使用方法。本文档与当前数据库状态完全同步。
 
-**文档更新日期**: 2025-06-18  
-**数据库版本**: 包含至 20250618160000_fix_sso_uuid_type_conversion.sql 的所有迁移
+**文档更新日期**: 2025-06-20  
+**数据库版本**: 包含至 20250620131421_extend_sso_providers_table.sql 的所有迁移
 
 ## 当前系统状态
 
@@ -20,6 +20,8 @@
 - ✅ **SSO函数修复**: 修复了数据库函数返回类型不匹配问题，确保SSO登录正常工作
 - ✅ **SSO类型转换修复**: 修复了create_sso_user函数中的UUID类型转换问题，确保SSO用户创建功能正常
 - ✅ **数据库稳定性**: 修复了profiles表RLS策略无限递归问题，确保系统正常运行
+- ✅ **动态SSO配置管理**: 扩展SSO提供商表，支持UI配置、协议模板和统一配置结构
+- ✅ **SSO协议模板系统**: 新增协议模板表，为CAS、OIDC、SAML协议提供标准配置模板
 
 ## 数据库概述
 
@@ -340,12 +342,21 @@ CREATE POLICY "组织管理员可以管理部门应用权限" ON department_app_
 ### SSO 认证
 
 1. `sso_providers` 表：
-   - 主要字段：`id`, `name`, `protocol`, `settings`, `client_id`, `client_secret`, `metadata_url`, `enabled`, `created_at`, `updated_at`
+   - 主要字段：`id`, `name`, `protocol`, `settings`, `client_id`, `client_secret`, `metadata_url`, `enabled`, `display_order`, `button_text`, `created_at`, `updated_at`
    - `protocol` 字段可能的值为 `'SAML'`, `'OAuth2'`, `'OIDC'`, `'CAS'`
    - 支持多种单点登录协议，包括北信科的CAS 2.0认证系统
-   - `settings` 字段存储协议特定配置，如CAS服务器地址、回调URL等
+   - `display_order` 字段：控制登录页面按钮显示顺序（数字越小越靠前）
+   - `button_text` 字段：登录按钮显示文本，为空时使用name字段值
+   - `settings` 字段：统一的JSONB配置结构，包含protocol_config、security、ui三个主要部分
 
-2. `domain_sso_mappings` 表：
+2. `sso_protocol_templates` 表：
+   - 主要字段：`id`, `protocol`, `name`, `description`, `config_schema`, `default_settings`, `created_at`, `updated_at`
+   - 存储SSO协议的标准配置模板，为不同协议提供默认配置和验证规则
+   - 支持CAS、OIDC、SAML协议的标准模板
+   - `config_schema` 字段：JSON Schema格式的配置验证规则
+   - `default_settings` 字段：协议的默认配置模板，用于创建新提供商时的初始配置
+
+3. `domain_sso_mappings` 表：
    - 主要字段：`id`, `domain`, `sso_provider_id`, `enabled`, `created_at`, `updated_at`
 
 #### SSO用户管理函数
@@ -692,6 +703,16 @@ if (!isAdmin) return <AccessDenied />;
 
 ### 2025-06-18 SSO类型修复 - UUID类型转换问题
 - `/supabase/migrations/20250618160000_fix_sso_uuid_type_conversion.sql`: 修复create_sso_user函数中的UUID类型转换问题，确保SSO用户创建功能正常工作
+
+### 2025-06-20 SSO配置管理系统扩展 - 动态SSO配置和协议模板
+- `/supabase/migrations/20250620131421_extend_sso_providers_table.sql`: 扩展SSO提供商表，添加UI配置字段和协议模板系统，支持动态SSO配置管理
+  
+  **主要功能增强：**
+  - **UI配置字段**：添加 `display_order` 和 `button_text` 字段，支持登录页面按钮排序和自定义文本
+  - **统一配置结构**：重构 `settings` 字段为标准化的JSONB结构，包含 protocol_config、security、ui 三个主要部分
+  - **协议模板系统**：新增 `sso_protocol_templates` 表，为CAS、OIDC、SAML协议提供标准配置模板和验证规则
+  - **向后兼容**：自动迁移现有北信科配置到新的统一结构，确保无缝升级
+  - **管理员权限控制**：协议模板表启用RLS，确保只有管理员可以访问和管理协议模板
 
 ## 迁移文件说明
 

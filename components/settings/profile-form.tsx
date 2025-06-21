@@ -13,6 +13,7 @@ import { User, Mail, AtSign, Calendar, Check, AlertCircle } from "lucide-react";
 // --- BEGIN COMMENT ---
 // 个人资料表单组件
 // 用于在设置页面中编辑用户个人资料
+// 支持SSO模式下的字段限制
 // --- END COMMENT ---
 interface ProfileFormProps {
   profile: DatabaseProfile &
@@ -24,6 +25,13 @@ interface ProfileFormProps {
 
 export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
   const { colors, isDark } = useSettingsColors();
+  
+  // --- BEGIN COMMENT ---
+  // 检查是否为SSO单点登录模式
+  // 在SSO模式下，限制某些字段的编辑
+  // --- END COMMENT ---
+  const isSSOOnlyMode = process.env.NEXT_PUBLIC_SSO_ONLY_MODE === 'true';
+  
   const [formData, setFormData] = useState({
     full_name: profile.full_name || "",
     username: profile.username || "",
@@ -37,11 +45,18 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
 
   // --- BEGIN COMMENT ---
   // 处理表单字段变更
+  // 在SSO模式下阻止full_name字段的修改
   // --- END COMMENT ---
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    
+    // SSO模式下不允许修改姓名字段
+    if (isSSOOnlyMode && name === 'full_name') {
+      return;
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -50,6 +65,7 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
 
   // --- BEGIN COMMENT ---
   // 处理表单提交
+  // 根据SSO模式调整提交的数据
   // --- END COMMENT ---
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -58,12 +74,21 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
       setIsSubmitting(true);
       setMessage(null);
 
-      // 更新用户资料
-      const result = await updateUserProfile(profile.id, {
-        full_name: formData.full_name,
+      // --- BEGIN COMMENT ---
+      // 根据SSO模式构建更新数据
+      // SSO模式下不更新姓名和头像URL
+      // --- END COMMENT ---
+      const updateData: any = {
         username: formData.username,
-        avatar_url: formData.avatar_url,
-      });
+      };
+
+      if (!isSSOOnlyMode) {
+        updateData.full_name = formData.full_name;
+        updateData.avatar_url = formData.avatar_url;
+      }
+
+      // 更新用户资料
+      const result = await updateUserProfile(profile.id, updateData);
 
       if (result.success && result.data) {
         // --- BEGIN COMMENT ---
@@ -231,7 +256,7 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
       {/* 个人资料表单 */}
       <div className="space-y-6">
         <h3 className={cn("text-lg font-medium font-serif", colors.textColor.tailwind)}>
-          编辑个人资料
+          {isSSOOnlyMode ? "个人资料" : "编辑个人资料"}
         </h3>
 
         {/* 姓名字段 */}
@@ -245,33 +270,59 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
           >
             姓名
           </label>
-          <div
-            className={cn(
-              "flex items-center",
-              "w-full px-4 py-2 rounded-lg",
-              "transition-all duration-200",
-              "border",
-              colors.buttonBackground.tailwind,
-              colors.buttonBorder.tailwind
-            )}
-          >
-            <User
-              className={cn("w-5 h-5 mr-2", colors.secondaryTextColor.tailwind)}
-            />
-            <input
-              id="full_name"
-              name="full_name"
-              type="text"
-              value={formData.full_name}
-              onChange={handleChange}
+          {isSSOOnlyMode ? (
+            // --- BEGIN COMMENT ---
+            // SSO模式下：展示模式，不可编辑
+            // 使用优雅的展示样式
+            // --- END COMMENT ---
+            <div
               className={cn(
-                "w-full bg-transparent",
-                "outline-none",
-                colors.textColor.tailwind
+                "flex items-center",
+                "w-full px-4 py-3 rounded-lg",
+                "border",
+                colors.borderColor.tailwind,
+                isDark ? "bg-gray-800/50" : "bg-gray-50/50"
               )}
-              placeholder="请输入您的姓名"
-            />
-          </div>
+            >
+              <User
+                className={cn("w-5 h-5 mr-3", colors.secondaryTextColor.tailwind)}
+              />
+              <span className={cn("font-serif", colors.textColor.tailwind)}>
+                {profile.full_name || "未设置"}
+              </span>
+            </div>
+          ) : (
+            // --- BEGIN COMMENT ---
+            // 普通模式下：可编辑输入框
+            // --- END COMMENT ---
+            <div
+              className={cn(
+                "flex items-center",
+                "w-full px-4 py-2 rounded-lg",
+                "transition-all duration-200",
+                "border",
+                colors.buttonBackground.tailwind,
+                colors.buttonBorder.tailwind
+              )}
+            >
+              <User
+                className={cn("w-5 h-5 mr-2", colors.secondaryTextColor.tailwind)}
+              />
+              <input
+                id="full_name"
+                name="full_name"
+                type="text"
+                value={formData.full_name}
+                onChange={handleChange}
+                className={cn(
+                  "w-full bg-transparent",
+                  "outline-none",
+                  colors.textColor.tailwind
+                )}
+                placeholder="请输入您的姓名"
+              />
+            </div>
+          )}
         </div>
 
         {/* 用户名字段 */}
@@ -314,45 +365,47 @@ export function ProfileForm({ profile, onSuccess }: ProfileFormProps) {
           </div>
         </div>
 
-        {/* 头像URL字段 */}
-        <div className="space-y-2">
-          <label
-            htmlFor="avatar_url"
-            className={cn(
-              "block text-sm font-medium font-serif",
-              colors.textColor.tailwind
-            )}
-          >
-            头像URL
-          </label>
-          <div
-            className={cn(
-              "flex items-center",
-              "w-full px-4 py-2 rounded-lg",
-              "transition-all duration-200",
-              "border",
-              colors.buttonBackground.tailwind,
-              colors.buttonBorder.tailwind
-            )}
-          >
-            <input
-              id="avatar_url"
-              name="avatar_url"
-              type="text"
-              value={formData.avatar_url}
-              onChange={handleChange}
+        {/* 头像URL字段 - 仅在非SSO模式下显示 */}
+        {!isSSOOnlyMode && (
+          <div className="space-y-2">
+            <label
+              htmlFor="avatar_url"
               className={cn(
-                "w-full bg-transparent",
-                "outline-none",
+                "block text-sm font-medium font-serif",
                 colors.textColor.tailwind
               )}
-              placeholder="请输入头像图片URL"
-            />
+            >
+              头像URL
+            </label>
+            <div
+              className={cn(
+                "flex items-center",
+                "w-full px-4 py-2 rounded-lg",
+                "transition-all duration-200",
+                "border",
+                colors.buttonBackground.tailwind,
+                colors.buttonBorder.tailwind
+              )}
+            >
+              <input
+                id="avatar_url"
+                name="avatar_url"
+                type="text"
+                value={formData.avatar_url}
+                onChange={handleChange}
+                className={cn(
+                  "w-full bg-transparent",
+                  "outline-none",
+                  colors.textColor.tailwind
+                )}
+                placeholder="请输入头像图片URL"
+              />
+            </div>
+            <p className={cn("text-xs font-serif", colors.secondaryTextColor.tailwind)}>
+              输入有效的图片URL，建议使用正方形图片
+            </p>
           </div>
-          <p className={cn("text-xs font-serif", colors.secondaryTextColor.tailwind)}>
-            输入有效的图片URL，建议使用正方形图片
-          </p>
-        </div>
+        )}
 
         {/* 提交按钮 */}
         <button

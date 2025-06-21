@@ -11,7 +11,12 @@ export type AccountStatus = 'active' | 'suspended' | 'pending';
 export type OrgMemberRole = 'owner' | 'admin' | 'member';
 export type MessageRole = 'user' | 'assistant' | 'system';
 export type MessageStatus = 'sent' | 'delivered' | 'error';
-export type SsoProtocol = 'SAML' | 'OAuth2' | 'OIDC';
+
+// --- BEGIN COMMENT ---
+// 🎯 更新：SSO协议类型，新增CAS协议支持
+// 基于最新迁移文件，支持CAS、SAML、OAuth2、OIDC四种协议
+// --- END COMMENT ---
+export type SsoProtocol = 'CAS' | 'SAML' | 'OAuth2' | 'OIDC';
 
 // --- BEGIN COMMENT ---
 // 🎯 新增：应用执行相关的枚举类型
@@ -20,24 +25,27 @@ export type SsoProtocol = 'SAML' | 'OAuth2' | 'OIDC';
 export type ExecutionType = 'workflow' | 'text-generation';
 export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'stopped' | 'deleted';
 
-// 用户和身份管理
+// --- BEGIN COMMENT ---
+// 🎯 更新：用户Profile接口，新增employee_number字段
+// 支持SSO用户的学工号管理
+// --- END COMMENT ---
 export interface Profile {
   id: string;
   email?: string;
   full_name?: string | null;
   username?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
   auth_source: string;
-  phone?: string;
-  department?: string;
-  job_title?: string;
+  phone?: string | null;
+  department?: string | null;
+  job_title?: string | null;
   created_at: string;
   updated_at: string;
   role: UserRole;
   status: AccountStatus;
   last_login: string | null;
   sso_provider_id: string | null;
-  employee_number?: string | null;
+  employee_number?: string | null; // 新增：学工号字段，用于SSO用户身份标识（如北信科学工号）
 }
 
 export interface UserPreference {
@@ -266,16 +274,91 @@ export interface ApiKey {
   updated_at: string;
 }
 
-// SSO认证
+// --- BEGIN COMMENT ---
+// 🎯 SSO配置接口类型定义
+// 基于最新的SSO配置管理系统设计
+// --- END COMMENT ---
+
+// --- BEGIN COMMENT ---
+// 🎯 SSO提供商settings字段的标准化配置结构
+// 统一管理协议配置、安全设置和UI配置
+// --- END COMMENT ---
+export interface SsoProviderSettings {
+  // 协议配置
+  protocol_config: {
+    base_url: string;                    // SSO服务器基础URL
+    version?: string;                    // 协议版本（如CAS 2.0/3.0）
+    timeout?: number;                    // 请求超时时间（毫秒）
+    endpoints: {
+      login: string;                     // 登录端点路径
+      logout: string;                    // 注销端点路径
+      validate: string;                  // 票据验证端点路径
+      validate_v3?: string;              // CAS 3.0验证端点（可选）
+      metadata?: string;                 // 元数据端点路径（SAML使用）
+    };
+    attributes_mapping: {
+      employee_id: string;               // 工号字段映射
+      username: string;                  // 用户名字段映射
+      full_name: string;                 // 全名字段映射
+      email?: string;                    // 邮箱字段映射（可选）
+    };
+    // 协议特定配置
+    scope?: string;                      // OIDC scope参数
+    response_type?: string;              // OIDC response_type参数
+    issuer?: string;                     // OIDC issuer URL
+    entity_id?: string;                  // SAML entity ID
+    sso_url?: string;                    // SAML SSO URL
+  };
+  
+  // 安全配置
+  security: {
+    require_https: boolean;              // 是否要求HTTPS连接
+    validate_certificates: boolean;      // 是否验证SSL证书
+    allowed_redirect_hosts?: string[];   // 允许的重定向主机白名单
+  };
+  
+  // UI配置
+  ui: {
+    icon?: string;                       // 按钮图标（emoji或图片URL）
+    logo_url?: string;                   // 机构logo图片URL
+    description?: string;                // 详细描述文本
+    theme?: string;                      // 按钮主题：primary/secondary/default/outline
+  };
+  
+  // 其他扩展配置
+  [key: string]: any;
+}
+
+// --- BEGIN COMMENT ---
+// 🎯 更新：SSO提供商接口，新增display_order和button_text字段
+// 支持动态SSO配置管理
+// --- END COMMENT ---
 export interface SsoProvider {
   id: string;
   name: string;
   protocol: SsoProtocol;
-  settings: Record<string, any>;
-  client_id: string | null;
-  client_secret: string | null;
-  metadata_url: string | null;
+  settings: SsoProviderSettings;         // 使用标准化配置结构
+  client_id: string | null;             // OAuth2/OIDC客户端ID（预留）
+  client_secret: string | null;         // OAuth2/OIDC客户端密钥（预留）
+  metadata_url: string | null;          // SAML元数据URL（预留）
   enabled: boolean;
+  display_order: number;                 // 新增：登录页面显示顺序
+  button_text: string | null;           // 新增：登录按钮显示文本
+  created_at: string;
+  updated_at: string;
+}
+
+// --- BEGIN COMMENT ---
+// 🎯 新增：SSO协议模板接口
+// 为不同SSO协议提供标准配置模板和验证规则
+// --- END COMMENT ---
+export interface SsoProtocolTemplate {
+  id: string;
+  protocol: SsoProtocol;                 // 协议类型
+  name: string;                          // 模板显示名称
+  description: string | null;            // 协议详细描述
+  config_schema: Record<string, any>;    // JSON Schema格式的配置验证规则
+  default_settings: Record<string, any>; // 默认配置模板
   created_at: string;
   updated_at: string;
 }
@@ -396,6 +479,7 @@ export namespace Database {
     service_instances: ServiceInstance;
     api_keys: ApiKey;
     sso_providers: SsoProvider;
+    sso_protocol_templates: SsoProtocolTemplate; // 新增：SSO协议模板表
     domain_sso_mappings: DomainSsoMapping;
     auth_settings: AuthSettings;
     ai_configs: AiConfig;

@@ -135,7 +135,7 @@ node scripts/test_reset_password.js
 
 1. **准备测试环境**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
 2. **创建测试账户**

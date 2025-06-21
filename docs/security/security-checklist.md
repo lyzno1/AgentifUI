@@ -96,7 +96,7 @@
 supabase db lint --level error
 
 # 依赖包安全检查
-npm audit
+pnpm audit
 
 # 环境变量检查
 grep -r "password\|secret\|key" .env* || echo "环境变量检查完成"
