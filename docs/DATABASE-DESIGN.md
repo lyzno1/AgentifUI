@@ -2,8 +2,8 @@
 
 本文档详细描述了 AgentifUI 平台的数据库设计，包括表结构、关系、安全机制和特性。本文档与当前数据库状态完全同步，包含所有已应用的迁移文件。
 
-**文档更新日期**: 2025-06-18  
-**数据库版本**: 包含至 20250618160000_fix_sso_uuid_type_conversion.sql 的所有迁移
+**文档更新日期**: 2025-06-20  
+**数据库版本**: 包含至 20250620131421_extend_sso_providers_table.sql 的所有迁移
 
 ## 目录
 
@@ -265,18 +265,20 @@
 
 #### sso_providers
 
-存储SSO提供商信息，支持多种单点登录协议。
+存储SSO提供商信息，支持多种单点登录协议和动态配置管理。
 
 | 字段名 | 类型 | 描述 | 约束 |
 |--------|------|------|------|
-| id | UUID | 提供商ID | 主键 |
-| name | TEXT | 提供商名称 | NOT NULL |
-| protocol | sso_protocol | 协议类型 | NOT NULL |
-| settings | JSONB | 配置设置 | NOT NULL，DEFAULT '{}' |
-| client_id | TEXT | 客户端ID | |
-| client_secret | TEXT | 客户端密钥 | |
-| metadata_url | TEXT | 元数据URL | |
-| enabled | BOOLEAN | 是否启用 | DEFAULT TRUE |
+| id | UUID | 提供商ID | 主键，用于API路由(/api/sso/{id}/*)和服务实例缓存 |
+| name | TEXT | 提供商名称 | NOT NULL，用于管理界面展示和日志记录 |
+| protocol | sso_protocol | 协议类型 | NOT NULL，决定使用哪个服务实现类 |
+| settings | JSONB | 统一配置结构 | NOT NULL，DEFAULT '{}'，包含protocol_config、security、ui三个主要部分 |
+| client_id | TEXT | 客户端ID | OAuth2/OIDC协议使用，CAS协议不使用此字段 |
+| client_secret | TEXT | 客户端密钥 | OAuth2/OIDC协议使用，建议加密存储 |
+| metadata_url | TEXT | 元数据URL | SAML协议使用，用于自动配置端点信息 |
+| enabled | BOOLEAN | 是否启用 | DEFAULT TRUE，false时不会在登录页面显示且API拒绝访问 |
+| display_order | INTEGER | 显示顺序 | DEFAULT 0，登录页面按钮显示顺序（数字越小越靠前） |
+| button_text | TEXT | 按钮文本 | 登录按钮显示文本，为空时使用name字段值，支持多语言 |
 | created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
 
@@ -288,19 +290,68 @@
 - `SAML`: SAML 2.0 协议  
 - `CAS`: CAS 2.0/3.0 协议（支持北京信息科技大学统一认证）
 
-**北信科CAS配置示例：**
+**统一配置结构说明：**
+
+`settings` 字段采用统一的JSONB结构，避免字段冗余：
+
 ```json
 {
-  "base_url": "https://sso.bistu.edu.cn",
-  "login_endpoint": "/login",
-  "logout_endpoint": "/logout", 
-  "validate_endpoint": "/serviceValidate",
-  "validate_endpoint_v3": "/p3/serviceValidate",
-  "version": "2.0",
-  "attributes_enabled": true,
-  "support_attributes": ["employeeNumber", "log_username"]
+  "protocol_config": {
+    "base_url": "https://sso.bistu.edu.cn",
+    "version": "2.0",
+    "timeout": 10000,
+    "endpoints": {
+      "login": "/login",
+      "logout": "/logout",
+      "validate": "/serviceValidate",
+      "validate_v3": "/p3/serviceValidate"
+    },
+    "attributes_mapping": {
+      "employee_id": "cas:user",
+      "username": "cas:username",
+      "full_name": "cas:name",
+      "email": "cas:mail"
+    }
+  },
+  "security": {
+    "require_https": true,
+    "validate_certificates": true,
+    "allowed_redirect_hosts": ["bistu.edu.cn"]
+  },
+  "ui": {
+    "icon": "🏛️",
+    "logo_url": "",
+    "description": "北京信息科技大学统一认证系统",
+    "theme": "primary"
+  }
 }
 ```
+
+#### sso_protocol_templates
+
+存储SSO协议配置模板，为不同协议提供标准配置模板和验证规则。
+
+| 字段名 | 类型 | 描述 | 约束 |
+|--------|------|------|------|
+| id | UUID | 模板ID | 主键，用于管理API的模板操作 |
+| protocol | sso_protocol | 协议类型 | NOT NULL，必须与sso_providers.protocol枚举值一致 |
+| name | TEXT | 模板名称 | NOT NULL，用于管理界面选择协议时展示 |
+| description | TEXT | 协议描述 | 说明协议特性、适用场景和配置要点 |
+| config_schema | JSONB | 配置验证规则 | NOT NULL，JSON Schema格式，用于验证sso_providers.settings字段 |
+| default_settings | JSONB | 默认配置模板 | NOT NULL，创建新提供商时作为初始配置使用 |
+| created_at | TIMESTAMP WITH TIME ZONE | 创建时间 | DEFAULT NOW() |
+| updated_at | TIMESTAMP WITH TIME ZONE | 更新时间 | DEFAULT NOW() |
+
+**协议模板特性：**
+- **标准化配置**：为CAS、OIDC、SAML协议提供标准配置模板
+- **配置验证**：通过JSON Schema验证配置的合法性
+- **简化创建**：新建SSO提供商时可直接使用模板配置
+- **权限控制**：只有管理员可以访问和管理协议模板（RLS策略保护）
+
+**预置协议模板：**
+- **CAS 2.0/3.0**：中央认证服务协议，广泛用于高校统一认证系统
+- **OpenID Connect**：基于OAuth 2.0的身份认证协议，支持现代Web应用
+- **SAML 2.0**：安全断言标记语言，企业级SSO标准
 
 #### domain_sso_mappings
 
@@ -843,6 +894,16 @@ VALUES ('00000000-0000-0000-0000-000000000001');
 - `20250618110000_fix_profiles_infinite_recursion.sql`: 完全修复profiles表RLS策略无限递归问题，确保系统稳定运行
 - `20250618150000_fix_sso_function_types.sql`: 修复SSO数据库函数返回类型不匹配问题，确保北信科SSO登录正常工作
 - `20250618160000_fix_sso_uuid_type_conversion.sql`: 修复create_sso_user函数中的UUID类型转换问题，确保SSO用户创建正常工作
+
+### 2025-06-20 SSO配置管理系统扩展 - 动态SSO配置和协议模板
+- `20250620131421_extend_sso_providers_table.sql`: 扩展SSO提供商表，添加UI配置字段和协议模板系统，支持动态SSO配置管理
+
+  **主要功能增强：**
+  - **UI配置字段**：添加 `display_order` 和 `button_text` 字段，支持登录页面按钮排序和自定义文本
+  - **统一配置结构**：重构 `settings` 字段为标准化的JSONB结构，包含 protocol_config、security、ui 三个主要部分
+  - **协议模板系统**：新增 `sso_protocol_templates` 表，为CAS、OIDC、SAML协议提供标准配置模板和验证规则
+  - **向后兼容**：自动迁移现有北信科配置到新的统一结构，确保无缝升级
+  - **管理员权限控制**：协议模板表启用RLS，确保只有管理员可以访问和管理协议模板
 - `20250609214200_remove_deprecated_admin_views.sql`: 移除过时管理员视图
 - `20250609214300_fix_admin_users_function_types.sql`: 修复管理员用户函数类型
 - `20250609214400_fix_phone_column_type.sql`: 修复手机号列类型
@@ -1067,12 +1128,28 @@ SSO认证系统支持多种认证方式：
 | client_secret |       |                |       |               |
 | metadata_url  |       |                |       |               |
 | enabled       |       |                |       |               |
+| display_order |       |                |       |               |
+| button_text   |       |                |       |               |
 | created_at    |       |                |       |               |
 | updated_at    |       |                |       |               |
 +---------------+       |                |       |               |
       |               |                |       |               |
       |               |                |       |               |
-      v               v                v               |
+      v               |                |       |               |
++---------------+       |                |       |               |
+| sso_protocol_templates |             |       |               |
++---------------+       |                |       |               |
+| id            |       |                |       |               |
+| protocol      |       |                |       |               |
+| name          |       |                |       |               |
+| description   |       |                |       |               |
+| config_schema |       |                |       |               |
+| default_settings |    |                |       |               |
+| created_at    |       |                |       |               |
+| updated_at    |       |                |       |               |
++---------------+       |                |       |               |
+      |               |                |       |               |
+      |               v                v               |
 +---------------+               +---------------+       |
 | domain_sso_mappings|               | api_keys      |       |
 +---------------+               | id            |       |
